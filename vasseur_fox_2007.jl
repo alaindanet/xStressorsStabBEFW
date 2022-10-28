@@ -1,9 +1,10 @@
-using Revise 
+using Revise
 using BEFWM2
 using Plots
 using LinearAlgebra
 using DifferentialEquations 
 using DataFrames
+using CSV
 
 A = [0 0 0 0; 1 0 0 0; 1 0 0 0; 0 1 1 0] 
 foodweb = FoodWeb(A)
@@ -26,14 +27,6 @@ mye[:,1] = [0, 1, 1, 0]
 # Predator
 mye[4,:] = [0, 1, 1, 0] 
 
-# Metabolic rates and maximum ingestion rates (merged in J parameter in Vasseur
-# & Fox)
-J = [0, 0.8036, 0.7, .4]
-## From McCann (1998):
-x = [0, .40, .20, .08]
-y = [0, 2.009, 3.50, 5.0]
-x .* y .- J
-
 bioener = BioenergeticResponse(foodweb,
                                h = 1,
                                # Half saturation-constant
@@ -44,6 +37,14 @@ bioener = BioenergeticResponse(foodweb,
                                c = myc
                               )
 
+# Metabolic rates and maximum ingestion rates (merged in J parameter in Vasseur
+# & Fox)
+J = [0, 0.8036, 0.7, .4]
+## From McCann (1998):
+x = [0, .40, .20, .08]
+y = [0, 2.009, 3.50, 5.0]
+x .* y .- J
+
 biorate = BioRates(foodweb,
         r = [1.0, 0, 0, 0],
         e = mye,
@@ -52,19 +53,6 @@ biorate = BioRates(foodweb,
        )
 
 
-params = ModelParameters(foodweb,
-                functional_response = bioener,
-                biorates = biorate,
-                environment = Environment(foodweb, K = 1.0),
-                env_stoch = EnvStoch(0.0)
-               )
-
-m = simulate(params, rand(4))
-
-plot(m)
-
-
-#
 function mydBdt!(dB, B, params::ModelParameters, t)
 
     # Set up - Unpack parameters
@@ -93,9 +81,6 @@ function mydBdt!(dB, B, params::ModelParameters, t)
     end
 end
 
-m = simulate(params, rand(4), diff_code_data=(mydBdt!, params))
-plot(m)
-
 function stochastic_process(dW, B, params, t)
 
     S = length(params.network.species)
@@ -111,72 +96,11 @@ function stochastic_process(dW, B, params, t)
 end
 
 
-# Stochastic strengh and correlation 
-ρₑ = 0 
-
-# Build the covariance matrix of the size of two times the number of species
-S = BEFWM2.richness(foodweb)
-vc = zeros(S * 2, S * 2)
-# Only the consumer have a variance
-# vc[diagind(vc)][S+2:S+3] .= σₑ
-vc[diagind(vc)] .= 1.0
-vc[S+2, S+3] = ρₑ
-vc[S+3, S+2] = ρₑ
-vc
- 
-# Generate the Wiener Process
-W = CorrelatedWienerProcess(vc, 0.0, zeros(size(vc, 1)))
-
 # define the starting values 
+S = BEFWM2.richness(foodweb)
 stoch_starting_val = [0; 0; 0; 0]
 u0 = [rand(S); stoch_starting_val]
-tspan = (0, 1000)
-
-prob = SDEProblem(
-           mydBdt!,
-           stochastic_process,
-           u0,
-           tspan,
-           params,
-           noise = W
-          )
-sol = solve(prob;
-      saveat = collect(0:1:1000),
-      dt = .25,
-      adaptive = false
-      )
-plot(sol, idxs = [1, 2, 3, 4])
-plot(sol, idxs = 5:8)
-
-foodweb_cv(sol, last = 100, idxs = [1, 2, 3, 4])
-
-# Test with some noise 
-params = ModelParameters(foodweb,
-                functional_response = bioener,
-                biorates = biorate,
-                environment = Environment(foodweb, K = 1.0),
-                env_stoch = EnvStoch(0.25)
-               )
-u0 = [rand(S); stoch_starting_val]
-tspan = (0, 1000)
-prob = SDEProblem(
-           mydBdt!,
-           stochastic_process,
-           u0,
-           tspan,
-           params,
-           noise = W
-          )
-sol = solve(prob;
-      saveat = collect(0:1:1000),
-      dt = .25,
-      adaptive = false
-      )
-plot(sol, idxs = [1, 2, 3, 4])
-plot(sol, idxs = 5:8)
-
-foodweb_cv(sol, last = 100, idxs = [1, 2, 3, 4])
-
+tspan = (0, 50000)
 
 # Simulation 
 #
@@ -185,19 +109,17 @@ foodweb_cv(sol, last = 100, idxs = [1, 2, 3, 4])
 ρ = collect(-1.0:0.1:1.0)
 σₑ = collect(0.0:.05:.6)
 rep = collect(1:5)
-tspan = [0, 5000]
+tspan = [0, 50000]
 tcol = collect(0:1:tspan[2])
 dt = 0.1
-nb_ts_for_cv = 500 
+nb_ts_for_cv = 25000 
 
 # Build the covariance matrix of the size of two times the number of species
-S = BEFWM2.richness(foodweb)
 vc = zeros(S * 2, S * 2)
 # Only the consumer have a variance
 # vc[diagind(vc)][S+2:S+3] .= σₑ
 vc[diagind(vc)] .= 1.0
 vc
- 
 
 # define the starting values 
 stoch_starting_val = [0; 0; 0; 0]
@@ -265,3 +187,4 @@ end
 
 df = DataFrame(out)
 
+CSV.write("vasseur_fox_res.csv", df)
