@@ -11,4 +11,11 @@ touch("draft.jl")
 Pkg.add("Plots")
 
 using Pkg
-Pkg.dev("~/Documents/post-these/sheffield/BEFWM2_fork/")
+Pkg.dev("../BEFWM2_fork/")
+
+mkdir("res")
+
+mkdir("report")
+touch("report/project_definition.Rmd")
+
+symlink("/home/alain/Documents/post-these/references.bib", "report/references.bib")

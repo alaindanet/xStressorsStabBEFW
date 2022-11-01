@@ -1,0 +1,128 @@
+---
+title: "Post-doc project: A complex food-web theory of stability against perturbation"
+author: "Alain Danet"
+date: \today
+output:
+  bookdown::pdf_document2
+bibliography: references.bib 
+---
+
+# Rationale
+
+
+## Perturbation ecology
+
+- Multiple perturbation affect simultaneously mortality rates of species
+- We can assume that those multiple stressors can be summed into environmental
+  stochasticity
+
+## Correlation among pertubations 
+
+- Depending on the nature of the stressors and niche of species, we can expect
+  different scenarios
+- Perturbations such as fishing will affect primarily some species (e.g.
+  top-trophic level)
+- Perturbations in habitat quality will affect species more globally
+  (however some might benefit).
+- Perturbation in temperature will affect differently species according to their thermal niche
+
+All the above scenarios can result in quite complex combinations of situation
+that can be tricky to generalize. Another way to tackle this situation is to
+test more general theories of ecological communities.
+
+I see four different scenarios of perturbation correlations among species that I
+name as the following homogeneous, null, guilds, hidden niches. The homogeneous
+scenario considers that all species are affected in the same way, which would
+correspond to a general perturbation such as a general improvement/depletion of
+habitat quality. The null scenario considers that all species respond randomly
+to stress, i.e. they do not share perturbation, i.e. their perturbations are
+uncorrelated. The guilds scenario assumes that intra-guild perturbations are
+positively correlated and that interguild perturbations are not correlated, it
+is a scenario that assumes that species sharing the same trophic level share the
+same niche, i.e. there is no intraguild response diversity. The hidden niche
+scenario comes the theory of the same name[@scheffer_self-organized_2006;
+@barabas_emergent_2013; @martinez-blancas_species_nodate]. It assumes that
+cluster of species having similar traits (here food-web trophic position) would
+have hidden niche dimensions that stabilize their coexistence, such as species
+in the same guild will have response diversity (portfolio effect),
+anti-correlated perturbations.
+
+While all the above scenario can seem abstract at a first glance, it is possible
+to draw realistic situations where they can apply.
+
+The homogeneous scenario can apply in situations where stressors select for
+homogeneous response to stressors as for example, as it might be the case in
+altered environments where we can end up with the same functions (i.e. the same
+food-web) but where the diversity of other niche dimensions have been shrunken
+(lost of diversity hypothesis). The guild scenario supposes a full niche
+conservatism where species on the same feeding guild are likely to share the
+same evolutionary history and such their respond in the same way to
+environmental perturbation. The hidden niche is the reverse of the former,
+intraguild species are anti-correlated, such as there is maximal response
+diversity (insurance hypothesis), which is the mechanism by which biodiversity
+is thought to maintain long-term stability of ecosystem functions.
+
+While response diversity has been well studied in small food-web modules and
+competitive communities, it has been overlooked in more complex food-webs. The
+complex relationships among species across food-web might dampens (compensate),
+propagate or just scale with food-chain and small food-web modules.
+
+## Stability in food-webs
+
+The question at 1bn pound is "what is driving stability?", i.e. the propagation
+of perturbations across food-webs. Early studies focused on the effect of
+removing one species either by looking at the topology [e.g.,
+@dunne_network_2002] or dynamic [@stouffer_compartmentalization_2011]. In that
+sense, it would be interesting to see if environmental stochasticity predicts the same
+pattern that species extinction (i.e. pertubation for one species only).
+
+The big other ingredient of food-web stability is the strength of species
+interactions. The tremendous early work of McCann and other authors about the
+distribution of interaction strength is really interesting, showing that
+coupling weak interactions to strong one stabilize food-web dynamics.
+Interestingly, I see two schools on the definition of interaction strengths in
+the Bioenergetic model. McCann defines it by modulating consumer preference
+($\omega$) such as $I_{ki} = \omega_{ik}* x_i * y_i / B_{0i}$ while
+@brose_allometric_2006 modules interaction strength by modulating predator/prey
+mass ratios (Z) such as Z increases the metabolism of predators decreases
+relative to prey (i.e. $x_i$ and $y_i$). Thus increasing Z decreases $I_{ki}$.
+The main difference between Brose and McCann approaches is that the Brose
+approach of modulating interactions also modulates metabolic losses ($x_iy_iB_i$).
+Then the approach of McCann has the advantage to only change feeding rates but
+it is rather phenomenological modelling while Brose approach is more mechanistic
+(fully metabolic) but it changes two things at the same time.
+
+### Stability in small modules 
+
+- @mccann_diversitystability_2000, @mccann_weak_1998,
+  @vasseur_environmental_2007, @ripa_food_2003
+
+### Stability in food-chains
+
+- @barbier_pyramids_2019, @shanafelt_stability_2018
+
+### Stability in complex food-web 
+
+- @thebault_stability_2010, @brose_allometric_2006
+
+# Research questions 
+
+- How does response diversity drive food-web stability?
+- How does response diversity affect coupling between predator and preys?
+- How does response diversity effect on stability is modulated by interaction strength
+  distribution?
+
+# Methods
+
+## Simulation framework: 
+
+- Start analysis with really robust food-webs (high Z and type III functional
+  response) to avoid species extinction
+- Really general propagation: one species pertubated at the time (are there
+  differences with extinction pattern ?)
+- Modulating interaction strength distribution: generate random asymetric
+  consumer preference ($\omega_ij$) but with constraints on predator
+  ($\sum\omega_i = 1$) and preys (prey should be involved in one strong
+  interaction at the time may be).
+
+# References {-}
