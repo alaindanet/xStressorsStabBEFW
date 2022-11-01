@@ -7,82 +7,64 @@ using Plots
 using Debugger
 include("src/minmax.jl")
 
+Iₖ = ωₖ * x * y / B₀
 
-# Try the solver option with 
-function connectance(mat)
-    sum(mat) / size(mat,1)^2
+######
+# Define your own ModelParameters with an additional mortality term 
+#####
+
+# Define the composite type CritDeath
+mutable struct CritDeath 
+    d::Float64
 end
 
-foodweb = FoodWeb(nichemodel, 10,C = .14)
-while connectance(foodweb.A) != .14 
-    global foodweb = FoodWeb(nichemodel, 10,C = .14)
-end
-# Generally, reltol is the relative accuracy while abstol is the accuracy when u
-# is near zero. These tolerances are local tolerances and thus are not global
-# guarantees. However, a good rule of thumb is that the total solution
-# accuracy is 1-2 digits less than the relative tolerances. Thus for the
-# defaults abstol=1e-6 and reltol=1e-3, you can expect a global accuracy
-# of about 1-2 digits.
-q0 = 0.0:.025:.5
-params = ModelParameters(foodweb, functional_response = BioenergeticResponse(foodweb, h = 0.025 + 1))
-sol = simulate(
-               params,
-               rand(size(foodweb.A, 1));# repeat([.1], size(foodweb.A, 1)),
-               extinction_threshold = 1e-10, 
-               callback = CallbackSet(
-                                      BEFWM2.PositiveDomain(),
-                                      TerminateSteadyState(1e-6, 1e-4),
-                                      BEFWM2.ExtinguishSpecies(1e-10, false),
-                                     ),
-               reltol=1e-8, abstol=1e-8
-              )
-using DifferentialEquations
-using OrdinaryDiffEq
-
-
-function connectance(mat)
-    sum(mat) / size(mat,1)^2
+# Add a field crit_death to ModelParameters by defining a new composite type of subtype Params
+mutable struct CustomModelParameters <: Params
+    network::EcologicalNetwork
+    biorates::BioRates
+    environment::Environment
+    functional_response::FunctionalResponse
+    crit_death::CritDeath
 end
 
-Random.seed!(1234)
-foodweb = FoodWeb(nichemodel, 10,C = .14)
-# I would like a fw with c = 0.14 plz
-while connectance(foodweb.A) != .14 
-    global foodweb = FoodWeb(nichemodel, 10,C = .14)
+
+# Define the function of my custom ModelParameters
+function CustomModelParameters(
+    network::EcologicalNetwork;
+    biorates::BioRates = BioRates(network),
+    environment::Environment = Environment(network),
+    functional_response::FunctionalResponse = BioenergeticResponse(network),
+    crit_death::CritDeath = CritDeath(0.2)
+)
+    CustomModelParameters(network, biorates, environment, functional_response, crit_death)
 end
-params = ModelParameters(foodweb, functional_response = BioenergeticResponse(foodweb, h = 0.025 + 1))
-B = rand(size(foodweb.A, 1))
 
-# Solvers
-non_stiff_solver = [Vern9(), OwrenZen3(), BS5(), Tsit5()]
-stiff_solver = [Rosenbrock23(), Rodas4P(), TRBDF2()] 
+# My custom dBdt! contains B[i] * params.crit_death.d in metabolic losses
+# It takes a object of type Params in input but consumption() should also take a Params input instead of  #ModelParameters type of input
+function CustomdBdt!(dB, B, params::Params, t)
 
-for a in [non_stiff_solver; stiff_solver]
-    println("solver is: $(a)")
-    try
-        sol = simulate(
-                       params,
-                       B,
-                       alg = a,
-                       tmax = 3000,
-                       callback = CallbackSet(
-                                              BEFWM2.PositiveDomain(),
-                                              #TerminateSteadyState(1e-6, 1e-4),
-                                              BEFWM2.ExtinguishSpecies(1e-10, false),
-                                             ),
-                      )
-    catch err
-        println("Error with: $(err) \n")
+    # Set up - Unpack parameters
+    S = richness(params.network)
+    response_matrix = params.functional_response(B, params.network)
+    r = params.biorates.r # vector of intrinsic growth rates
+    K = params.environment.K # vector of carrying capacities
+    network = params.network
+
+    # Compute ODE terms for each species
+    for i in 1:S
+        growth = logisticgrowth(i, B, r[i], K[i], network)
+        eating, being_eaten = consumption(i, B, params, response_matrix)
+        metabolism_loss = metabolic_loss(i, B, params) + B[i] * params.crit_death.d
+        net_growth_rate = growth + eating - metabolism_loss
+        net_growth_rate = effect_competition(net_growth_rate, i, B, network)
+        dB[i] = net_growth_rate - being_eaten
     end
 end
 
-# Regarding the domain error with Tsit5(): DomainError(-4.2275272782171454e-7, "Exponentiation yielding a complex result...
-# A negative number connot be powered by a decimal
-a = -1
-(a)^1.025
-(-1)^1.025
-# But work with precedence rules (power before negative)
--1^1.025
+# Do the simulation
+A = [0 0 0 0; 1 0 0 0; 1 0 0 0; 0 1 1 0] 
+foodweb = FoodWeb(A)
 
-Iₖ = ωₖ * x * y / B₀
+params = CustomModelParameters(foodweb, crit_death = CritDeath(0.2))
+m = simulate(params, rand(4), diff_code_data=(CustomdBdt!, params))
 

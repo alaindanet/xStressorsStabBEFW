@@ -1,0 +1,97 @@
+---
+title: "Community biomass and species richness temporal trends reveal contrasting assembly and disassembly processes in natural food-webs"
+author: Alain Danet, Loubna El Madouri, Maud Mouchet, Elisa Thébault and Colin Fontaine
+date: \today
+output:
+  bookdown::pdf_document2:
+    fig_caption: true 
+    keep_tex: true
+    toc: true
+    fontsize: 12pt
+    geometry: margin=2cm
+    number_sections: true
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  cache = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  #fig.dim = c(7, 7),
+  fig.fullwidth = TRUE,
+  fig.show = "hold",
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  results = TRUE,
+  fig.path="figures/"
+)
+```
+
+```{r, results = FALSE}
+library(tidyverse)
+library(magrittr)
+library(cowplot)
+library(here)
+require(rgl)
+options(rgl.printRglwidget = TRUE)
+
+mytheme <- theme_cowplot() +
+background_grid()
+
+theme_set(mytheme)
+options(knitr.table.format = "latex")
+```
+
+```{r}
+data <- read_csv(here("res", "vasseur_fox_res.csv"))
+colnames(data)[1:2] <- c("rho", "sigma") 
+```
+```{r}
+avg  <- data %>%
+  group_by(sigma, rho) %>%
+  summarise(across(everything(), mean))
+```
+
+
+```{r}
+surface3d(avg$rho, avg$stab_pred, avg$sigma)
+map(c("rho", "stab_pred", ))
+```
+
+```{r}
+cons_sync <- avg %>%
+  ggplot(aes(rho, sigma, z = sync_cons)) +
+  geom_contour_filled() +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Consumer synchrony")
+
+pred_stab <- ggplot(avg, aes(rho, sigma, z = stab_pred)) +
+  geom_contour_filled() +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Predator stability")
+
+cons1_stab <- avg %>%
+  ggplot(aes(rho, sigma, z = stab_cons1)) +
+  geom_contour_filled() +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Consumer 1 stability")
+
+cons2_stab <- avg %>%
+  ggplot(aes(rho, sigma, z = stab_cons2)) +
+  geom_contour_filled() +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Consumer 2 stability")
+```
+
+```{r}
+pp <- plot_grid(
+  cons_sync, pred_stab, cons1_stab, cons2_stab,
+  labels = "auto")
+save_plot(
+  filename = here("res", "vasseurfox2007fig2.pdf"),
+  pp, ncol = 2, nrow = 2)
+```
+
+
+
