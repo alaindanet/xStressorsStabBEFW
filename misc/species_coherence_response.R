@@ -56,8 +56,9 @@ save_plot(
 # With four species
 ti <- tibble(
   rho = c(0, .8, -.8),
-  noise = map(rho, ~cross_correlated_response(rho = .x, evt_sd = 1, n = 4, time_len = 20))
-) 
+  noise = map(rho,
+    ~cross_correlated_response(rho = .x, evt_sd = 1, n = 4, time_len = 20))
+)
 
 p <- ti %>%
   unnest(noise) %>%
@@ -117,7 +118,8 @@ save_plot(
   tp
 )
 
-a <- t(sapply(c(3, 6), function(x) rnorm(10, x, .8)))
+set.seed(1)
+a <- t(sapply(c(3, 6), function(x) rnorm(10, x, 1)))
 dfr <- as.data.frame(t(a))  %>%
   mutate(species = seq_len(ncol(a))) %>%
   pivot_longer(-species, names_to = "com", values_to = "trait") %>%
@@ -128,9 +130,20 @@ dfr <- as.data.frame(t(a))  %>%
   group_by(com) %>%
   mutate(rel_abun = abun / sum(abun))
 
+library(scales) # ! important
+dfr %>%
+  ggplot(aes(x = trait, y = rel_abun, fill = com)) +
+  geom_col() +
+  geom_density(data = dfr,
+    aes(x = trait, y = ..density.. / 1.8, color = com, weight = rel_abun),
+    adjust = 1, inherit.aes = FALSE)
+
 p_trait <- dfr %>%
   ggplot(aes(x = trait, y = rel_abun, fill = com)) +
   geom_col() +
+  geom_density(data = dfr,
+    aes(x = trait, y = ..density.. / 2.5, color = com, weight = rel_abun),
+    adjust = .8, inherit.aes = FALSE) +
   geom_vline(xintercept = summarise(dfr, avg = sum(rel_abun * trait))$avg) +
   labs(x = "Trait", y = "Relative abundance") +
   cowplot::theme_half_open() +
@@ -140,6 +153,7 @@ p_trait <- dfr %>%
     axis.ticks = element_blank(),
     axis.text = element_blank()
   )
+
 save_plot(
   filename = here::here("fig/p_trait.pdf"),
   p_trait

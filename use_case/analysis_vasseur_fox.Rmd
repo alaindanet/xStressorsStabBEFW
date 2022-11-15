@@ -1,6 +1,6 @@
 ---
-title: "Community biomass and species richness temporal trends reveal contrasting assembly and disassembly processes in natural food-webs"
-author: Alain Danet, Loubna El Madouri, Maud Mouchet, Elisa Thébault and Colin Fontaine
+title: "Vasseur \& Fox (2007) replication"
+author: Alain Danet
 date: \today
 output:
   bookdown::pdf_document2:

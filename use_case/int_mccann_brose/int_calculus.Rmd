@@ -1,0 +1,407 @@
+---
+title: "Interaction strength: driven by metabolism or behavior? McCann vs Brose" 
+author: Alain Danet
+date: \today
+output:
+  bookdown::html_document2:
+    fig_caption: true 
+    toc: true
+    fontsize: 12pt
+    number_sections: true
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  cache = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  #fig.dim = c(7, 7),
+  fig.fullwidth = TRUE,
+  fig.show = "hold",
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  results = TRUE,
+  fig.path="figures/"
+)
+```
+
+```{r}
+library(tidyverse)
+library(magrittr)
+library(plotly)
+library(kableExtra)
+library(cowplot)
+```
+
+```{r}
+theme_set(theme_half_open() + background_grid())
+```
+
+
+```{r}
+# From McCann diamond
+x <- c(0, .40, .20, .08)
+y <- c(0, 2.009, 3.50, 5.0)
+b0 <- c(0.16129, .90, .5)
+names(x) <- names(y) <- c("R1", "C1", "C2", "P")
+names(b0) <- c("R01", "R02", "C0")
+```
+
+# Context
+
+Brose's and McCann's body of work represent two different ways of seeing foodweb
+assembly and dynamics. McCann considers that foodwebs are made of strong
+interactions that are stabilized by weak interactions. A consequence of this is
+that the asymmetry in consumer preference for resources plays a great role in
+McCann's work ($\omega$), where the predator has a preference for the most
+competitive prey (hierarchy mostly defined by the asymmetry in half saturation
+constant $B_0$). We can see it as a strong role given to consumer preference as
+a predominant role of foraging behavior in McCann work. This approach leads to
+the construction of small and finely tuned foodweb module, up to four species
+(one producer, two consumers and one predator).
+
+In contrast, Brose's body of work does not make assumption on foraging behavior
+and so on asymmetry of consumer preference. Furthermore, it does not assume
+competitive difference between consumers for resources (same half-saturation
+constants). In Brose's work, the interaction strength are only determined by the
+trophic level and a constant body size ratio ($Z$ parameter) between pairs of
+adjacent trophic levels. At the end, interaction strengths are solely determined
+by metabolism, through body mass, which determines in turn maximum ingestion and
+metabolism rates. In contrast with McCann approach, it enables to build
+species-rich foodweb without having to finely tune each parameter, as the
+metabolic parameters and interactions are (almost) solely determined by the body
+mass ratio ($Z$) and the trophic level (T). This convenient parametrization of
+complex food-webs has the cons to consider that there is no behavior or
+competitive hierarchy in the food-web, all is solely determined by metabolism.
+
+In a nutshell, McCann proposes that the balance of strong and weak interactions
+driven by consumer preference and competitive hierarchy drive the stability of
+foodweb while Brose proposes that stability emerge from weak interactions driven
+by the slow metabolism of predators compared to the preys (high Z).
+
+In this document, I try to derive the relationship among maximum interaction
+strength, body mass ratio and consumer preferences to map the range of
+interactions strength explored by Brose. I then map the McCann interaction
+strength onto it by computing the body mass ratio (Z) between consumers and
+predator. I finally try to estimate what would be the body mass ratio between
+consumer and predator to mimic the interaction strength of McCann without
+predator preference for any of the two consumers (i.e. $\omega = .5$).
+ 
+# Maximum interaction strength from McCann 
+
+```{r}
+max_int <- function(
+  omega = .5,
+  ax = 0.88,
+  y = 5,
+  x = NULL,
+  ay = NULL,
+  Z = 1,
+  T = 2,
+  b0 = 0.50) {
+
+  if (is.null(ay) & !is.null(ax)) {
+    ay <- ax * y
+  }
+
+  if (!is.null(Z)) {
+    numerator <- omega * ax * ay * Z ^ ((T - 1) * (-0.5))
+  } else {
+    numerator <- omega * x * y
+  }
+  numerator / b0
+}
+```
+
+From McCann, maximum interaction strength ($I_{ki}$) is equal to: 
+
+$$
+I_{ki} = \dfrac{\omega_{ki} x_i y_i}{B_{0i}}
+$$
+
+```{r}
+Imccann02_met <- max_int(omega = .02, y = y["P"], x = x["P"], ax = NULL, Z =
+  NULL, T = 3, b0 = b0["C0"])
+Imccann98_met <- max_int(omega = .98, ax = NULL, y = y["P"], x = x["P"], ay =
+  NULL, Z = NULL, T = 3, b0 = b0["C0"])
+
+ImccannC1R_met <- max_int(omega = 1, ax = NULL, y = y["C1"], x = x["C1"], ay =
+  NULL, Z = NULL, T = 2, b0 = b0["R01"])
+
+ImccannC2R_met <- max_int(omega = 1, ax = NULL, y = y["C2"], x = x["C2"], ay =
+  NULL, Z = NULL, T = 2, b0 = b0["R02"])
+```
+
+```{r}
+interaction_correspondance <- tibble(
+  int = c("P-C1", "P-C2", "C1-R", "C2-R"),
+  omega = c(.98, .02, 1, 1),
+  I = map_dbl(c(Imccann98_met, Imccann02_met, ImccannC1R_met, ImccannC2R_met),
+    ~round(.x, 2))
+)
+interaction_correspondance %>%
+  kbl(
+    caption = "Interaction strength from McCann 1998",
+    label = "int"
+  ) %>%
+kable_styling()
+```
+
+From the first equation, we can compute $I$ of McCann from the metabolic rates,
+giving interaction strengths presented in Table \@ref(tab:int).
+
+From The formulation of $I$, we can compute $I(Z)$ if we replace $x_i$ and $y_i$ by $Z$.  
+
+Knowing that $x_i = a_xM_i^{-0.25}$, $y_i = a_yM_i^{-0.25}$ and that $M =
+Z^{T-1}$, we can derive that: $x_i = a_x(Z^{T-1})^{-0.25}$
+
+\begin{align}
+I_{ki} &= \dfrac{\omega_{ki} a_x(Z^{T-1})^{-0.25} a_y(Z^{T-1})^{-0.25}}{B_{0i}} \\
+
+I_{ki} &= \dfrac{\omega_{ki} a_x a_y ((Z^{T-1})^2)^{-0.25} }{B_{0i}} \\
+
+I_{ki} &= \dfrac{\omega_{ki} a_x a_y (Z^{T-1})^{-0.5} }{B_{0i}} \\
+
+I_{ki} &= \dfrac{\omega_{ki} a_x a_y Z^{-(T-1)/2}}{B_{0i}} \\
+
+I_{ki} &= \dfrac{\omega_{ki} a_x a_y Z^{-(T-1)/2}}{B_{0i}}
+\end{align}
+
+Then we can compute maximum interaction strength from $Z$, $\omega$ and
+$B_{0i}$.
+
+```{r}
+# Prepare Z and omega combination
+comb_list <- list(
+  Z = purrr::map_dbl(seq(-2, 5, .05), ~10^.x),
+  omega = seq(0, 1, .05)
+)
+# Compute maximum interaction strength
+result <- comb_list %>%
+  expand.grid() %>%
+  as_tibble() %>%
+  mutate(
+    I = map2_dbl(omega, Z, ~max_int(omega = .x, Z = .y, y = y["P"], T = 3))
+  )
+
+result_lg <- result %>%
+  pivot_wider(names_from = "omega", values_from = "I")
+res_mat <- as.matrix(result_lg[, -1])
+row.names(res_mat) <- result_lg$Z
+
+fig <- plot_ly(
+  # Omega
+  x = as.numeric(colnames(res_mat)),
+  # Z 
+  y = as.numeric(rownames(res_mat)),
+  # I
+  z = res_mat) %>%
+  add_surface() %>%
+  layout(
+    title = "For predator of trophic level = 3",
+    scene = list(
+      xaxis = list(title = "Consumer preference"),
+      yaxis = list(type = "log", title = "Z"),
+      zaxis = list(title = "Maximum interaction strength")
+    )
+  )
+```
+
+```{r}
+# Compute Z from McCann int strength taking in account omega 
+z_from_int <- function(
+  I = .48,
+  b0 = .5,
+  omega = .5,
+  ax = .88,
+  y = 5,
+  T = 2
+  ) {
+  ay <- ax * y
+  ((I * b0) / (omega * ax * ay)) ^ (- 2 / (T - 1))
+}
+
+Zmccann <- z_from_int(I = Imccann02_met, omega = .02, T = 3)
+Zmccann <- z_from_int(I = Imccann98_met, omega = .98, T = 3)
+
+ZmcannC1 <- z_from_int(I = ImccannC1R_met, omega = 1, T = 2)
+ZmcannC2 <- z_from_int(I = ImccannC2R_met, omega = 1, T = 2)
+```
+
+
+
+```{r}
+fig2 <- fig %>%
+  add_markers(
+    # Omega
+    x = c(.02, .98),
+    # Z
+    y = c(Zmccann, Zmccann),
+    # I
+    z = c(Imccann02_met, Imccann98_met),
+    color = I("blue")
+    )
+```
+
+```{r}
+Zbrose_int02 <- z_from_int(I = Imccann02_met, omega = .5, T = 3)
+Zbrose_int98 <- z_from_int(I = Imccann98_met, omega = .5, T = 3)
+```
+
+```{r}
+interaction_correspondance$Z <- c(Zmccann, Zmccann, ZmcannC1, ZmcannC2)
+interaction_correspondance %>%
+  kbl(
+    caption = "Interaction strength from McCann 1998 and their corresponding
+    translation in Z",
+    label = "intZ"
+  ) %>%
+kable_styling()
+```
+
+We can then compute $Z$ from $I$ and $\omega$ such as
+
+\begin{align}
+Z^{-\dfrac{T-1}{2}} &= \dfrac{I_{ki} B_{0i}}{\omega a_x a_y} \\
+
+Z &= \dfrac{I_{ki} B_{0i}}{\omega a_x a_y}^{-\dfrac{2}{T-1}}
+\end{align}
+
+It gives us what is the $Z$ equivalent of interaction strengths in McCann. We
+can then plot the interaction of McCann in Brose framework (In blue, Fig.
+\@ref(fig:intzomega)). We can furthermore infer what would be the equivalent of
+McCann in Brose framework, i.e. with $\omega = .5$, i.e. in case that there are no
+consumer preference. We found that the weak interaction (P-C2) would correspond
+to $Z = `r Zbrose_int02`$ and the strong interaction (P-C1) to
+$Z = `r Zbrose_int98`$ in Brose framework.
+
+```{r}
+intzomega_cap <- "Maximum interaction strength between a predator and consumer
+of T = 3 and T = 2 according to Z and omega (range corresponding to Brose et al.
+  2006). In blue are mapped the values corresponding to McCann P/C1 and P/C2
+interactions. In red are mapped the values corresponding to McCann P/C1 and
+P/C2, but in case where there is no consumer preference (Brose's framework)."
+```
+
+
+```{r intzomega, fig.cap=intzomega_cap}
+fig2 %>%
+  add_markers(
+    # Omega
+    x = c(.5, .5),
+    # Z
+    y = c(Zbrose_int02, Zbrose_int98),
+    # I
+    z = c(Imccann02_met, Imccann98_met),
+    color = I("red"),
+    labels = c("test", "test2")
+    )
+```
+
+
+# Example of simulations
+
+
+```{r}
+species_replacement <- c("R", "C1", "C2", "P")
+names(species_replacement) <- paste0("value", seq(1,4)) 
+```
+
+```{r}
+mccann_origin <- read_csv("mcann_original.csv")
+p_mccann_origin <- mccann_origin %>%
+  pivot_longer(-timestamp, names_to = "species", values_to = "bm") %>%
+  mutate(species = species_replacement[species]) %>%
+  ggplot(aes(x = timestamp, y = bm, color = species)) +
+  geom_line() +
+  labs(x = "Time", y = "Biomass")
+
+leg <- get_legend(p_mccann_origin + theme(legend.position = "bottom"))
+```
+
+```{r}
+mccann_z <- read_csv("mcann_z.csv")
+p_mccann_z <- mccann_z %>%
+  pivot_longer(-timestamp, names_to = "species", values_to = "bm") %>%
+  ggplot(aes(x = timestamp, y = bm, color = species)) +
+  geom_line()+
+  labs(x = "Time", y = "Biomass", color = "Species")
+```
+
+```{r}
+brose_little_z <- read_csv("brose_little_z.csv")
+p_brose_little_z <- brose_little_z %>%
+  pivot_longer(-timestamp, names_to = "species", values_to = "bm") %>%
+  ggplot(aes(x = timestamp, y = bm, color = species)) +
+  geom_line() +
+  labs(x = "Time", y = "Biomass")
+```
+
+```{r}
+brose_big_z <- read_csv("brose_big_z.csv")
+p_brose_big_z <- brose_big_z %>%
+  pivot_longer(-timestamp, names_to = "species", values_to = "bm") %>%
+  ggplot(aes(x = timestamp, y = bm, color = species)) +
+  geom_line() +
+  labs(x = "Time", y = "Biomass")
+```
+
+```{r}
+sim_cap <- paste0("Simulation of the bioenergetic model for four simulations. (a)
+  Original McCann model. (b) McCann model but metabolic rates have been
+  drawn from the inferred Z between Predator and consumers (Z = ", Zmccann ,"), but
+  does not consider that Z might be different for Predator/Consumer and
+  Consumer/Resource. So, here everything crashes because interactions P/C might be
+  too strong compared to C/R interactions. (c) Brose model with Z corresponding to
+  the strong interaction P/C1. (d) Brose model with Z corresponding to the weak interaction P/C2.") 
+
+```
+
+
+```{r sim, fig.cap=sim_cap}
+top <- plot_grid(
+  p_mccann_origin + theme(legend.position = "none"),
+  p_mccann_z + theme(legend.position = "none"),
+  p_brose_little_z + theme(legend.position = "none"),
+  p_brose_big_z + theme(legend.position = "none"),
+  ncol = 2,
+  labels = "auto")
+plot_grid(top, leg, nrow = 2, rel_heights = c(1, .1))
+```
+
+
+# Calculus trash
+
+If you compute two Z (useless): 
+
+$$
+I_{ki} = \dfrac{\omega_{ki} a_x a_y (Z^{T-1} Z^{T-1})^{-0.25} }{B_{0i}}
+$$
+
+You can also compute Z from metabolic parameters:
+
+$Z_x^{T-1} = \dfrac{x_i}{a_x}$
+
+$Z_x = (\dfrac{x_i}{a_x})^(1 / (T-1))$ because $(Z^{T-1})^{1/ (T-1)} = Z$
+
+and 
+
+$Z_y = (\dfrac{y_i}{a_y})^(1 / (T - 1))$
+
+Finally, from above equation, $Z = Z_x Z_y$
+
+```{r}
+z_from_y_x <- function(ax = .88, x = .08, y = 5, T = 3) {
+  ay <- ax * y
+  c(
+    Zy = (y / ay) ^ (1 / (T - 1)),
+    Zx = (x / ax) ^ (1 / (T - 1))
+  )
+}
+
+# Z infered from parameters of McCann et al. 1998 and Vasseur and Fox
+Zmccann <- Reduce(`*`, z_from_y_x(ax = .88, x = x["P"], y = y["P"], T = 2))
+ZC1mccann <- Reduce(`*`, z_from_y_x(ax = .88, x = x["C1"], y = y["C1"], T = 2))
+ZC2mccann <- Reduce(`*`, z_from_y_x(ax = .88, x = x["C2"], y = y["C2"], T = 2))
+```

@@ -19,3 +19,4 @@ mkdir("report")
 touch("report/project_definition.Rmd")
 
 symlink("/home/alain/Documents/post-these/references.bib", "report/references.bib")
+
