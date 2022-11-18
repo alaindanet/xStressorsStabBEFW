@@ -4,7 +4,7 @@ author: "Alain Danet"
 date: \today
 output:
   bookdown::pdf_document2
-bibliography: references.bib 
+bibliography: references.bib
 ---
 
 # Rationale
@@ -16,7 +16,7 @@ bibliography: references.bib
 - We can assume that those multiple stressors can be summed into environmental
   stochasticity
 
-## Correlation among pertubations 
+## Correlation among pertubations
 
 - Depending on the nature of the stressors and niche of species, we can expect
   different scenarios
@@ -69,7 +69,7 @@ propagate or just scale with food-chain and small food-web modules.
 
 ## Stability in food-webs
 
-The question at 1bn pound is "what is driving stability?", i.e. the propagation
+The question at 1bn pounds is "what is driving stability?", i.e. the propagation
 of perturbations across food-webs. Early studies focused on the effect of
 removing one species either by looking at the topology [e.g.,
 @dunne_network_2002] or dynamic [@stouffer_compartmentalization_2011]. In that
@@ -77,22 +77,38 @@ sense, it would be interesting to see if environmental stochasticity predicts th
 pattern that species extinction (i.e. pertubation for one species only).
 
 The big other ingredient of food-web stability is the strength of species
-interactions. The tremendous early work of McCann and other authors about the
-distribution of interaction strength is really interesting, showing that
-coupling weak interactions to strong one stabilize food-web dynamics.
+interactions, as demonstrated by previous studies [@mccann_weak_1998;
+@brose_allometric_2006]. @mccann_weak_1998 showed that food-web having strong
+interactions can persist if the strong interactions are coupled with weak ones.
+Interestingly, a strong interaction needs to be coupled in two ways, by a
+feeding and a competitive interactions. @brose_allometric_2006 showed the
+strength of interactions are driven by body size, such larger body sized animals
+produce lower interaction strengths (because of their lower metabolic rates).
+
 Interestingly, I see two schools on the definition of interaction strengths in
 the Bioenergetic model. McCann defines it by modulating consumer preference
 ($\omega$) such as $I_{ki} = \omega_{ik}* x_i * y_i / B_{0i}$ while
 @brose_allometric_2006 modules interaction strength by modulating predator/prey
-mass ratios (Z) such as Z increases the metabolism of predators decreases
+mass ratios (Z) such as Z decrease the metabolism of predators
 relative to prey (i.e. $x_i$ and $y_i$). Thus increasing Z decreases $I_{ki}$.
-The main difference between Brose and McCann approaches is that the Brose
+A common feature of both approaches is that they both consider that the strength
+of interactions decrease as the trophic level increases.
+
+A main difference between Brose and McCann approaches is that the Brose
 approach of modulating interactions also modulates metabolic losses ($x_iy_iB_i$).
 Then the approach of McCann has the advantage to only change feeding rates but
 it is rather phenomenological modelling while Brose approach is more mechanistic
 (fully metabolic) but it changes two things at the same time.
 
-### Stability in small modules 
+Although in complex food-webs, Brose method can create strong asymetry in
+interaction strength by coupling specialists and generalists, as they
+respectively generate strong and weak interactions. Such mechanism is
+triggered by the fact that consumer preference is equally shared among preys
+($\omega_ki = 1 \ \sum_k 1 $, such as $\omega_{ki} = 1$ or .1 for a consumer
+having one prey or 10 preys).
+
+
+### Stability in small modules
 
 - @mccann_diversitystability_2000, @mccann_weak_1998,
   @vasseur_environmental_2007, @ripa_food_2003
@@ -101,11 +117,20 @@ it is rather phenomenological modelling while Brose approach is more mechanistic
 
 - @barbier_pyramids_2019, @shanafelt_stability_2018
 
-### Stability in complex food-web 
+### Stability in complex food-web
 
 - @thebault_stability_2010, @brose_allometric_2006
 
-# Research questions 
+## Stochasticity in food-webs
+
+@vasseur_environmental_2007 found that Stochasticity and response diversity can
+stabilize food-web in a McCann model with strong asymetry in species interactions.
+Is it valid also with a Brose model without this asymetry? Is it also valid with
+different functional responses?
+
+# Research questions
+
+## Response diversity
 
 - How does response diversity drive food-web stability?
 - How does response diversity affect coupling between predator and preys?
@@ -114,7 +139,7 @@ it is rather phenomenological modelling while Brose approach is more mechanistic
 
 # Methods
 
-## Simulation framework: 
+## Simulation framework:
 
 - Start analysis with really robust food-webs (high Z and type III functional
   response) to avoid species extinction
