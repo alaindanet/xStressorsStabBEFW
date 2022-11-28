@@ -9,62 +9,30 @@ include("src/minmax.jl")
 
 Iₖ = ωₖ * x * y / B₀
 
-######
-# Define your own ModelParameters with an additional mortality term 
-#####
 
-# Define the composite type CritDeath
-mutable struct CritDeath 
-    d::Float64
+# Prepare your names (Symbols rather than Strings)
+names = (:a, :b, :c)
+# Prepare your values (no need to `collect` them yet).
+as = 1:2
+bs = 3:4
+cs = 5:6
+# Iterate on cartesian product (the only necessary `collect`ion happens here).
+for product in Iterators.product(as, bs, cs)
+
+    # Here is one element of your product.
+    println("\nproduct: $product {$(typeof(product))}")
+
+    # Construct a dict with (Symbol => value) pairs.
+    dict = Dict(key => value for (key, value) in zip(names, product))
+    println("dict: $dict {$(typeof(dict))}")
+
+    # "Splat" the dict into a named tuple.
+    named_tuple = (;dict...)
+    println("named_tuple: $named_tuple {$(typeof(named_tuple))}")
 end
 
-# Add a field crit_death to ModelParameters by defining a new composite type of subtype Params
-mutable struct CustomModelParameters <: Params
-    network::EcologicalNetwork
-    biorates::BioRates
-    environment::Environment
-    functional_response::FunctionalResponse
-    crit_death::CritDeath
-end
+# One-liner:
+map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(as, bs, cs))[:]
 
-
-# Define the function of my custom ModelParameters
-function CustomModelParameters(
-    network::EcologicalNetwork;
-    biorates::BioRates = BioRates(network),
-    environment::Environment = Environment(network),
-    functional_response::FunctionalResponse = BioenergeticResponse(network),
-    crit_death::CritDeath = CritDeath(0.2)
-)
-    CustomModelParameters(network, biorates, environment, functional_response, crit_death)
-end
-
-# My custom dBdt! contains B[i] * params.crit_death.d in metabolic losses
-# It takes a object of type Params in input but consumption() should also take a Params input instead of  #ModelParameters type of input
-function CustomdBdt!(dB, B, params::Params, t)
-
-    # Set up - Unpack parameters
-    S = richness(params.network)
-    response_matrix = params.functional_response(B, params.network)
-    r = params.biorates.r # vector of intrinsic growth rates
-    K = params.environment.K # vector of carrying capacities
-    network = params.network
-
-    # Compute ODE terms for each species
-    for i in 1:S
-        growth = logisticgrowth(i, B, r[i], K[i], network)
-        eating, being_eaten = consumption(i, B, params, response_matrix)
-        metabolism_loss = metabolic_loss(i, B, params) + B[i] * params.crit_death.d
-        net_growth_rate = growth + eating - metabolism_loss
-        net_growth_rate = effect_competition(net_growth_rate, i, B, network)
-        dB[i] = net_growth_rate - being_eaten
-    end
-end
-
-# Do the simulation
-A = [0 0 0 0; 1 0 0 0; 1 0 0 0; 0 1 1 0] 
-foodweb = FoodWeb(A)
-
-params = CustomModelParameters(foodweb, crit_death = CritDeath(0.2))
-m = simulate(params, rand(4), diff_code_data=(CustomdBdt!, params))
-
+using BEFWM2
+BEFWM2.PositiveDomain()
