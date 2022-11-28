@@ -2,15 +2,16 @@ using Revise
 using BEFWM2
 using Plots
 using LinearAlgebra
-using DifferentialEquations 
+using DifferentialEquations
 using DataFrames
 using CSV
+include("../src/stochastic_mortality_model.jl")
 
-A = [0 0 0 0; 1 0 0 0; 1 0 0 0; 0 1 1 0] 
+A = [0 0 0 0; 1 0 0 0; 1 0 0 0; 0 1 1 0]
 foodweb = FoodWeb(A)
 
 # Functional response
-## Preference of consumer 
+## Preference of consumer
 myω = zeros(4, 4)
 myω[:,1] = [0, 1, .98, 0]
 myω[4,:] = [0, .92, 1 - .92, 0]
@@ -23,9 +24,9 @@ myc
 ## Efficiency is implicitly one for all consumers in Vasseur & Fox
 mye = zeros(4, 4)
 # Consumer
-mye[:,1] = [0, 1, 1, 0] 
+mye[:,1] = [0, 1, 1, 0]
 # Predator
-mye[4,:] = [0, 1, 1, 0] 
+mye[4,:] = [0, 1, 1, 0]
 
 bioener = BioenergeticResponse(foodweb,
                                h = 1,
@@ -48,71 +49,30 @@ x .* y .- J
 biorate = BioRates(foodweb,
         r = [1.0, 0, 0, 0],
         e = mye,
-        x = x, 
+        x = x,
         y = y
        )
 
 
-function mydBdt!(dB, B, params::ModelParameters, t)
-
-    # Set up - Unpack parameters
-    S = length(params.network.species)
-    response_matrix = params.functional_response(B[1:S], params.network)
-    r = params.biorates.r # vector of intrinsic growth rates
-    K = params.environment.K # vector of carrying capacities
-    network = params.network
-    θ = 1
-
-    # Compute ODE terms for each species
-    for i in 1:S
-        growth = BEFWM2.logisticgrowth(i, B[1:S], r[i], K[i], network)
-        eating, being_eaten = BEFWM2.consumption(i, B[1:S], params, response_matrix)
-        # Metabolic loss as basal mortality times exponentional stochastic noise
-        metabolism_loss = params.biorates.x[i] * exp(B[i+S]) * B[i] 
-        net_growth_rate = growth + eating - metabolism_loss
-        # net_growth_rate = BEFWM2.effect_competition(net_growth_rate, i, B, network)
-        dB[i] = net_growth_rate - being_eaten
-    end
-
-    # Compute stochastic mortality variable for all species
-    for i in S+1:2*S
-        # Ornstein-Uhlenbeck process
-        dB[i] = θ * (0 - B[i])
-    end
-end
-
-function stochastic_process(dW, B, params, t)
-
-    S = length(params.network.species)
-
-    # Biomass dynamics have no stochasticity 
-    for i in 1:2*S 
-        dW[i] = 0.0
-    end
-
-    # Stochastic mortality variable for consumer is... Stochastic!!! 
-    dW[S+2:S+3] .= params.env_stoch.σₑ 
-
-end
 
 
-# define the starting values 
+# define the starting values
 S = BEFWM2.richness(foodweb)
 stoch_starting_val = [0; 0; 0; 0]
 u0 = [rand(S); stoch_starting_val]
 tspan = (0, 50000)
 
-# Simulation 
+# Simulation
 #
 # Along correlation between environmental stochasticity and strength of
-# stochasticity 
+# stochasticity
 ρ = collect(-1.0:0.1:1.0)
 σₑ = collect(0.0:.05:.6)
 rep = collect(1:5)
 tspan = [0, 50000]
 tcol = collect(0:1:tspan[2])
 dt = 0.1
-nb_ts_for_cv = 25000 
+nb_ts_for_cv = 25000
 
 # Build the covariance matrix of the size of two times the number of species
 vc = zeros(S * 2, S * 2)
@@ -121,14 +81,14 @@ vc = zeros(S * 2, S * 2)
 vc[diagind(vc)] .= 1.0
 vc
 
-# define the starting values 
+# define the starting values
 stoch_starting_val = [0; 0; 0; 0]
 corr_mat = vc
 
 out = []
 for p in ρ
     for s in σₑ
-        for r in rep 
+        for r in rep
             println("Start ρ = $p, σₑ = $s, rep = $r")
 
             B0 = [rand(S); stoch_starting_val]
@@ -138,7 +98,7 @@ for p in ρ
                                          environment = Environment(foodweb, K = 1.0),
                                          env_stoch = EnvStoch(s)
                                         )
-            # Correlation between consumer 
+            # Correlation between consumer
             corr_mat[S+2, S+3] = p
             corr_mat[S+3, S+2] = p
 
@@ -168,7 +128,7 @@ for p in ρ
                             ρ = p, σₑ = s, rep = r, #sol = sol,
                             stab_com = 1 / cv.cv_com, avg_cv_sp = cv.avg_cv_sp, sync = cv.synchrony,
                             stab_cons1 = 1 / cv.cv_sp[2], stab_cons2 = 1 / cv.cv_sp[3], stab_pred = 1 / cv.cv_sp[4],
-                            sync_cons = sync_cons 
+                            sync_cons = sync_cons
                            )
                      )
             else
@@ -176,7 +136,7 @@ for p in ρ
                             ρ = p, σₑ = s, rep = r, #sol = sol,
                             stab_com = nothing, avg_cv_sp = nothing, sync = nothing,
                             stab_cons1 = nothing, stab_cons2 = nothing, stab_pred = nothing,
-                            sync_cons = nothing 
+                            sync_cons = nothing
                            )
                      )
 
