@@ -1,15 +1,20 @@
+println("Rundir is $(pwd())")
+
 import Pkg
 Pkg.instantiate()
-using Revise, BEFWM2, LinearAlgebra, DifferentialEquations, DataFrames, CSV, Distributed, Distributions, ProgressMeter, BenchmarkTools
+using BEFWM2, LinearAlgebra, DifferentialEquations, DataFrames, CSV, Distributed, Distributions, ProgressMeter, BenchmarkTools
 
 ncpu = length(Sys.cpu_info())
+println("Using $(ncpu -2) cores")
 
 #Flag enables all the workers to start on the project of the current dir
-println("Using $(ncpu -2) cores")
-addprocs(ncpu - 2, exeflags="--project")
+flag = "--project=~/xStressorsStabBEFW/"
+println("Workers run with flag: $(flag)")
+addprocs(ncpu - 2, exeflags=flag)
+
 @everywhere import Pkg
 @everywhere using DifferentialEquations, BEFWM2, Distributions, ProgressMeter, BenchmarkTools
-@everywhere include("src/stochastic_mortality_model.jl")
+@everywhere include("../src/stochastic_mortality_model.jl")
 import Random.seed!
 
 seed!(22)
@@ -123,12 +128,12 @@ vc
 end
 
 
-prinln("Test with batch size = 5")
+println("Test with batch size = 5")
 @elapsed pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 50000, last = 25000, dt = .1, corr_mat = vc), param[10000:10010], batch_size = 5)
-prinln("Test with batch size = 1")
+println("Test with batch size = 1")
 @elapsed pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 50000, last = 25000, dt = .1, corr_mat = vc), param[10000:10010], batch_size = 1)
 
-prinln("Real simulation")
+println("Real simulation")
 @elapsed res = pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 50000, last = 25000, dt = .1, corr_mat = vc), param, batch_size = 100)
 
 df = DataFrame(res)
