@@ -13,8 +13,9 @@ println("Workers run with flag: $(flag)")
 addprocs(ncpu - 2, exeflags=flag)
 
 @everywhere import Pkg
-@everywhere using DifferentialEquations, BEFWM2, Distributions, ProgressMeter, BenchmarkTools
+@everywhere using DifferentialEquations, BEFWM2, Distributions, ProgressMeter
 @everywhere include("../src/stochastic_mortality_model.jl")
+
 import Random.seed!
 
 seed!(22)
@@ -49,7 +50,7 @@ vc
 
 
 
-@everywhere function mysim(A, n, Z, f, ρ, σₑ; max = 50000, last = 25000, dt = 0.1, corr_mat = vc)
+@everywhere function mysim(A, n, Z, f, ρ, σₑ; max = 50000, last = 25000, dt = 0.1, corr_mat = vc, return_sol = false)
 
     fw = FoodWeb(A, Z = Z)
     S = BEFWM2.richness(fw)
@@ -87,6 +88,11 @@ vc
     catch
         (t = 0, x = missing)
     end
+
+    if return_sol
+        return m
+    end
+
     if length(m.t) == max + 1
 
         cv = foodweb_cv(m, last = last, idxs = [1, 2, 3, 4])
@@ -127,14 +133,13 @@ vc
     out
 end
 
-
 println("Test with batch size = 5")
-@elapsed pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 50000, last = 25000, dt = .1, corr_mat = vc), param[10000:10010], batch_size = 5)
+@elapsed testres = @showprogress pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 5000, last = 1000, dt = .1, corr_mat = vc), param[10000:10010], batch_size = 5)
 println("Test with batch size = 1")
-@elapsed pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 50000, last = 25000, dt = .1, corr_mat = vc), param[10000:10010], batch_size = 1)
+@elapsed testres2 =  @showprogress pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 5000, last = 100, dt = .1, corr_mat = vc), param[10000:10010], batch_size = 1)
 
 println("Real simulation")
-@elapsed res = pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 50000, last = 25000, dt = .1, corr_mat = vc), param, batch_size = 100)
+@elapsed res = pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 5000, last = 1000, dt = .1, corr_mat = vc), param, batch_size = 100)
 
 df = DataFrame(res)
 
