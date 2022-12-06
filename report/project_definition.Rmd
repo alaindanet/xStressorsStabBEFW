@@ -7,6 +7,21 @@ output:
 bibliography: references.bib
 ---
 
+```{r, results = FALSE}
+library(tidyverse)
+library(magrittr)
+library(cowplot)
+library(here)
+
+mytheme <- theme_cowplot(font_size = 10) +
+background_grid() +
+theme(legend.position = "bottom")
+
+
+theme_set(mytheme)
+```
+
+
 # Rationale
 
 
@@ -149,5 +164,52 @@ different functional responses?
   consumer preference ($\omega_ij$) but with constraints on predator
   ($\sum\omega_i = 1$) and preys (prey should be involved in one strong
   interaction at the time may be).
+
+# Early results
+
+```{r}
+sim_brut <- read_csv(here("res", "hpc_test.csv"))
+
+sim <- sim_brut %>%
+  filter(!is.na(persistence), Z > .1) %>%
+  mutate(sim_time_m = sim_time / 60)
+```
+
+```{r}
+sim %>%
+  select(rep:fr_type, persistence:sync) %>%
+  pivot_longer(-c(rep:fr_type), names_to = "metric", values_to = "values") %>%
+  ggplot(aes(y = log(values), x = S, color = fr_type)) +
+  geom_quantile(quantiles = .5, size = 2) +
+  facet_grid(rows = vars(metric), cols = vars(Z), scales = "free_y") +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+sim %>%
+  ggplot(aes(y = log(stab_com), x = S, color = fr_type)) +
+  geom_jitter() +
+  geom_quantile(quantiles = .5, size = 2) +
+  facet_grid(cols = vars(Z), scales = "free_y")
+```
+
+```{r}
+sim %>%
+  ggplot(aes(y = log(sync), x = S, color = fr_type)) +
+  geom_jitter() +
+  geom_quantile(quantiles = .5, size = 2) +
+  facet_grid(cols = vars(Z), scales = "free_y")
+```
+
+
+```{r}
+sim %>%
+  ggplot(aes(y = log(avg_cv_sp), x = S, color = fr_type)) +
+  geom_jitter(alpha = .3) +
+  geom_quantile(quantiles = .5, size = 2) +
+  facet_grid(cols = vars(Z), scales = "free_y")
+```
+
+
 
 # References {-}
