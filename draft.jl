@@ -1,5 +1,5 @@
 using Revise
-using BEFWM2
+using BEFWM2, SparseArrays
 using DifferentialEquations
 using Statistics
 using DataFrames
@@ -7,32 +7,22 @@ using Plots
 using Debugger
 include("src/minmax.jl")
 
-Iₖ = ωₖ * x * y / B₀
 
+fw = FoodWeb(nichemodel, 20, C = .15, Z = 1000)
+# fw = FoodWeb(nichemodel, 5, C = .1)
+p = ModelParameters(fw)
 
-# Prepare your names (Symbols rather than Strings)
-names = (:a, :b, :c)
-# Prepare your values (no need to `collect` them yet).
-as = 1:2
-bs = 3:4
-cs = 5:6
-# Iterate on cartesian product (the only necessary `collect`ion happens here).
-for product in Iterators.product(as, bs, cs)
+#Iₖ = ωₖ * x * y / B₀
 
-    # Here is one element of your product.
-    println("\nproduct: $product {$(typeof(product))}")
+ti = simulate(p, rand(size(p.network.species, 1)))
 
-    # Construct a dict with (Symbol => value) pairs.
-    dict = Dict(key => value for (key, value) in zip(names, product))
-    println("dict: $dict {$(typeof(dict))}")
+foodweb = FoodWeb([0 0; 1 0]); # create the foodweb
+params = ModelParameters(foodweb); # generate the parameters
+B = [0.5, 0.5]; # set initial biomass
+solution = simulate(params, B); # run simulation
+typeof(solution)
+params.functional_response.B0
+params.biorates.x
 
-    # "Splat" the dict into a named tuple.
-    named_tuple = (;dict...)
-    println("named_tuple: $named_tuple {$(typeof(named_tuple))}")
-end
-
-# One-liner:
-map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(as, bs, cs))[:]
-
-using BEFWM2
-BEFWM2.PositiveDomain()
+emp_int_str = empirical_interaction_strength(bm, p)
+gini(vec(emp_int_str))
