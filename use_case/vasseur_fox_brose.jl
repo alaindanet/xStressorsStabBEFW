@@ -31,7 +31,7 @@ foodweb = FoodWeb(A)
 ρ = -1.0:0.2:1.0
 σₑ = 0.0:.2:1.5
 rep = 1:10
-Z_levels = [10:10:100;] # average predator-prey mass ratio
+Z_levels = [10:20:100;] # average predator-prey mass ratio
 fr_types = [
     (h = 1.0, c = 0.0, type = "type II"),
     (h = 1.0, c = 1.0, type = "PI"),
@@ -55,8 +55,8 @@ println("Test with batch size = 1")
 @elapsed testres2 =  @showprogress pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 5000, last = 4000, dt = .1, corr_mat = vc), param[10000:10010], batch_size = 1)
 
 println("Real simulation")
-@elapsed res = @showprogress pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 5000, last = 4000, dt = .1, corr_mat = vc), param, batch_size = 100)
+@elapsed res = @showprogress pmap(x -> mysim(A, x.rep, x.Z, x.fr, x.ρ, x.σₑ, max = 3000, last = 1000, dt = .1, corr_mat = vc), param, batch_size = 500)
 
 df = DataFrame(res)
 
-CSV.write("vasseur_fox__brose_res2.csv", df)
+CSV.write("vasseur_fox_brose_res2.csv", df)

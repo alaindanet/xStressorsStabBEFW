@@ -2,11 +2,11 @@
 
 
 # Job name
-#$ -N mccann_brose
+#$ -N cs_stoch 
 
 # Error message
-#$ -e mccann_brose.error
-#$ -o mccann_brose.out
+#$ -e cs_stoch.error
+#$ -o cs_stoch.out
 
 # Amount of RAM requested per node
 #$ -l rmem=32G
@@ -18,4 +18,4 @@ DIR_SCRIPT=use_case
 # Load modules
 module load apps/julia
 
-julia --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/vasseur_fox_brose.jl ${DIR_ENV} #vasseur_fox_2007.jl
+julia --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/connectance_richness_stoch.jl ${DIR_ENV} #vasseur_fox_2007.jl
