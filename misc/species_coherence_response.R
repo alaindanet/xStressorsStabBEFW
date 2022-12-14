@@ -9,9 +9,9 @@ sdt_e <- 1
 rho <- 1
 
 # From
-# Ripa & Ives (2003): https://www.sciencedirect.com/science/article/pii/S0040580903000893 
+# Ripa & Ives (2003): https://www.sciencedirect.com/science/article/pii/S0040580903000893
 # Vasseur & Fox (2007): http://doi.wiley.com/10.1111/j.1461-0248.2007.01099.x
-# Gouhier et al. (2010): https://www.journals.uchicago.edu/doi/full/10.1086/649579 
+# Gouhier et al. (2010): https://www.journals.uchicago.edu/doi/full/10.1086/649579
 cross_correlated_response <- function(rho = 0, evt_sd = 1, n = 2, time_len = 100, return_tbl = TRUE) {
 
   # Independant timeseries
@@ -46,7 +46,8 @@ p <- ti %>%
   ggplot(aes(x = time, y = error, color = species))+
   geom_line() +
   facet_grid(cols = vars(rho)) +
-  cowplot::theme_half_open()
+  cowplot::theme_half_open() +
+  theme(legend.position = "none")
 
 save_plot(
   "~/Téléchargements/coherence_two_sp.png",

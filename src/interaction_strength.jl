@@ -39,8 +39,8 @@ function empirical_interaction_strength(B::Vector{Float64}, params::ModelParamet
 end
 
 function empirical_interaction_strength(solution, params::ModelParameters; last::Int64 = 1000)
-    bm = foodweb_cv(ti, last = last).bm_sp
-
+    bm = foodweb_cv(solution, last = last, idxs = collect(1:1:size(params.network.species, 1))).bm_sp
     empirical_interaction_strength(bm, params)
-
 end
+
+
