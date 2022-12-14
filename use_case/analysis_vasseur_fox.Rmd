@@ -4,7 +4,7 @@ author: Alain Danet
 date: \today
 output:
   bookdown::pdf_document2:
-    fig_caption: true 
+    fig_caption: true
     keep_tex: true
     toc: true
     fontsize: 12pt
@@ -36,17 +36,64 @@ library(here)
 require(rgl)
 options(rgl.printRglwidget = TRUE)
 
-mytheme <- theme_cowplot() +
-background_grid()
+mytheme <- theme_cowplot(font_size = 12) +
+  background_grid() +
+  theme(legend.position = "bottom")
+
 
 theme_set(mytheme)
 options(knitr.table.format = "latex")
 ```
 
+# Some simulations with stochasticity
+
+```{r}
+sim <- read_csv(here("use_case", "vasseur_fox_sim_ts_ex.csv")) %>%
+  pivot_longer(c(resource:pred), names_to = "species", values_to = "bm") %>%
+  mutate(species = str_replace_all(species, c(
+        "pred" = "Predator",
+        "cons1" = "Consumer 1",
+        "cons2" = "Consumer 2",
+        "resource" = "Resource"
+        )))
+
+sim0 <- sim %>%
+  filter(sigma == 0)
+unique(sim$sigma)
+unique(sim$rho)
+```
+
+```{r}
+p0 <- sim %>%
+  filter(sigma == 0) %>%
+  ggplot(aes(x = time, y = bm, color = species)) +
+  geom_line()
+save_plot(
+  filename = here("use_case", "int_mccann_brose", "figures", "mccann_sim.png"),
+  p0)
+p_stoch <- sim %>%
+  filter(sigma == 0.3, rho == 0.0) %>%
+  ggplot(aes(x = time, y = bm, color = species)) +
+  geom_line()
+p_stoch_rho <- sim %>%
+  filter(sigma == 0.3, rho == 1) %>%
+  ggplot(aes(x = time, y = bm, color = species)) +
+  geom_line()
+```
+
+```{r}
+```
+
+
+
+
+# Reproduce Vasseur & Fox
+
 ```{r}
 data <- read_csv(here("res", "vasseur_fox_res.csv"))
-colnames(data)[1:2] <- c("rho", "sigma") 
+colnames(data)[1:2] <- c("rho", "sigma")
 ```
+
 ```{r}
 avg  <- data %>%
   group_by(sigma, rho) %>%

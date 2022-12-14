@@ -7,6 +7,23 @@ output:
 bibliography: references.bib
 ---
 
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  cache = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  #fig.dim = c(7, 7),
+  fig.fullwidth = TRUE,
+  fig.show = "hold",
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  results = TRUE,
+  fig.path="figures/"
+)
+```
+
 ```{r, results = FALSE}
 library(tidyverse)
 library(magrittr)
@@ -102,7 +119,7 @@ produce lower interaction strengths (because of their lower metabolic rates).
 
 Interestingly, I see two schools on the definition of interaction strengths in
 the Bioenergetic model. McCann defines it by modulating consumer preference
-($\omega$) such as $I_{ki} = \omega_{ik}* x_i * y_i / B_{0i}$ while
+($\omega$) such as $I_{ki} = \omega_{ik} x_i  y_i / B_{0i}$ while
 @brose_allometric_2006 modules interaction strength by modulating predator/prey
 mass ratios (Z) such as Z decrease the metabolism of predators
 relative to prey (i.e. $x_i$ and $y_i$). Thus increasing Z decreases $I_{ki}$.
@@ -119,7 +136,7 @@ Although in complex food-webs, Brose method can create strong asymetry in
 interaction strength by coupling specialists and generalists, as they
 respectively generate strong and weak interactions. Such mechanism is
 triggered by the fact that consumer preference is equally shared among preys
-($\omega_ki = 1 \ \sum_k 1 $, such as $\omega_{ki} = 1$ or .1 for a consumer
+($\omega_{ki} = 1 \ \sum_k 1$, such as $\omega_{ki} = 1$ or .1 for a consumer
 having one prey or 10 preys).
 
 
@@ -209,6 +226,192 @@ sim %>%
   geom_quantile(quantiles = .5, size = 2) +
   facet_grid(cols = vars(Z), scales = "free_y")
 ```
+
+## Module and stability
+
+```{r}
+PlotWeb <- function (TL, webTL,colnode,abund,collink="grey70", scale_abun = 0.01, rel_abun = TRUE, log_abun = FALSE){
+
+  Sweb<-length(TL)
+  g=matrix(0,nrow=Sweb,ncol=3)
+
+  if (log_abun) {
+    # to not have negative abun:
+    if(any(abund < 1)) {
+      abund <- abund + 1
+    }
+    abund <- log(abund)
+
+  }
+
+  if (rel_abun) {
+    g[,3]<- scale_abun * abund / sum(abund)
+  } else {
+    g[,3]<- scale_abun * abund
+  }
+  g[,2]<-TL/sum(TL)
+  TLround<-round(TL)
+  for (i in 1:max(round(TL))) {
+    a<-TLround==i
+    b<-1:Sweb
+    b<-b[a]
+    xaxis<-(1:length(b))/length(b)
+    g[a,1]<-xaxis+ 0.5 - sum(xaxis)/length(b)
+  }
+  symbols(g[,1],g[,2],circles=g[,3],inches=FALSE,bg=colnode,fg=colnode,xlab="",ylab="",bty="n",xaxt="n",yaxt="n")
+  for (i in 1:Sweb){
+    for (j in 1:Sweb){
+      if (webTL[i,j]>0){
+         arrows(g[i,1],g[i,2],g[j,1],g[j,2],lwd=1, col=collink,length=0)
+         }
+    }
+  }
+  symbols(g[,1],g[,2],circles=g[,3],inches=FALSE,bg=colnode,fg=colnode,add=TRUE)
+}
+```
+
+
+```{r, fig.width = 12}
+null_mat <- matrix(0, nrow = 6, ncol = 6)
+gen <- null_mat
+gen[c(4,5,6), c(1,2,3)] <- 1
+spe <- gen
+spe[4, c(2,3)] <- spe[5, c(1,3)] <- spe[6, c(1,2)] <- 0
+
+top_spe <- spe %>% rbind(., c(0, 0, 0, 1, 1, 1)) %>%
+cbind(., rep(0, 7))
+
+top_gen <- gen %>% rbind(., c(0, 0, 0, 1, 1, 1)) %>%
+cbind(., rep(0, 7))
+
+top_omn_spe <- top_spe
+top_omn_spe[7, ] <- c(rep(1, 6), 0)
+
+top_omn_gen <- top_gen
+top_omn_gen[7, ] <- c(rep(1, 6), 0)
+
+repl_module <- c(
+  "spe" = "Specialist",
+  "gen" = "Generalist",
+  "top_spe" = "Top specialist",
+  "top_gen" = "Top generalist",
+  "top_omn_spe" = "Top omnivore\nspecialist",
+  "top_omn_gen" = "Top omnivore\ngeneralist"
+)
+```
+
+```{r}
+par(mar = c(1.1, 1.1, 1.1, 1.1))
+
+p_top_omn_gen <- ~PlotWeb(
+  NetIndices::TrophInd(t(top_omn_gen))$TL,
+  t(top_omn_gen),
+  abund = rep(1, nrow(top_omn_gen)), colnode = "black")
+p_top_omn_spe <- ~PlotWeb(
+  NetIndices::TrophInd(t(top_omn_spe))$TL,
+  t(top_omn_spe),
+  abund = rep(1, nrow(top_omn_spe)), colnode = "black")
+p_gen <- ~PlotWeb(
+  NetIndices::TrophInd(t(gen))$TL,
+  t(gen),
+  abund = rep(1, nrow(gen)), colnode = "black")
+p_spe <- ~PlotWeb(
+  NetIndices::TrophInd(t(spe))$TL,
+  t(spe),
+  abund = rep(1, nrow(spe)), colnode = "black")
+p_top_spe <- ~PlotWeb(
+  NetIndices::TrophInd(t(top_spe))$TL,
+  t(top_spe),
+  abund = rep(1, nrow(top_spe)), colnode = "black")
+p_top_gen <- ~PlotWeb(
+  NetIndices::TrophInd(t(top_gen))$TL,
+  t(top_gen),
+  abund = rep(1, nrow(top_gen)), colnode = "black")
+
+p_fw <- plot_grid(
+  p_spe, p_gen,
+  p_top_spe, p_top_gen,
+  p_top_omn_spe, p_top_omn_gen,
+  ncol = 2,
+  label_size = 8,
+  labels = repl_module
+)
+save_plot(
+  here("report", "figures", "p_fw.pdf"),
+  p_fw, ncol = 2, nrow = 3,
+  base_asp = 1, base_height = 2)
+```
+
+```{r}
+png(here("report", "figures", "spe_top_spe.png"),
+  width = 480 * 1.618, height = 480, units = "px", bg = "transparent")
+par(mfrow = c(1, 2))
+PlotWeb(
+  NetIndices::TrophInd(t(top_spe))$TL,
+  t(top_spe),
+  abund = rep(1, nrow(top_spe)), scale_abun = .3, colnode = "red")
+title("Top generalist")
+PlotWeb(
+  NetIndices::TrophInd(t(spe))$TL,
+  t(spe),
+  abund = rep(1, nrow(spe)), scale_abun = .3, colnode = "green")
+title("Specialist")
+dev.off()
+```
+
+```{r}
+gen_stab <- read_csv(here("generalism_stoch.csv"))
+
+gen_stab %>%
+  select(1:5) %>%
+  mutate(
+    stab_com = 1 / cv_com,
+    fw = repl_module[fw]
+    ) %>%
+  pivot_longer(c(stab_com, avg_cv_sp, synchrony),
+    names_to = "metric", values_to = "values") %>%
+  ggplot(aes(x = fw, y = values)) +
+  geom_boxplot()  +
+  facet_wrap(~metric, scales = "free_y")
+```
+
+```{r}
+p_gen_pred <- gen_stab %>%
+  select(1:5) %>%
+  filter(fw %in% c("spe", "top_spe")) %>%
+  mutate(
+    stab_com = 1 / cv_com,
+    fw = c(
+      "spe" = "Specialist\nconsumers",
+      "top_spe" = "Generalist\ntop predator"
+      )[fw]
+    ) %>%
+  pivot_longer(c(stab_com, avg_cv_sp, synchrony),
+    names_to = "metric", values_to = "values") %>%
+  mutate(metric = c("stab_com" = "Stability", "avg_cv_sp" = "Avg CVsp",
+      "synchrony" = "Synchrony")[metric]) %>%
+  ggplot(aes(x = fw, y = values, fill = fw)) +
+  geom_boxplot() +
+  labs(x = "Food web structure") +
+  scale_fill_manual(values = c("red", "green")) +
+  facet_wrap(~metric, scales = "free_y") +
+  theme_cowplot(font_size = 14) +
+  theme(
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position = "none"
+  )
+
+p_gen_pred
+
+save_plot(
+  here("report", "figures", "model_spe_top.png"),
+  p_gen_pred,
+  ncol = 3,
+  base_asp = 1
+)
+```
+
 
 
 
