@@ -143,8 +143,8 @@ function simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, ret
 
     if length(m.t) == max + 1
         cv = foodweb_cv(m, last = last, idxs = collect(1:1:S))
-        bm = total_biomass(m; last = last, idxs = collect(1:1:S))
-        int_strength = empirical_interaction_strength(m, p; last = last)
+        bm = total_biomass(m, last = last, idxs = collect(1:1:S))
+        int_strength = empirical_interaction_strength(m, p, last = last)
         non_zero_int = [i for i in int_strength if i != 0]
         max_int = max_interaction_strength(p)
         non_zero_max_int = [i for i in max_int if i != 0]

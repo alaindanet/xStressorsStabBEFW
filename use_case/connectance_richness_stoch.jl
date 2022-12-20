@@ -5,19 +5,20 @@ Pkg.instantiate()
 using Distributed, Serialization
 
 ncpu = length(Sys.cpu_info())
-println("Using $(ncpu -2) cores")
 
 #Flag enables all the workers to start on the project of the current dir
 flag = "--project=~/xStressorsStabBEFW/"
 #flag = "--project=."
 println("Workers run with flag: $(flag)")
-addprocs(ncpu - 2, exeflags=flag)
+#addprocs(ncpu - 2, exeflags=flag)
+addprocs(7, exeflags=flag)
+println("Using $(ncpu -2) cores")
 
 @everywhere import Pkg
 @everywhere using DifferentialEquations, BEFWM2, Distributions, ProgressMeter, SparseArrays, LinearAlgebra, DataFrames, CSV
 @everywhere include("../src/stochastic_mortality_model.jl")
 @everywhere include("../src/sim.jl")
-@everywhere include("../interaction_strength.jl")
+@everywhere include("../src/interaction_strength.jl")
 # @everywhere include("src/stochastic_mortality_model.jl")
 # @everywhere include("src/sim.jl")
 # @everywhere include("src/interaction_strength.jl")
@@ -26,7 +27,7 @@ import Random.seed!
 
 seed!(22)
 
-ti = simCS(.1, 10, 100, 2.0, 1.0, 0.5, 5; max = 50, last = 1000, dt = 0.1, return_sol = false)
+ti = simCS(.1, 10, 100, 2.0, 1.0, 0.5, 5; max = 50, last = 10, dt = 0.1, return_sol = false)
 
 # Parameter product
 #
