@@ -11,7 +11,7 @@ flag = "--project=~/xStressorsStabBEFW/"
 #flag = "--project=."
 println("Workers run with flag: $(flag)")
 #addprocs(ncpu - 2, exeflags=flag)
-addprocs(7, exeflags=flag)
+addprocs(5, exeflags=flag)
 println("Using $(ncpu -2) cores")
 
 @everywhere import Pkg
@@ -38,13 +38,26 @@ C = 0.1:.1:.40
 sigma = 0.5:1
 names = (:rep, :richness, :connectance, :sigma)
 param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(rep, S, C, sigma))[:]
+param[600:620]
+
+### TEST foodweb generation
+function test_foodweb(C, S, Z)
+    ct = 0
+    while ct != C
+        fw = FoodWeb(nichemodel, S, C = C, Z = Z)
+        ct = round(connectance(fw), digits = 2)
+    end
+    fw
+end
+ti = map(x -> test_foodweb(x.connectance, x.richness, 100), param)
+### TEST
 
 sim = @showprogress pmap(p -> merge(
                      (rep = p.rep, ),
                      #simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
                      simCS(p.connectance, p.richness, 100, 2.0, 1.0, p.sigma, 5; max = 5000, last = 1000, dt = 0.1, return_sol = false)
                     ),
-           param[1:4]
+           param[1000 - 5:1000]
           )
 
 sim = @showprogress pmap(p -> merge(
