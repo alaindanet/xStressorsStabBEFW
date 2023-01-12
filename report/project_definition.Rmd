@@ -358,8 +358,12 @@ PlotWeb(
 title("Specialist")
 dev.off()
 ```
+```{r, out.height = "80%"}
+knitr::include_graphics(here("report", "figures", "spe_top_spe.png"))
+```
 
-```{r}
+
+```{r, fig.height = 10}
 gen_stab <- read_csv(here("generalism_stoch.csv"))
 
 gen_stab %>%
@@ -372,7 +376,7 @@ gen_stab %>%
     names_to = "metric", values_to = "values") %>%
   ggplot(aes(x = fw, y = values)) +
   geom_boxplot()  +
-  facet_wrap(~metric, scales = "free_y")
+  facet_wrap(~metric, scales = "free_y", ncol = 1)
 ```
 
 ```{r}

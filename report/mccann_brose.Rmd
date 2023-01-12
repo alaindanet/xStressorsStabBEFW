@@ -155,6 +155,105 @@ sync <- sim %>%
   labs(fill = "Community synchrony")
 ```
 
+# Second simulations
+
+
+```{r}
+sim_brut <- read_csv(here("res", "vasseur_fox_brose_res2.csv"))
+
+sim <- sim_brut %>%
+  rename_with(~str_replace_all(., c("ρ" = "rho", "σₑ" = "sigma"))) %>%
+  group_by(Z, fr, rho, sigma) %>%
+  summarise(across(everything(), median)) %>%
+  select(-rep, -sim_timing)
+```
+
+```{r}
+sim %>%
+  filter(stab_com > 10)
+```
+
+```{r}
+sim %>%
+  ggplot(aes(y = stab_com, x = fr)) +
+  geom_boxplot() +
+  scale_y_log10()
+```
+
+
+```{r}
+cons_sync <- sim %>%
+  ggplot(aes(rho, sigma, z = sync_cons)) +
+  geom_contour_filled() +
+  facet_grid(rows = vars(fr), cols = vars(Z)) +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Consumer synchrony")
+
+pred_stab <- ggplot(sim, aes(rho, sigma, z = log10(stab_pred))) +
+  geom_contour_filled() +
+  facet_grid(rows = vars(fr), cols = vars(Z)) +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Predator stability")
+
+cons1_stab <- sim %>%
+  ggplot(aes(rho, sigma, z = log10(stab_cons1))) +
+  geom_contour_filled() +
+  facet_grid(rows = vars(fr), cols = vars(Z)) +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Consumer 1 stability")
+
+cons2_stab <- sim %>%
+  ggplot(aes(rho, sigma, z = log10(stab_cons2))) +
+  geom_contour_filled() +
+  facet_grid(rows = vars(fr), cols = vars(Z)) +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Consumer 2 stability")
+```
+
+```{r}
+cons_sync_cap <- "Column facets represent increasing Z, row ones respectively
+Predator interference (PI, h = 1, c = 1), type II (h = 1, c = 0) and type III (h
+  = 2, c = 0)"
+```
+
+```{r cs2, fig.cap=cons_sync_cap}
+cons_sync
+```
+
+
+```{r ps2, fig.cap="Stability as 1/CV. See fig. 1 for facets"}
+pred_stab
+```
+
+
+```{r}
+stab <- ggplot(sim, aes(rho, sigma, z = log10(stab_com))) +
+  geom_contour_filled() +
+  facet_grid(rows = vars(fr), cols = vars(Z)) +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Community stability")
+
+sp_stab <- ggplot(sim, aes(rho, sigma, z = log10(1 / avg_cv_sp))) +
+  geom_contour_filled() +
+  facet_grid(rows = vars(fr), cols = vars(Z)) +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Average species stab")
+
+sync <- sim %>%
+  ggplot(aes(rho, sigma, z = sync)) +
+  geom_contour_filled() +
+  facet_grid(rows = vars(fr), cols = vars(Z)) +
+  labs(x = "Environmental correlation", y = "Fluctuation strength") +
+  labs(fill = "Community synchrony")
+```
+
+```{r}
+stab
+sp_stab
+sync
+```
+
+
 # References {-}
 
 
