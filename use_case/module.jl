@@ -4,7 +4,7 @@
 
 
 import Pkg
-Pkg.activate("..")
+Pkg.activate(".")
 using BEFWM2, LinearAlgebra, DifferentialEquations, DataFrames, CSV, Distributed, Distributions, ProgressMeter, BenchmarkTools
 using Plots
 
@@ -30,7 +30,7 @@ param = ModelParameters(foodweb,
                        functional_response = BioenergeticResponse(foodweb, h = 1)
                       )
 
-function simCS(A, σₑ, alpha_ij; Z, h, c, K, max = 50000, last = 25000, dt = 0.1, return_sol = false)
+function sim_int_mat(A, σₑ, alpha_ij; Z, h, c, K, max = 50000, last = 25000, dt = 0.1, return_sol = false)
 
     fw = FoodWeb(A, Z = Z)
 

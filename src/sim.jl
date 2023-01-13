@@ -1,46 +1,62 @@
 function simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
 
     # Generate a food-web with a given connectance
-    global fw
-    ct = 0
-    while ct != C
-        fw = FoodWeb(nichemodel, S, C = C, Z = Z)
-        ct = round(connectance(fw), digits = 2)
+    fw = try
+        global tmp_fw
+        ct = 0
+        while ct != C
+            tmp_fw = FoodWeb(nichemodel, S, C = C, Z = Z)
+            ct = round(connectance(tmp_fw), digits = 2)
+        end
+        tmp_fw
+    catch
+        missing
     end
 
-    # Parameters of the functional response
-    funcrep = BioenergeticResponse(fw; h = h, c = c)
-    # generate the model parameters
-    p = ModelParameters(fw;
-                        functional_response = funcrep,
-                        environment = Environment(fw, K = K/length(BEFWM2.producers(fw))),
-                        env_stoch = EnvStoch(σₑ))
-    stoch_starting_val = repeat([0], S)
-    u0 = [rand(S); stoch_starting_val]
+    if ismissing(fw)
+        println("FoodWeb generation has failed with C = $(C), S = $(S)")
+    end
 
-    # Make the stochastic matrix
-    corr_mat = Diagonal(repeat([1.0], S * 2))
-    # Generate the Wiener Process
-    wiener = CorrelatedWienerProcess(corr_mat, 0.0, zeros(size(corr_mat, 1)))
+    # If the generation of the food-web worked
+    if !ismissing(fw)
+        # Parameters of the functional response
+        funcrep = BioenergeticResponse(fw; h = h, c = c)
+        # generate the model parameters
+        p = ModelParameters(fw;
+                            functional_response = funcrep,
+                            environment = Environment(fw, K = K/length(BEFWM2.producers(fw))),
+                            env_stoch = EnvStoch(σₑ))
+        stoch_starting_val = repeat([0], S)
+        u0 = [rand(S); stoch_starting_val]
 
-    prob = SDEProblem(
-                      mydBdt!,
-                      gen_stochastic_process,
-                      u0,
-                      [0, max],
-                      p,
-                      noise = wiener
-                     )
-    # Simulate
-    timing = @elapsed m = try
-        solve(prob;
-              saveat = collect(0:1:max),
-              dt = dt,
-              adaptive = false
-             )
+        # Make the stochastic matrix
+        corr_mat = Diagonal(repeat([1.0], S * 2))
+        # Generate the Wiener Process
+        wiener = CorrelatedWienerProcess(corr_mat, 0.0, zeros(size(corr_mat, 1)))
 
-    catch
-        (t = 0, x = missing)
+        prob = SDEProblem(
+                          mydBdt!,
+                          gen_stochastic_process,
+                          u0,
+                          [0, max],
+                          p,
+                          noise = wiener
+                         )
+        # Try to simulate
+        timing = @elapsed m = try
+            solve(prob;
+                  saveat = collect(0:1:max),
+                  dt = dt,
+                  adaptive = false
+                 )
+
+        catch
+            (t = 0, x = missing)
+        end
+
+    else
+        m = (t = 0, x = missing)
+        timing = missing
     end
 
     if return_sol
@@ -48,8 +64,8 @@ function simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, ret
     end
 
     if length(m.t) == max + 1
-        cv = foodweb_cv(m, last = last, idxs = collect(1:1:S))
-        bm = total_biomass(m, last = last, idxs = collect(1:1:S))
+        bm_cv = cv(m, last = last, idxs = collect(1:1:S))
+        bm = biomass(m, last = last, idxs = collect(1:1:S))
         int_strength = empirical_interaction_strength(m, p, last = last)
         non_zero_int = [i for i in int_strength if i != 0]
         max_int = max_interaction_strength(p)
@@ -62,14 +78,14 @@ function simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, ret
                Z                 = Z,
                env_stoch         = σₑ,
                sim_timing        = timing,
-               stab_com          = 1 / cv.cv_com,
-               avg_cv_sp         = cv.avg_cv_sp,
-               sync              = cv.synchrony,
-               total_biomass     = bm,
-               bm_sp             = cv.bm_sp,
-               cv_sp             = cv.cv_sp,
+               stab_com          = 1 / bm_cv.cv_com,
+               avg_cv_sp         = bm_cv.avg_cv_sp,
+               sync              = bm_cv.synchrony,
+               total_biomass     = bm.total,
+               bm_sp             = bm.sp,
+               cv_sp             = bm_cv.cv_sp,
                tlvl              = tlvl,
-               w_avg_tlvl        = sum(tlvl .* (cv.bm_sp ./ sum(cv.bm_sp))),
+               w_avg_tlvl        = sum(tlvl .* (bm.sp ./ sum(bm.sp))),
                max_tlvl          = maximum(tlvl),
                int_strength      = int_strength,
                avg_int_strength  = mean(non_zero_int),
@@ -158,8 +174,8 @@ function mysim(A, n, Z, f, ρ, σₑ; max = 50000, last = 25000, dt = 0.1, corr_
 
     if length(m.t) == max + 1
 
-        cv = foodweb_cv(m, last = last, idxs = [1, 2, 3, 4])
-        sync_cons = foodweb_cv(m, last = last, idxs = [2, 3]).synchrony
+        cv = cv(m, last = last, idxs = [1, 2, 3, 4])
+        sync_cons = cv(m, last = last, idxs = [2, 3]).synchrony
 
         out = (
                rep        = n,
