@@ -11,24 +11,38 @@ using JSON3
 using CSV
 include("src/minmax.jl")
 include("src/interaction_strength.jl")
+include("src/stochastic_mortality_model.jl")
+include("src/sim.jl")
 
-mat = zeros(3, 3)
-sparse(mat)
-
-ct = .25
+ct = .1
 S = 20
 
 global fw
 c = 0
-while c != ct
-    fw = FoodWeb(nichemodel, 20, C = ct, Z = 4)
-    c = round(connectance(fw), digits = 2)
+try
+    while c != ct
+        fw = FoodWeb(nichemodel, 20, C = ct, Z = 4)
+        c = round(connectance(fw), digits = 2)
+    end
+catch
+   fw = missing
 end
 fw
 
+#simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
+ti = simCS(0.1, 20, 100, 2.0, 1.0, 1.0, 5; max = 5000, last = 1000, dt = 0.1, return_sol = false)
+plot(ti, idxs = collect(1:1:length(get_parameters(ti).network.species)))
+cv(ti, last = 10, idxs = collect(1:1:length(get_parameters(ti).network.species)))
+biomass(ti, last = 10, idxs = collect(1:1:length(get_parameters(ti).network.species)))
+BEFWM2.filter_sim(ti)
+get_parameters(ti)
 
 
+
+
+fw = FoodWeb([0 0 0; 1 0 0; 0 1 0])
 p = ModelParameters(fw, functional_response = BioenergeticResponse(fw, h = 2, c = 1), env_stoch = EnvStoch(.3))
+S = size(fw.A, 1)
 
 
 stoch_starting_val = repeat([0], S)
@@ -54,14 +68,16 @@ m = solve(prob;
       dt = .1,
       adaptive = false
      )
+cv(m, last = 10, idxs = collect(1:1:S))
+biomass(m, last = 10, idxs = collect(1:1:S))
+BEFWM2.filter_sim(m)
+get_parameters(m)
 
-include("src/stochastic_mortality_model.jl")
-include("src/interaction_strength.jl")
-include("src/sim.jl")
+
+
 
 ti = mysim(A, 1, 4, (h = 2, c = 1), 0, .3, max = 5000, last = 4000, dt = .1, corr_mat = vc, return_sol = true)
 
-ti = simCS(.4, 10, 100, 2.0, 1.0, 1.0, 5; max = 5000, last = 1000, dt = 0.1, return_sol = false)
 ti.stab_com
 ti.tlvl
 

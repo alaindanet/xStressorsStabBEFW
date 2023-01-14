@@ -117,33 +117,14 @@ feeding and a competitive interactions. @brose_allometric_2006 showed the
 strength of interactions are driven by body size, such larger body sized animals
 produce lower interaction strengths (because of their lower metabolic rates).
 
-Interestingly, I see two schools on the definition of interaction strengths in
-the Bioenergetic model. McCann defines it by modulating consumer preference
-($\omega$) such as $I_{ki} = \omega_{ik} x_i  y_i / B_{0i}$ while
-@brose_allometric_2006 modules interaction strength by modulating predator/prey
-mass ratios (Z) such as Z decrease the metabolism of predators
-relative to prey (i.e. $x_i$ and $y_i$). Thus increasing Z decreases $I_{ki}$.
-A common feature of both approaches is that they both consider that the strength
-of interactions decrease as the trophic level increases.
-
-A main difference between Brose and McCann approaches is that the Brose
-approach of modulating interactions also modulates metabolic losses ($x_iy_iB_i$).
-Then the approach of McCann has the advantage to only change feeding rates but
-it is rather phenomenological modelling while Brose approach is more mechanistic
-(fully metabolic) but it changes two things at the same time.
-
-Although in complex food-webs, Brose method can create strong asymetry in
-interaction strength by coupling specialists and generalists, as they
-respectively generate strong and weak interactions. Such mechanism is
-triggered by the fact that consumer preference is equally shared among preys
-($\omega_{ki} = 1 \ \sum_k 1$, such as $\omega_{ki} = 1$ or .1 for a consumer
-having one prey or 10 preys).
 
 
 ### Stability in small modules
 
 - @mccann_diversitystability_2000, @mccann_weak_1998,
   @vasseur_environmental_2007, @ripa_food_2003
+
+Studies
 
 ### Stability in food-chains
 
@@ -157,8 +138,11 @@ having one prey or 10 preys).
 
 @vasseur_environmental_2007 found that Stochasticity and response diversity can
 stabilize food-web in a McCann model with strong asymetry in species interactions.
-Is it valid also with a Brose model without this asymetry? Is it also valid with
-different functional responses?
+We found that stochasticity is stabilizing only when there is strong asymetry
+in interaction strength (as stated in @vasseur_environmental_2007).
+
+
+
 
 # Research questions
 
@@ -420,3 +404,29 @@ save_plot(
 
 
 # References {-}
+
+# Appendix notes
+
+## Differences McCann/Brose
+
+Interestingly, I see two schools on the definition of interaction strengths in
+the Bioenergetic model. McCann defines it by modulating consumer preference
+($\omega$) such as $I_{ki} = \omega_{ik} x_i  y_i / B_{0i}$ while
+@brose_allometric_2006 modules interaction strength by modulating predator/prey
+mass ratios (Z) such as Z decrease the metabolism of predators
+relative to prey (i.e. $x_i$ and $y_i$). Thus increasing Z decreases $I_{ki}$.
+A common feature of both approaches is that they both consider that the strength
+of interactions decrease as the trophic level increases.
+
+A main difference between Brose and McCann approaches is that the Brose
+approach of modulating interactions also modulates metabolic losses ($x_iy_iB_i$).
+Then the approach of McCann has the advantage to only change feeding rates but
+it is rather phenomenological modelling while Brose approach is more mechanistic
+(fully metabolic) but it changes two things at the same time.
+
+Although in complex food-webs, Brose method can create strong asymetry in
+interaction strength by coupling specialists and generalists, as they
+respectively generate strong and weak interactions. Such mechanism is
+triggered by the fact that consumer preference is equally shared among preys
+($\omega_{ki} = 1 \ \sum_k 1$, such as $\omega_{ki} = 1$ or .1 for a consumer
+having one prey or 10 preys).

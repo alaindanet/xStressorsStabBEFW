@@ -1,0 +1,36 @@
+---
+title: big sim
+author: Alain Danet
+output:
+  bookdown::pdf_document2
+---
+
+```{r}
+library(tidyverse)
+library(magrittr)
+```
+
+```{r}
+df_brut <- read_csv(here::here("res", "cs_sim.csv"))
+df <- df_brut %>%
+  select(where(is.double))
+```
+
+```{r}
+summary(df)
+
+df %>%
+  filter(stab_com <= 1000) %>%
+  ggplot(aes(x = as.factor(richness), y = stab_com, color = as.factor(ct))) +
+  geom_boxplot()
+```
+
+```{r}
+corrplot::corrplot(
+  cor(df %>% select(-rep, -Z, -env_stoch, -sim_timing), method = "spearman"),
+  diag = FALSE, type = "upper"
+)
+```
+
+
+

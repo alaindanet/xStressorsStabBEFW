@@ -1,0 +1,33 @@
+---
+title: big stoch sim
+author: alain
+date: 2022-09-12
+format:
+  html:
+    embed-resources: false
+---
+
+```{r}
+library(arrow)
+library(tidyverse)
+library(magrittr)
+```
+
+```{r}
+pq_brut <- open_dataset(here::here("res", "sim_module.arrow"), format = "arrow")
+df <- pq_brut %>%
+  collect()
+colnames(df)
+```
+
+```{r}
+df %>%
+  pivot_longer(c(stab_com, sync, avg_cv_sp), names_to = "stab", values_to =
+  "values") %>%
+  ggplot(aes(x = module, y = values, color = as.factor(alphaij))) +
+  geom_boxplot()+
+  facet_grid(
+    rows = vars(stab),
+    scales = "free_y")
+```
+
