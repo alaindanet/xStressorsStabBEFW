@@ -31,3 +31,23 @@ df %>%
     scales = "free_y")
 ```
 
+# Stochastic natural death
+
+```{r}
+pq_brut <- open_dataset(here::here("res", "sim_module_d.arrow"), format = "arrow")
+df <- pq_brut %>%
+  collect()
+colnames(df)
+```
+
+```{r}
+df %>%
+  filter(env_stoch == 0.5) %>%
+  pivot_longer(c(stab_com, sync, avg_cv_sp), names_to = "stab", values_to =
+  "values") %>%
+  ggplot(aes(x = module_name, y = values, color = as.factor(alpha_ij))) +
+  geom_boxplot()+
+  facet_grid(
+    rows = vars(stab), cols = vars(ρ),
+    scales = "free_y")
+```

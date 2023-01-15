@@ -129,15 +129,16 @@ function simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, ret
     out
 end
 
-function sim_int_mat(A; σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K = 1.0, max = 50000, last = 25000, dt = 0.1, return_sol = false)
+function sim_int_mat(A; d = 0, ρ = 0.0, σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K = 1.0, fun = stoch_d_dBdt!, max = 50000, last = 25000, dt = 0.1, return_sol = false)
 
-    fw = FoodWeb(A, Z = Z)
-    S = size(A, 1)
+    fw = FoodWeb(A, Z = Z, quiet = true)
+    S = richness(fw)
 
     # Parameters of the functional response
     funcrep = BioenergeticResponse(fw; h = h, c = c)
     # generate the model parameters
     p = ModelParameters(fw;
+                        biorates = BioRates(fw; d = d),
                         functional_response = funcrep,
                         environment = Environment(fw, K = K),
                         producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
@@ -147,12 +148,14 @@ function sim_int_mat(A; σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K =
     u0 = [rand(S); stoch_starting_val]
 
     # Make the stochastic matrix
-    corr_mat = Diagonal(repeat([1.0], S * 2))
+    corr_mat = zeros(S * 2, S * 2)
+    corr_mat .= ρ
+    corr_mat[diagind(corr_mat)] .= 1.0
     # Generate the Wiener Process
     wiener = CorrelatedWienerProcess(corr_mat, 0.0, zeros(size(corr_mat, 1)))
 
     prob = SDEProblem(
-                      mydBdt!,
+                      fun,
                       gen_stochastic_process,
                       u0,
                       [0, max],
@@ -175,7 +178,44 @@ function sim_int_mat(A; σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K =
         return m
     end
 
-    if length(m.t) == max + 1
+    out = get_stab_fw(m; last = last)
+
+    out = merge(
+                (S = S, rho = ρ, env_stoch = σₑ, alpha_ij = alpha_ij, Z = Z),
+                out
+               )
+end
+
+function get_stab_fw(m; last = 10)
+
+
+    names_output = (
+                    :richness          ,
+                    :stab_com          ,
+                    :avg_cv_sp         ,
+                    :sync              ,
+                    :total_biomass     ,
+                    :bm_sp             ,
+                    :cv_sp             ,
+                    :tlvl              ,
+                    :w_avg_tlvl        ,
+                    :max_tlvl          ,
+                    :int_strength      ,
+                    :avg_int_strength  ,
+                    :max_int_strength  ,
+                    :min_int_strength  ,
+                    :gini_int_strength ,
+                    :max_int           ,
+                    :avg_max_int       ,
+                    :max_max_int       ,
+                    :min_max_int       ,
+                    :gini_max_int
+                   )
+
+    if length(m.t) >= last
+        p = get_parameters(m)
+        fw = p.network
+        S = richness(fw)
         bm_cv = cv(m, last = last, idxs = collect(1:1:S))
         bm = biomass(m, last = last, idxs = collect(1:1:S))
         int_strength = empirical_interaction_strength(m, p, last = last)
@@ -184,61 +224,32 @@ function sim_int_mat(A; σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K =
         non_zero_max_int = [i for i in max_int if i != 0]
         tlvl = trophic_levels(fw)
 
-        out = (
-               begin_richness    = S,
-               Z                 = Z,
-               env_stoch         = σₑ,
-               sim_timing        = timing,
-               richness          = species_richness(m, last = last, idxs = collect(1:1:S)),
-               stab_com          = 1 / bm_cv.cv_com,
-               avg_cv_sp         = bm_cv.avg_cv_sp,
-               sync              = bm_cv.synchrony,
-               total_biomass     = bm.total,
-               bm_sp             = bm.sp,
-               cv_sp             = bm_cv.cv_sp,
-               tlvl              = tlvl,
-               w_avg_tlvl        = sum(tlvl .* (bm.sp ./ sum(bm.sp))),
-               max_tlvl          = maximum(tlvl),
-               int_strength      = int_strength,
-               avg_int_strength  = mean(non_zero_int),
-               max_int_strength  = maximum(non_zero_int),
-               min_int_strength  = minimum(non_zero_int),
-               gini_int_strength = gini(non_zero_int),
-               max_int           = max_int,
-               avg_max_int       = mean(non_zero_max_int),
-               max_max_int       = maximum(non_zero_max_int),
-               min_max_int       = minimum(non_zero_max_int),
-               gini_max_int      = gini(non_zero_max_int)
+        values = (
+               species_richness(m, last = last, idxs = collect(1:1:S)),
+               1 / bm_cv.cv_com,
+               bm_cv.avg_cv_sp,
+               bm_cv.synchrony,
+               bm.total,
+               bm.sp,
+               bm_cv.cv_sp,
+               tlvl,
+               sum(tlvl .* (bm.sp ./ sum(bm.sp))),
+               maximum(tlvl),
+               int_strength,
+               mean(non_zero_int),
+               maximum(non_zero_int, init = 0),
+               minimum(non_zero_int, init = 0),
+               gini(non_zero_int),
+               max_int,
+               mean(non_zero_max_int),
+               maximum(non_zero_max_int, init = 0),
+               minimum(non_zero_max_int, init = 0),
+               gini(non_zero_max_int)
               )
     else
-        out = (
-               begin_richness    = S,
-               Z                 = Z,
-               env_stoch         = σₑ,
-               sim_timing        = timing,
-               richness          = missing,
-               stab_com          = missing,
-               avg_cv_sp         = missing,
-               sync              = missing,
-               total_biomass     = missing,
-               bm_sp             = missing,
-               cv_sp             = missing,
-               tlvl              = missing,
-               w_avg_tlvl        = missing,
-               max_tlvl          = missing,
-               int_strength      = missing,
-               avg_int_strength  = missing,
-               max_int_strength  = missing,
-               min_int_strength  = missing,
-               gini_int_strength = missing,
-               max_int           = missing,
-               avg_max_int       = missing,
-               max_max_int       = missing,
-               min_max_int       = missing,
-               gini_max_int      = missing
-              )
+        values = repeat([missing], length(names_output))
     end
-    out
+    (; zip(names_output, values)...)
 end
 
 function mysim(A, n, Z, f, ρ, σₑ; max = 50000, last = 25000, dt = 0.1, corr_mat = vc, return_sol = false)
