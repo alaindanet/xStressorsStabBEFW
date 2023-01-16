@@ -129,18 +129,36 @@ function simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, ret
     out
 end
 
-function sim_int_mat(A; d = 0, ρ = 0.0, σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K = 1.0, fun = stoch_d_dBdt!, max = 50000, last = 25000, dt = 0.1, return_sol = false)
+function sim_int_mat(A;
+        d = 0, ρ = 0.0, σₑ = .5,
+        alpha_ij = 0, Z = 100,
+        h = 2.0, c = 1.0, K = 1.0,
+        r = 1.0,
+        fun = stoch_d_dBdt!,
+        max = 50000, last = 25000,dt = 0.1,
+        K_alpha_corrected = true,
+        return_sol = false)
 
     fw = FoodWeb(A, Z = Z, quiet = true)
     S = richness(fw)
 
     # Parameters of the functional response
     funcrep = BioenergeticResponse(fw; h = h, c = c)
+    # Carrying capacity
+    env = Environment(fw,
+                      K = if K_alpha_corrected
+                          nprod = length(producers(fw))
+                          # Loreau & de Mazancourt (2008), Ives et al. (1999)
+                          K * (1 + (alpha_ij * (nprod - 1))) / nprod
+                      else
+                          K
+                      end
+                     )
     # generate the model parameters
     p = ModelParameters(fw;
-                        biorates = BioRates(fw; d = d),
+                        biorates = BioRates(fw; r = r, d = d),
                         functional_response = funcrep,
-                        environment = Environment(fw, K = K),
+                        environment = env,
                         producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
                         env_stoch = EnvStoch(σₑ)
                        )
