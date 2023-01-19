@@ -22,6 +22,7 @@ println("Using $(ncpu -2) cores")
 @everywhere include("src/stochastic_mortality_model.jl")
 @everywhere include("src/sim.jl")
 @everywhere include("src/interaction_strength.jl")
+@everywhere include("src/get_modules.jl")
 
 # include("src/stochastic_mortality_model.jl")
 # include("src/sim.jl")
@@ -29,41 +30,7 @@ println("Using $(ncpu -2) cores")
 
 import Random.seed!
 
-fw_module = (
-          # prod = [0 0; 0 0],
-          chain1 = [0 0; 1 0],
-          chain2 = [0 0 0; 1 0 0; 0 1 0],
-          chain3 = [0 0 0 0; 1 0 0 0; 0 1 0 0; 0 0 1 0],
-          chain4 = [0 0 0 0;
-                    1 0 0 0;
-                    0 1 0 0;
-                    0 0 1 0],
-          cons = [0 0 0; 0 0 0; 1 1 0],
-          cons2_spe = [0 0 0 0; 0 0 0 0; 1 0 0 0; 0 1 0 0],
-          cons2_spe_top = [0 0 0 0 0;
-                           0 0 0 0 0;
-                           1 0 0 0 0;
-                           0 1 0 0 0;
-                           0 0 1 1 0],
-          cons3_spe = [0 0 0 0 0 0;
-                       0 0 0 0 0 0;
-                       1 0 0 0 0 0;
-                       0 1 0 0 0 0;
-                       0 0 1 0 0 0;
-                       0 0 0 1 0 0],
-          cons2_gen = [0 0 0 0; 0 0 0 0; 1 1 0 0; 1 1 0 0],
-          cons2_gen_top = [0 0 0 0 0;
-                           0 0 0 0 0;
-                           1 1 0 0 0;
-                           1 1 0 0 0;
-                           0 0 1 1 0],
-          cons3_gen = [0 0 0 0 0 0;
-                       0 0 0 0 0 0;
-                       1 1 0 0 0 0;
-                       1 1 0 0 0 0;
-                       0 0 1 1 0 0;
-                       0 0 1 1 0 0],
-         )
+fw_module = get_fw_modules()
 
 #sim_int_mat(A; σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K = 1.0, max = 50000, last = 25000, dt = 0.1, return_sol = false)
 #

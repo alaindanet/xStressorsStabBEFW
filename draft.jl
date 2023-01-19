@@ -7,12 +7,31 @@ using Statistics
 using DataFrames
 using Plots
 using Debugger
-using JSON3
 using CSV
+using Arrow
 include("src/minmax.jl")
 include("src/interaction_strength.jl")
 include("src/stochastic_mortality_model.jl")
 include("src/sim.jl")
+include("src/plot.jl")
+include("src/get_modules.jl")
+
+##########
+#  Plot  #
+##########
+
+webplot(get_fw_modules()[10]; consasrow = true)
+webplot([0 0 0; 1 1 0; 1 1 0]; consasrow = true)
+ti = map(x -> webplot(x; consasrow = true), get_fw_modules())
+length(ti)
+plot(ti..., layout = (4, 4))
+plot(ti[1], ti[2], ti[3], layout = (1, 3))
+plot((ti[i] for i in 1:length(ti))..., layout = (4, 3))
+
+#########
+#  Sim  #
+#########
+
 
 #simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
 ti = simCS(0.1, 20, 100, 2.0, 1.0, 1.0, 5; max = 5000, last = 1000, dt = 0.1, return_sol = false)

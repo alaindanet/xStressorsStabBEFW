@@ -14,60 +14,149 @@ println("Workers run with flag: $(flag)")
 addprocs(5, exeflags=flag)
 println("Using $(ncpu -2) cores")
 
-@everywhere import Pkg
-@everywhere using DifferentialEquations, BEFWM2, Distributions, ProgressMeter, SparseArrays, LinearAlgebra, DataFrames, CSV
-@everywhere include("../src/stochastic_mortality_model.jl")
-@everywhere include("../src/sim.jl")
-@everywhere include("../src/interaction_strength.jl")
-# @everywhere include("src/stochastic_mortality_model.jl")
-# @everywhere include("src/sim.jl")
-# @everywhere include("src/interaction_strength.jl")
+import Pkg
+using DifferentialEquations, BEFWM2, Distributions, ProgressMeter, SparseArrays, LinearAlgebra, DataFrames, CSV
+using StatsBase
+include("src/stochastic_mortality_model.jl")
+include("src/sim.jl")
+include("src/interaction_strength.jl")
 
 import Random.seed!
 
 seed!(22)
 
-ti = simCS(.1, 10, 100, 2.0, 1.0, 0.5, 5; max = 50, last = 10, dt = 0.1, return_sol = false)
+ti = simCS(.4, 90;
+           Z = 100,
+           d = 0.1, σₑ = .5, ρ = 0.0,
+           h = 2.0, c = 1.0,
+           r = 1.0, K = 1.0, alpha_ij = 0.5,
+           max = 50, last = 10, dt = 0.1,
+           fun = stoch_d_dBdt!,
+           K_alpha_corrected = true,
+           return_sol = false
+          )
+
+# Max
+FoodWeb(nichemodel, 5, C = .32, tol = .01)
+# Min
+FoodWeb(nichemodel, 5, C = .16, tol = .01)
+
+# Max
+FoodWeb(nichemodel, 10, C = .31, tol = .01)
+# Min
+FoodWeb(nichemodel, 10, C = .09, tol = .01)
+
+# Max
+FoodWeb(nichemodel, 20, C = .24, tol = .01)
+# Min
+FoodWeb(nichemodel, 20, C = .05, tol = .01)
+
+# Max
+FoodWeb(nichemodel, 40, C = .15, tol = .01)
+# Min
+FoodWeb(nichemodel, 40, C = .03, tol = .01)
+
+# Max
+FoodWeb(nichemodel, 80, C = .09, tol = .01)
+# Min
+FoodWeb(nichemodel, 80, C = .02, tol = .01)
+
+# Max
+FoodWeb(nichemodel, 100, C = .07, tol = .01)
+# Min
+FoodWeb(nichemodel, 100, C = .02, tol = .01)
+
+plot([5, 10, 20, 40, 80, 100], [.32, .31, .24, .15, .09, .07],)
+
+function ctS(S = 10)
+    out = (
+           min = round((S - 1)/ S^2, digits = 2),
+           max = round(0.30 + (.07 - .31) / (100 - 10) * S, digits = 2)
+   )
+end
+FoodWeb(nichemodel, 80, C = .02, tol = .01)
+#
 
 # Parameter product
 #
 #
+#
 rep = 1:50
-S = 10:10:50
-C = 0.1:.1:.40
-sigma = 0.5:1
-names = (:rep, :richness, :connectance, :sigma)
-param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(rep, S, C, sigma))[:]
-param[600:620]
+S = [5, 10, 20, 40, 80, 100]
+C = 0.02:.05:.32
+sigma = 0.5
+ρ = [0, .5, 1]
+names = (:rep, :richness, :connectance, :sigma, :rho)
+param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(rep, S, C, sigma, ρ))[:]
 
-### TEST foodweb generation
-function test_foodweb(C, S, Z)
-    ct = 0
-    while ct != C
-        fw = FoodWeb(nichemodel, S, C = C, Z = Z)
-        ct = round(connectance(fw), digits = 2)
-    end
-    fw
-end
-ti = map(x -> test_foodweb(x.connectance, x.richness, 100), param)
+
+# Filter impossible combination of C/S
+limitCS = (
+           S = S,
+           Cmin = round.([(i - 1)/ i^2 + .01 for i in S], digits = 2),
+           Cmax = [.32, .31, .24, .15, .09, .07]
+          )
+goodCSparam_v = [
+                 findall(x ->
+                         (x.connectance >= limitCS.Cmin[i] && x.connectance <= limitCS.Cmax[i]) && x.richness == limitCS.S[i], param)
+                 for i in 1:length(limitCS.S)
+                ]
+goodCSparam_idxs = reduce(vcat, goodCSparam_v)
+
+bad_param = param[1:length(param) .∉ Ref(goodCSparam_idxs)]
+# Select good parameter combination
+good_param = param[StatsBase.sample(goodCSparam_idxs, length(goodCSparam_idxs), replace=false)]
+# Warm-up
+test_i = 2400
+simCS(bad_param[test_i].connectance, bad_param[test_i].richness;
+      Z = 100,
+      d = 0.1, σₑ = bad_param[test_i].sigma, ρ = bad_param[test_i].rho,
+      h = 2.0, c = 1.0,
+      r = 1.0, K = 1.0, alpha_ij = 0.5,
+      max = 50, last = 10, dt = 0.1,
+      fun = stoch_d_dBdt!,
+      K_alpha_corrected = true,
+      return_sol = false
+     )
+
+
 ### TEST
+#
+sim = @showprogress pmap(p ->
+                         merge(
+                               (rep = p.rep, ),
+                               simCS(p.connectance, p.richness;
+                                     Z = 100,
+                                     d = 0.1, σₑ = p.sigma, ρ = p.rho,
+                                     h = 2.0, c = 1.0,
+                                     r = 1.0, K = 1.0, alpha_ij = 0.5,
+                                     max = 5000, last = 100, dt = 0.1,
+                                     fun = stoch_d_dBdt!,
+                                     K_alpha_corrected = true,
+                                     return_sol = false,
+                                     gc_thre = 1
+                                    )
+                              ),
+                         good_param[10 - 5:10]
+                        )
 
 sim = @showprogress pmap(p -> merge(
-                     (rep = p.rep, ),
-                     #simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
-                     simCS(p.connectance, p.richness, 100, 2.0, 1.0, p.sigma, 5; max = 5000, last = 1000, dt = 0.1, return_sol = false)
-                    ),
-           param[1000 - 5:1000]
-          )
-
-sim = @showprogress pmap(p -> merge(
-                     (rep = p.rep, ),
-                     #simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
-                     simCS(p.connectance, p.richness, 100, 2.0, 1.0, p.sigma, 5; max = 5000, last = 1000, dt = 0.1, return_sol = false)
-                    ),
-           param,
-           batch_size = 100
-          )
+                                    (rep = p.rep, ),
+                                    simCS(p.connectance, p.richness;
+                                          Z = 100,
+                                          d = 0.1, σₑ = p.sigma, ρ = p.rho,
+                                          h = 2.0, c = 1.0,
+                                          r = 1.0, K = 1.0, alpha_ij = 0.5,
+                                          max = 5000, last = 100, dt = 0.1,
+                                          fun = stoch_d_dBdt!,
+                                          K_alpha_corrected = true,
+                                          return_sol = false,
+                                          gc_thre = .02
+                                         )
+                                   ),
+                         good_param,
+                         batch_size = 100
+                        )
 
 df = DataFrame(sim)
 

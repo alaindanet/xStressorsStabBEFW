@@ -2,15 +2,39 @@
 title: big stoch sim
 author: alain
 date: 2022-09-12
-format:
-  html:
-    embed-resources: false
+output:
+  bookdown::pdf_document2
 ---
 
-```{r}
-library(arrow)
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  cache = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  #fig.dim = c(7, 7),
+  fig.fullwidth = TRUE,
+  fig.show = "hold",
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  results = TRUE,
+  fig.path="figures/"
+)
+```
+
+```{r, results = FALSE}
 library(tidyverse)
 library(magrittr)
+library(cowplot)
+library(here)
+library(arrow)
+
+mytheme <- theme_cowplot(font_size = 8) +
+background_grid() +
+theme(legend.position = "bottom")
+
+
+theme_set(mytheme)
 ```
 
 ```{r}
@@ -33,21 +57,79 @@ df %>%
 
 # Stochastic natural death
 
-```{r}
-pq_brut <- open_dataset(here::here("res", "sim_module_d.arrow"), format = "arrow")
-df <- pq_brut %>%
-  collect()
-colnames(df)
-```
+## Competition
 
 ```{r}
-df %>%
+comp_brut <- open_dataset(here::here("res", "sim_module_competition.arrow"), format = "arrow")
+comp <- comp_brut %>%
+  collect()
+colnames(comp)
+```
+
+```{r, eval = FALSE}
+unique(comp$env_stoch)
+summary(comp$total_biomass)
+```
+
+
+```{r}
+comp %>%
   filter(env_stoch == 0.5) %>%
   pivot_longer(c(stab_com, sync, avg_cv_sp), names_to = "stab", values_to =
   "values") %>%
-  ggplot(aes(x = module_name, y = values, color = as.factor(alpha_ij))) +
-  geom_boxplot()+
+  ggplot(aes(x = as.factor(richness), y = values, color = as.factor(alpha_ij))) +
+  geom_boxplot() +
   facet_grid(
-    rows = vars(stab), cols = vars(ρ),
-    scales = "free_y")
+    rows = vars(stab), cols = vars(rho),
+    scales = "free_y") +
+  labs(x = "Species richness", y = "Stability component", color = "Interspecific competition")
+```
+
+- Main results:
+  - Species richness increases stability
+  - Interspecific competition does not affect stability expect when
+    interspecific competition equals to intraspecific competition (decrease the effect of species richness).
+  - Interspecific competition desynchronises primary producers but increases
+    varibility
+  - The decrease of response diversity decreases the effect of species richness on stability
+  - The decrease of response diversity increase synchrony but decrease
+    population variability
+
+
+
+## Modules
+
+```{r}
+mod_brut <- open_dataset(here::here("res", "sim_module_d.arrow"), format = "arrow")
+mod <- mod_brut %>%
+  collect() %>%
+  select(where(is.numeric) | starts_with("module"))
+colnames(mod)
+```
+
+```{r, eval = FALSE}
+unique(mod$env_stoch)
+summary(as_tibble(mod))
+```
+
+```{r}
+mod %>%
+  filter(rho == 0, env_stoch == .5) %>%
+  pivot_longer(c(stab_com, sync, avg_cv_sp), names_to = "stab", values_to =
+  "values") %>%
+  ggplot(aes(x = module_name, y = values, color = as.factor(alpha_ij))) +
+  geom_boxplot() +
+  facet_grid(rows = vars(stab), scales = "free_y")
+
+```
+
+```{r}
+mod %>%
+  filter(rho == 0.5, env_stoch == .5) %>%
+  pivot_longer(c(stab_com, sync, avg_cv_sp), names_to = "stab", values_to =
+  "values") %>%
+  ggplot(aes(x = module_name, y = values, color = as.factor(alpha_ij))) +
+  geom_boxplot() +
+  facet_grid(rows = vars(stab), scales = "free_y")
+
 ```

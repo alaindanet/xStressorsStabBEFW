@@ -1,28 +1,63 @@
 ---
-title: big sim
+title: Simulation connectance richness
 author: Alain Danet
 output:
   bookdown::pdf_document2
 ---
 
-```{r}
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  cache = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  #fig.dim = c(7, 7),
+  fig.fullwidth = TRUE,
+  fig.show = "hold",
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  results = TRUE,
+  fig.path="figures/"
+)
+```
+
+```{r, results = FALSE}
 library(tidyverse)
 library(magrittr)
+library(cowplot)
+library(here)
+
+mytheme <- theme_cowplot(font_size = 8) +
+background_grid() +
+theme(legend.position = "bottom")
+
+
+theme_set(mytheme)
 ```
 
 ```{r}
 df_brut <- read_csv(here::here("res", "cs_sim.csv"))
 df <- df_brut %>%
   select(where(is.double))
+summary(df)
 ```
 
 ```{r}
-summary(df)
-
 df %>%
   filter(stab_com <= 1000) %>%
-  ggplot(aes(x = as.factor(richness), y = stab_com, color = as.factor(ct))) +
-  geom_boxplot()
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  ggplot(aes(x = as.factor(richness), y = stab, color = as.factor(ct))) +
+  geom_boxplot() +
+  facet_grid(rows = vars(metric), scales = "free_y") +
+  labs(
+    color = "Connectance",
+    x = "Species richness",
+    y = "Stability component"
+  )
 ```
 
 ```{r}
@@ -32,5 +67,99 @@ corrplot::corrplot(
 )
 ```
 
+- Main results:
+  - Stability increases with richness but not connectance (no overall effect)
+  - Richness increases stability by increasing maximum and average trophic
+    level, but also by decreasing interaction strength and increasing asymetry
+    in trophic interaction, and finally by increasing total biomass (I need to control for that).
+  - Synchrony decreases with species richness, max and average trophic level but increases with
+    average interaction strength and symetry of interaction distributions.
+  - Population varibility decreases with species richness, average and maximum
+    trophic level, asymetry of interaction strength but it is increased by
+    average interaction strength
+  - Same effects of food-web structure on both Synchrony and Population variability
+    - Surpringly, as in Danet et al. (2021), connectance has little effect on
+      temporal stability and its components!
 
 
+# Covariation
+
+It seems that the effects of food-web structure are mainly richness effects!
+
+```{r}
+df %>%
+  filter(stab_com <= 1000) %>%
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  ggplot(aes(x = avg_max_int, y = stab, color = as.factor(richness))) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(rows = vars(metric), scales = "free_y") +
+  labs(
+    color = "Richness",
+    x = "Avg interaction strength",
+    y = "Stability component"
+  )
+
+```
+
+```{r}
+df %>%
+  filter(stab_com <= 1000) %>%
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  ggplot(aes(x = gini_max_int, y = stab, color = as.factor(richness))) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(rows = vars(metric), scales = "free_y") +
+  labs(
+    color = "Richness",
+    x = "Gini interaction strength",
+    y = "Stability component"
+  )
+
+```
+
+```{r}
+df %>%
+  filter(stab_com <= 1000) %>%
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  ggplot(aes(x = ct, y = stab, color = as.factor(richness))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_grid(rows = vars(metric), scales = "free_y") +
+  labs(
+    color = "Richness",
+    x = "Connectance",
+    y = "Stability component"
+  )
+```
+
+```{r}
+df %>%
+  filter(stab_com <= 1000) %>%
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  ggplot(aes(x = w_avg_tlvl, y = stab, color = as.factor(richness))) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(rows = vars(metric), scales = "free_y") +
+  labs(
+    color = "Richness",
+    x = "Avg trophic level",
+    y = "Stability component"
+  )
+```
