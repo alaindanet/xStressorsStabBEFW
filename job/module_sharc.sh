@@ -13,7 +13,7 @@
 
 # Replace by the path to the folder where your script lives if necessary
 DIR_ENV=/home/${USER}/xStressorsStabBEFW
-DIR_SCRIPT=script
+DIR_SCRIPT=scripts
 
 # Load modules
 module load apps/julia

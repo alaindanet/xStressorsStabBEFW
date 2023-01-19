@@ -35,13 +35,13 @@ fw_module = get_fw_modules()
 #sim_int_mat(A; σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K = 1.0, max = 50000, last = 25000, dt = 0.1, return_sol = false)
 #
 sim = map(x -> sim_int_mat(x;
-                                 ρ = 0, alpha_ij = 1.0,
-                                 σₑ = .5,
-                                 d = 0.1,
-                                 Z = 100, h = 2.0, c = 1.0, K = 3.0,
-                                 fun = stoch_d_dBdt!,
-                                 max = 1000, last = 100, dt = 0.1, return_sol = false)
-                     , fw_module)
+			    ρ = 0, alpha_ij = 1.0,
+			    σₑ = .5,
+			    d = 0.1,
+			    Z = 100, h = 2.0, c = 1.0, K = 3.0,
+			    fun = stoch_d_dBdt!,
+			    max = 1000, last = 100, dt = 0.1, return_sol = false),
+	    fw_module)
 
 rep = 1:20
 fw_module_names = keys(fw_module)
@@ -66,7 +66,7 @@ sim = @showprogress pmap(p -> merge(
                         )
 
 df = DataFrame(sim)
-Arrow.write("res/sim_module_d.arrow", df)
+Arrow.write("sim_module_d.arrow", df)
 
 ################################################################################
 #                             Competition modules                              #
@@ -96,4 +96,4 @@ sim_competition = @showprogress pmap(p -> merge(
                                     )
 
 df_competition = DataFrame(sim_competition)
-Arrow.write("res/sim_module_competition.arrow", df_competition)
+Arrow.write("sim_module_competition.arrow", df_competition)
