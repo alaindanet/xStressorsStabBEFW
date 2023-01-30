@@ -5,8 +5,8 @@
 #$ -N cs
 
 # Error message
-#$ -e cs.error
-#$ -o cs.out
+#$ -e cs2.error
+#$ -o cs2.out
 
 # Amount of RAM requested per node
 #$ -l rmem=64G
@@ -16,6 +16,11 @@ DIR_ENV=/home/${USER}/xStressorsStabBEFW
 DIR_SCRIPT=scripts
 
 # Load modules
-module load apps/julia
+module load apps/julia/1.8.5/binary
 
-cd ${DIR_ENV} && julia --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/connectance_richness_stoch.jl ${DIR_ENV}
+# Put 1.8.5
+#MY_JULIA=/home/bi1ahd/julia-1.8.5/bin/julia
+MY_JULIA=julia
+
+
+cd ${DIR_ENV} && ${MY_JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/connectance_richness_stoch.jl ${DIR_ENV}

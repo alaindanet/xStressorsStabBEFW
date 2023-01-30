@@ -19,10 +19,10 @@ println("Using $(ncpu -2) cores")
 
 @everywhere import Pkg
 @everywhere using DifferentialEquations, BEFWM2, Distributions, ProgressMeter, SparseArrays, LinearAlgebra, DataFrames, CSV, Arrow
-@everywhere include("src/stochastic_mortality_model.jl")
-@everywhere include("src/sim.jl")
-@everywhere include("src/interaction_strength.jl")
-@everywhere include("src/get_modules.jl")
+@everywhere include("../src/stochastic_mortality_model.jl")
+@everywhere include("../src/sim.jl")
+@everywhere include("../src/interaction_strength.jl")
+@everywhere include("../src/get_modules.jl")
 
 # include("src/stochastic_mortality_model.jl")
 # include("src/sim.jl")
