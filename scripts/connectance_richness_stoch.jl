@@ -10,7 +10,7 @@ ncpu = length(Sys.cpu_info())
 flag = "--project=~/xStressorsStabBEFW/"
 #flag = "--project=."
 println("Workers run with flag: $(flag)")
-addprocs(ncpu - 2, exeflags=flag)
+addprocs(ncpu - 1, exeflags=flag)
 #addprocs(5, exeflags=flag)
 println("Using $(ncpu -2) cores")
 
@@ -63,8 +63,6 @@ simCS(bad_param[test_i].connectance, bad_param[test_i].richness;
       K_alpha_corrected = true,
       return_sol = false
      )
-
-println("$(length(sim)) simulations took $(round(timing / 60, digits = 2)) minutes to run")
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
