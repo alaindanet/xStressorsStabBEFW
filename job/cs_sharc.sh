@@ -2,11 +2,11 @@
 
 
 # Job name
-#$ -N cs
+#$ -N csZ
 
 # Error message
-#$ -e cs2.error
-#$ -o cs2.out
+#$ -e csZ.error
+#$ -o csZ.out
 
 # Amount of RAM requested per node
 #$ -l rmem=64G

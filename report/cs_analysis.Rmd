@@ -163,3 +163,81 @@ df %>%
     y = "Stability component"
   )
 ```
+
+# SEM
+
+```{r}
+library(piecewiseSEM)
+library(semEff)
+```
+
+```{r}
+df_sem <- df %>%
+  filter(stab_com < 1000) %>%
+  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int, gini_max_int), log, , .names = "log_{.col}"))
+```
+
+```{r}
+pairs(
+  df_sem %>%
+    select(ct, log_richness, max_tlvl,
+      log_gini_max_int, log_avg_max_int, log_sync,
+      log_avg_cv_sp, log_stab_com),
+    pch = 19)
+```
+
+```{r}
+sem_list <- list(
+  max_tlvl = lm(max_tlvl ~ log_richness + ct, df_sem),
+  gini_max_int = lm(gini_max_int ~ log_richness + ct + max_tlvl, df_sem),
+  log_avg_max_int = lm(log_avg_max_int ~ log_richness + ct + max_tlvl, df_sem),
+  log_sync = lm(log_sync ~ ct + log_richness + max_tlvl + gini_max_int, df_sem),
+  log_avg_cv_sp = lm(log_avg_cv_sp ~ ct + log_richness + max_tlvl +  gini_max_int, df_sem),
+  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, df_sem)#~,
+  #log_avg_max_int %~~% log_richness
+)
+
+sem <- as.psem(sem_list)
+```
+
+```{r}
+map_dfr(setNames(sem_list, names(sem_list)), performance::check_collinearity)
+map_dfr(sem_list, rsquared)
+summary(sem)
+```
+
+```{r}
+plot(sem)
+```
+
+```{r}
+boot_eff <- semEff(sem, R = 50, ci.type =  "perc")
+summary(boot_eff)
+```
+
+
+```{r}
+sem_int_list <- list(
+  max_tlvl = lm(max_tlvl ~ log_richness + ct, df_sem),
+  gini_max_int = lm(gini_max_int ~ log_richness + ct + max_tlvl, df_sem),
+  log_avg_max_int = lm(log_avg_max_int ~ log_richness + ct + max_tlvl, df_sem),
+  log_sync = lm(log_sync ~ log_richness + log_avg_max_int + gini_max_int, df_sem),
+  log_avg_cv_sp = lm(log_avg_cv_sp ~ log_richness + log_avg_max_int + gini_max_int, df_sem),
+  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, df_sem)
+)
+
+sem_int <- as.psem(sem_int_list)
+plot(sem_int)
+```
+
+```{r}
+map(setNames(sem_int_list, names(sem_int_list)), performance::check_collinearity)
+map_dfr(sem_list, rsquared)
+summary(sem)
+```
+
+```{r}
+boot_int <- semEff(sem_int, R = 50, ci.type =  "perc")
+summary(boot_int)
+```
+

@@ -81,10 +81,11 @@ FoodWeb(nichemodel, 80, C = .02, tol = .01)
 #
 #
 #
-rep = 1:50
-S = [5, 10, 20, 40, 80, 100]
+rep = 1:30
+S = [5, 10, 20, 40, 60]
 C = 0.02:.05:.32
 sigma = 0.5
+Z = [10, 100, 1000]
 ρ = [0, .5, 1]
 names = (:rep, :richness, :connectance, :sigma, :rho)
 param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(rep, S, C, sigma, ρ))[:]

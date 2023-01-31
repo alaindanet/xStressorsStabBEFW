@@ -16,6 +16,51 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
+function kuramoto_module()
+    (
+    prod_gen_k3 = [0 0 0 0 0 0;
+                   0 0 0 0 0 0;
+                   0 0 0 0 0 0;
+                   1 1 1 0 0 0;
+                   1 1 1 0 0 0;
+                   1 1 1 0 0 0],
+
+    prod_spe_km3 = [0 0 0 0 0 0;
+                    0 0 0 0 0 0;
+                    0 0 0 0 0 0;
+                    1 0 0 0 0 0;
+                    0 1 0 0 0 0;
+                    0 0 1 0 0 0],
+
+    prod_spe_km1 = [0 0 0 0 0 0;
+                    0 0 0 0 0 0;
+                    0 0 0 0 0 0;
+                    1 1 0 0 0 0;
+                    1 1 0 0 0 0;
+                    0 0 1 0 0 0],
+
+    prod_spe_k1 = [0 0 0 0 0 0;
+                   0 0 0 0 0 0;
+                   0 0 0 0 0 0;
+                   1 1 1 0 0 0;
+                   1 1 0 0 0 0;
+                   1 0 1 0 0 0],
+   )
+end
+
+###########
+#  Motif  #
+###########
+
+fw = FoodWeb(nichemodel, 20, C = .05)
+fw = FoodWeb(nichemodel, 80, C = .05)
+EcologicalNetworks.find_motif(fw.A, unipartitemotifs().S1)
+mot = find_motif(UnipartiteNetwork(fw.A), unipartitemotifs().S1) |> length
+map(x -> find_motif(UnipartiteNetwork(fw.A), x) |> length, unipartitemotifs())
+
+# Diamond
+map(x -> find_motif(UnipartiteNetwork([0 0 0 0; 1 0 0 0; 1 0 0 0; 0 1 1 0] .> 0), x) |> length, unipartitemotifs())
+
 ##########
 #  Plot  #
 ##########
@@ -31,7 +76,6 @@ plot((ti[i] for i in 1:length(ti))..., layout = (4, 3))
 #########
 #  Sim  #
 #########
-
 
 #simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
 ti = simCS(0.1, 20, 100, 2.0, 1.0, 1.0, 5; max = 5000, last = 1000, dt = 0.1, return_sol = false)

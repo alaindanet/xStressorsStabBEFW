@@ -25,13 +25,14 @@ import Random.seed!
 
 seed!(22)
 
-rep = 1:40
+rep = 1:20
 S = [5, 10, 20, 40, 60]
 C = 0.02:.05:.32
 sigma = [0.5, 1.0]
+Z = [10, 1000]
 ρ = [0, .5, 1]
-names = (:rep, :richness, :connectance, :sigma, :rho)
-param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(rep, S, C, sigma, ρ))[:]
+names = (:rep, :richness, :connectance, :Z, :sigma, :rho)
+param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(rep, S, C, Z, sigma, ρ))[:]
 
 
 # Filter impossible combination of C/S
@@ -63,33 +64,13 @@ simCS(bad_param[test_i].connectance, bad_param[test_i].richness;
       return_sol = false
      )
 
-### TEST
-#
-timing = @elapsed sim = @showprogress pmap(p ->
-                         merge(
-                               (rep = p.rep, ),
-                               simCS(p.connectance, p.richness;
-                                     Z = 100,
-                                     d = 0.1, σₑ = p.sigma, ρ = p.rho,
-                                     h = 2.0, c = 1.0,
-                                     r = 1.8, K = 20.0,
-                                     alpha_ij = 0.5,
-                                     max = 5000, last = 100, dt = 0.1,
-                                     fun = stoch_d_dBdt!,
-                                     K_alpha_corrected = true,
-                                     return_sol = false,
-                                     gc_thre = .2
-                                    )
-                              ),
-                         good_param[[1, 2]]
-                        )
 println("$(length(sim)) simulations took $(round(timing / 60, digits = 2)) minutes to run")
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
                                (rep = p.rep, ),
                                simCS(p.connectance, p.richness;
-                                     Z = 100,
+                                     Z = p.Z,
                                      d = 0.1, σₑ = p.sigma, ρ = p.rho,
                                      h = 2.0, c = 1.0,
                                      r = 1.8, K = 20.0,
@@ -108,4 +89,4 @@ timing = @elapsed sim = @showprogress pmap(p ->
 df = DataFrame(sim)
 println("$(length(sim)) simulations took $(round(timing /60, digits = 2)) minutes to run")
 
-Arrow.write("sim_cs.arrow", df)
+Arrow.write("sim_csZ.arrow", df)
