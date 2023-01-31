@@ -96,6 +96,40 @@ unique(mod$env_stoch)
 summary(as_tibble(mod))
 ```
 
+### low Stochasticity (sigma = .5)
+
+```{r}
+mod %>%
+  filter(rho == 0, env_stoch == .5) %>%
+  pivot_longer(c(stab_com, sync, avg_cv_sp), names_to = "stab", values_to =
+  "values") %>%
+  ggplot(aes(x = module_name, y = values, color = as.factor(alpha_ij))) +
+  geom_boxplot() +
+  facet_grid(rows = vars(stab), scales = "free_y")
+```
+
+```{r}
+mod %>%
+  filter(rho == 0.5, env_stoch == .5) %>%
+  pivot_longer(c(stab_com, sync, avg_cv_sp), names_to = "stab", values_to =
+  "values") %>%
+  ggplot(aes(x = module_name, y = values, color = as.factor(alpha_ij))) +
+  geom_boxplot() +
+  facet_grid(rows = vars(stab), scales = "free_y")
+```
+
+```{r}
+mod %>%
+  filter(rho == 1, env_stoch == .5) %>%
+  pivot_longer(c(stab_com, sync, avg_cv_sp), names_to = "stab", values_to =
+  "values") %>%
+  ggplot(aes(x = module_name, y = values, color = as.factor(alpha_ij))) +
+  geom_boxplot() +
+  facet_grid(rows = vars(stab), scales = "free_y")
+```
+
+### low Stochasticity (sigma = .9)
+
 ```{r}
 mod %>%
   filter(rho == 0, env_stoch == .9) %>%
@@ -114,7 +148,6 @@ mod %>%
   ggplot(aes(x = module_name, y = values, color = as.factor(alpha_ij))) +
   geom_boxplot() +
   facet_grid(rows = vars(stab), scales = "free_y")
-
 ```
 
 ```{r}

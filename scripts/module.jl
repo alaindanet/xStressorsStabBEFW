@@ -46,10 +46,11 @@ sim = map(x -> sim_int_mat(x;
 rep = 1:20
 fw_module_names = keys(fw_module)
 ρ = [0.0, .5, 1.0]
-alphaij = [0.0, .5, 1]
-sigma = [0.5, 0.9]
-param_names = (:rep, :module, :rho, :alphaij,:sigma)
-param = map(p -> (;Dict(k => v for (k, v) in zip(param_names, p))...), Iterators.product(rep, fw_module_names, ρ, alphaij, sigma))[:]
+alphaij = [0.0, .5, .8, 1]
+sigma = [0, 0.5, .8]
+Z = [5, 10, 100]
+param_names = (:rep, :module, :rho, :alphaij,:sigma, :Z)
+param = map(p -> (;Dict(k => v for (k, v) in zip(param_names, p))...), Iterators.product(rep, fw_module_names, ρ, alphaij, sigma, Z))[:]
 
 sim = @showprogress pmap(p -> merge(
                      (rep = p.rep, module_name = p.module),
@@ -57,7 +58,7 @@ sim = @showprogress pmap(p -> merge(
                                  ρ = p.rho, alpha_ij = p.alphaij,
                                  σₑ = p.sigma,
                                  d = 0.1,
-                                 Z = 10, h = 2.0, c = 1.0,
+                                 Z = p.Z, h = 2.0, c = 1.0,
                                  r = 1.8, K = 20.0,
                                  fun = stoch_d_dBdt!,
                                  max = 5000, last = 1000, dt = 0.1, return_sol = false)
@@ -66,34 +67,4 @@ sim = @showprogress pmap(p -> merge(
                         )
 
 df = DataFrame(sim)
-Arrow.write("sim_module_d.arrow", df)
-
-################################################################################
-#                             Competition modules                              #
-################################################################################
-
-rep = 1:20
-S = 1:10
-ρ = [0.0, .5, 1.0]
-alphaij = [0, .2, .5, .8, 1.0]
-sigma = [.5, .9]
-param_names = (:rep, :S, :rho, :alphaij,:sigma)
-param = map(p -> (;Dict(k => v for (k, v) in zip(param_names, p))...), Iterators.product(rep, S, ρ, alphaij, sigma))[:]
-
-sim_competition = @showprogress pmap(p -> merge(
-                     (rep = p.rep, S = p.S),
-                     sim_int_mat(zeros(p.S, p.S);
-                                 ρ = p.rho, alpha_ij = p.alphaij,
-                                 σₑ = p.sigma,
-                                 d = 0.1,
-                                 Z = 10, h = 2.0, c = 1.0,
-                                 r = 1.8, K = 20.0,
-                                 K_alpha_corrected = true,
-                                 fun = stoch_d_dBdt!,
-                                 max = 2000, last = 1000, dt = 0.1, return_sol = false)
-                    ),
-                                     param
-                                    )
-
-df_competition = DataFrame(sim_competition)
-Arrow.write("sim_module_competition.arrow", df_competition)
+Arrow.write("sim_module_dZ.arrow", df)
