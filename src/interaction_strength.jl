@@ -1,3 +1,14 @@
+"""
+    max_interaction_strength(p::ModelParameters;)
+
+Returns the theoretical maximum interaction strengths from consumers to resources, realized
+when the density of a given resource approaches 0.
+
+# References
+
+McCann, K., Hastings, A., & Huxel, G. R. (1998). Weak trophic interactions and the balance
+of nature. Nature, 395(6704), Art. 6704. https://doi.org/10.1038/27427
+"""
 function max_interaction_strength(ω, x, y, B0, h;)
     S = size(ω, 2)
     int = zeros(S, S)
@@ -10,14 +21,47 @@ function max_interaction_strength(ω, x, y, B0, h;)
 end
 
 function max_interaction_strength(p::ModelParameters;)
-    max_interaction_strength(p.functional_response.ω, p.biorates.x, p.biorates.y, p.functional_response.B0, p.functional_response.h)
+    max_interaction_strength(p.functional_response.ω,
+                             p.biorates.x,
+                             p.biorates.y,
+                             p.functional_response.B0,
+                             p.functional_response.h
+                            )
 end
 
-# https://gist.github.com/ZacLN/fd34052b6a17ea9274f1e92cf82d6472
+"""
+    gini(x)
+
+Computes the Gini coefficient, a index of inequality. A Gini coefficient of 1 indicates
+complete inequality while a value of 0 indicates complete equality.
+
+# References
+
+https://gist.github.com/ZacLN/fd34052b6a17ea9274f1e92cf82d6472
+https://en.wikipedia.org/wiki/Gini_coefficient
+
+"""
 function gini(x)
     n = length(x)
     xx = sort(x)
     2*(sum(collect(1:n).*xx))/(n*sum(xx))-1
+end
+
+"""
+    empirical_interaction_strength(solution, params::ModelParameters; last::Int64 = 1000)
+
+Computex the empirical interaction strength using the average biomass of the predators and
+the preys over the `last` timesteps.
+
+"""
+function empirical_interaction_strength(solution, params::ModelParameters; last::Int64 = 1000)
+    bm = biomass(
+                 solution,
+                 last = last,
+                 idxs = collect(1:1:size(params.network.species, 1))
+                ).sp
+
+    empirical_interaction_strength(bm, params)
 end
 
 function empirical_interaction_strength(B::Vector{Float64}, params::ModelParameters)
@@ -27,20 +71,16 @@ function empirical_interaction_strength(B::Vector{Float64}, params::ModelParamet
     h = params.functional_response.h
     B0 = params.functional_response.B0
     ω = params.functional_response.ω
+    x = params.biorates.x
+    y = params.biorates.y
+    c = params.functional_response.c
 
     for i in 1:S
         int[i, :] = [
-                     ( params.biorates.x[i] * params.biorates.y[i] * B[i] * ω[i, j] * (B[j])^h ) /
-                     ( (B0[i])^h + params.functional_response.c[i] * B[i] * (B0[i])^h  + sum(ω[i,:] .* (B .^h)))
+                     ( x[i] * y[i] * B[i] * ω[i, j] * (B[j])^h ) /
+                     ( (B0[i])^h + c[i] * B[i] * (B0[i])^h  + sum(ω[i,:] .* (B .^h)))
                      for j in 1:S
                     ]
     end
     sparse(int)
 end
-
-function empirical_interaction_strength(solution, params::ModelParameters; last::Int64 = 1000)
-    bm = biomass(solution, last = last, idxs = collect(1:1:size(params.network.species, 1))).sp
-    empirical_interaction_strength(bm, params)
-end
-
-
