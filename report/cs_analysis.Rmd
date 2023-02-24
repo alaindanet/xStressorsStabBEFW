@@ -2,7 +2,7 @@
 title: Simulation connectance richness
 author: Alain Danet
 output:
-  bookdown::pdf_document2
+  bookdown::psim_document2
 ---
 
 ```{r, echo = FALSE}
@@ -26,6 +26,7 @@ library(tidyverse)
 library(magrittr)
 library(cowplot)
 library(here)
+library(arrow)
 
 mytheme <- theme_cowplot(font_size = 8) +
 background_grid() +
@@ -34,24 +35,85 @@ theme(legend.position = "bottom")
 
 theme_set(mytheme)
 ```
-
 ```{r}
-df_brut <- read_csv(here::here("res", "cs_sim.csv"))
-df <- df_brut %>%
-  select(where(is.double))
-summary(df)
+sim_brut <- open_dataset(here::here("res", "sim_cs_stdK.arrow"),
+  format = "arrow")
+sim <- sim_brut %>%
+  collect() %>%
+  mutate(across(where(is.list), as.list)) %>%
+  mutate(across(c(int_strength, max_int),
+      ~map2(.x, S,
+        function(y, rich) {
+          matrix(y, nrow = rich)
+        }
+      )
+  )
+    ) %>%
+  mutate(max_int_alive  = map2(max_int, bm_sp,
+      function(mat, bm) {
+        mask <- bm > 10^-16
+        mat[mask, mask]
+      }
+      ),
+    ct_alive = map_dbl(max_int_alive, ~ sum(.x > 0) / ((ncol(.x) - 1)^2)),
+    bm_sp_alive = map(bm_sp, ~.x[.x > 10^-16]),
+    tlvl_alive = map2(tlvl, bm_sp, ~.x[.y > 10^-16]),
+    max_tlvl_alive = map_dbl(tlvl_alive, max),
+    w_avg_tlvl_alive = map2_dbl(tlvl_alive, bm_sp_alive, ~sum(.x * (.y / sum(.y)))),
+    max_max_int_alive = map_dbl(max_int_alive, ~max(.x[.x > 0])),
+    avg_max_int_alive = map_dbl(max_int_alive, ~mean(.x[.x > 0])),
+    #gini_max_int_alive = map_dbl(max_int_alive, ),
+  )
+```
+```{r}
+simZ <- open_dataset(here::here("res", "sim_csZ.arrow"),
+  format = "arrow") %>%
+  collect() %>%
+  filter(!is.na(richness)) %>%
+  mutate(across(where(is.list), as.list)) %>%
+  mutate(across(c(int_strength, max_int),
+      ~map2(.x, S,
+        function(y, rich) {
+          matrix(y, nrow = rich)
+        }
+      )
+  )
+    ) %>%
+  mutate(max_int_alive  = map2(max_int, bm_sp,
+      function(mat, bm) {
+        mask <- bm > 10^-16
+        mat[mask, mask]
+      }
+      ),
+    ct_alive = map_dbl(max_int_alive, ~ sum(.x > 0) / ((ncol(.x) - 1)^2)),
+    bm_sp_alive = map(bm_sp, ~.x[.x > 10^-16]),
+    tlvl_alive = map2(tlvl, bm_sp, ~.x[.y > 10^-16]),
+    max_tlvl_alive = map_dbl(tlvl_alive, max),
+    w_avg_tlvl_alive = map2_dbl(tlvl_alive, bm_sp_alive, ~sum(.x * (.y / sum(.y)))),
+    max_max_int_alive = map_dbl(max_int_alive, ~max(.x[.x > 0])),
+    avg_max_int_alive = map_dbl(max_int_alive, ~mean(.x[.x > 0])),
+    #gini_max_int_alive = map_dbl(max_int_alive, ),
+  )
 ```
 
+
+```{r, eval = FALSE}
+colnames(sim)
+unique(sim$env_stoch)
+summary(sim$total_biomass)
+```
+
+
+
 ```{r}
-df %>%
-  filter(stab_com <= 1000) %>%
+sim %>%
   mutate(stab_pop = 1/ avg_cv_sp) %>%
   pivot_longer(
     c(stab_com, stab_pop, sync),
     names_to = "metric",
     values_to = "stab") %>%
-  ggplot(aes(x = as.factor(richness), y = stab, color = as.factor(ct))) +
-  geom_boxplot() +
+  ggplot(aes(x = richness, y = stab)) +
+  geom_point() +
   facet_grid(rows = vars(metric), scales = "free_y") +
   labs(
     color = "Connectance",
@@ -62,7 +124,12 @@ df %>%
 
 ```{r}
 corrplot::corrplot(
-  cor(df %>% select(-rep, -Z, -env_stoch, -sim_timing), method = "spearman"),
+  cor(sim %>% select(
+      c(S, richness, ct, ct_alive, total_biomass, avg_max_int_alive, w_avg_tlvl_alive,
+        max_tlvl_alive, rho, env_stoch, stab_com, avg_cv_sp, sync
+        )
+      ),
+    method = "spearman"),
   diag = FALSE, type = "upper"
 )
 ```
@@ -87,14 +154,13 @@ corrplot::corrplot(
 It seems that the effects of food-web structure are mainly richness effects!
 
 ```{r}
-df %>%
-  filter(stab_com <= 1000) %>%
+sim %>%
   mutate(stab_pop = 1/ avg_cv_sp) %>%
   pivot_longer(
     c(stab_com, stab_pop, sync),
     names_to = "metric",
     values_to = "stab") %>%
-  ggplot(aes(x = avg_max_int, y = stab, color = as.factor(richness))) +
+  ggplot(aes(x = avg_max_int_alive, y = stab, color = richness)) +
   geom_point() +
   geom_smooth() +
   facet_grid(rows = vars(metric), scales = "free_y") +
@@ -107,14 +173,13 @@ df %>%
 ```
 
 ```{r}
-df %>%
-  filter(stab_com <= 1000) %>%
+sim%>%
   mutate(stab_pop = 1/ avg_cv_sp) %>%
   pivot_longer(
     c(stab_com, stab_pop, sync),
     names_to = "metric",
     values_to = "stab") %>%
-  ggplot(aes(x = gini_max_int, y = stab, color = as.factor(richness))) +
+  ggplot(aes(x = gini_max_int, y = stab, color = richness)) +
   geom_point() +
   geom_smooth() +
   facet_grid(rows = vars(metric), scales = "free_y") +
@@ -127,14 +192,13 @@ df %>%
 ```
 
 ```{r}
-df %>%
-  filter(stab_com <= 1000) %>%
+sim %>%
   mutate(stab_pop = 1/ avg_cv_sp) %>%
   pivot_longer(
     c(stab_com, stab_pop, sync),
     names_to = "metric",
     values_to = "stab") %>%
-  ggplot(aes(x = ct, y = stab, color = as.factor(richness))) +
+  ggplot(aes(x = ct_alive, y = stab, color = richness)) +
   geom_point() +
   geom_smooth(method = "lm") +
   facet_grid(rows = vars(metric), scales = "free_y") +
@@ -146,14 +210,13 @@ df %>%
 ```
 
 ```{r}
-df %>%
-  filter(stab_com <= 1000) %>%
+sim %>%
   mutate(stab_pop = 1/ avg_cv_sp) %>%
   pivot_longer(
     c(stab_com, stab_pop, sync),
     names_to = "metric",
     values_to = "stab") %>%
-  ggplot(aes(x = w_avg_tlvl, y = stab, color = as.factor(richness))) +
+  ggplot(aes(x = max_tlvl_alive, y = stab, color = richness)) +
   geom_point() +
   geom_smooth() +
   facet_grid(rows = vars(metric), scales = "free_y") +
@@ -172,29 +235,28 @@ library(semEff)
 ```
 
 ```{r}
-df_sem <- df %>%
-  filter(stab_com < 1000) %>%
-  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int, gini_max_int), log, , .names = "log_{.col}"))
+sim_sem <- sim %>%
+  filter(rho == 0, env_stoch == .5) %>%
+  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}"))
 ```
 
 ```{r}
 pairs(
-  df_sem %>%
-    select(ct, log_richness, max_tlvl,
-      log_gini_max_int, log_avg_max_int, log_sync,
+  sim_sem %>%
+    select(ct_alive, log_richness, max_tlvl_alive,
+      log_gini_max_int, log_avg_max_int_alive, log_sync,
       log_avg_cv_sp, log_stab_com),
     pch = 19)
 ```
 
 ```{r}
 sem_list <- list(
-  max_tlvl = lm(max_tlvl ~ log_richness + ct, df_sem),
-  gini_max_int = lm(gini_max_int ~ log_richness + ct + max_tlvl, df_sem),
-  log_avg_max_int = lm(log_avg_max_int ~ log_richness + ct + max_tlvl, df_sem),
-  log_sync = lm(log_sync ~ ct + log_richness + max_tlvl + gini_max_int, df_sem),
-  log_avg_cv_sp = lm(log_avg_cv_sp ~ ct + log_richness + max_tlvl +  gini_max_int, df_sem),
-  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, df_sem)#~,
-  #log_avg_max_int %~~% log_richness
+  max_tlvl = lm(max_tlvl_alive ~ log_richness + ct_alive, sim_sem),
+  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive, sim_sem),
+  log_avg_max_int = lm(log_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive, sim_sem),
+  log_sync = lm(log_sync ~ ct_alive + log_richness + max_tlvl_alive + gini_max_int, sim_sem),
+  log_avg_cv_sp = lm(log_avg_cv_sp ~ ct_alive + log_richness + max_tlvl_alive +  gini_max_int, sim_sem),
+  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, sim_sem)
 )
 
 sem <- as.psem(sem_list)
@@ -203,7 +265,7 @@ sem <- as.psem(sem_list)
 ```{r}
 map_dfr(setNames(sem_list, names(sem_list)), performance::check_collinearity)
 map_dfr(sem_list, rsquared)
-summary(sem)
+summary(sem)$coefficients[, c(1, 2, 8, 9)]
 ```
 
 ```{r}
@@ -218,12 +280,12 @@ summary(boot_eff)
 
 ```{r}
 sem_int_list <- list(
-  max_tlvl = lm(max_tlvl ~ log_richness + ct, df_sem),
-  gini_max_int = lm(gini_max_int ~ log_richness + ct + max_tlvl, df_sem),
-  log_avg_max_int = lm(log_avg_max_int ~ log_richness + ct + max_tlvl, df_sem),
-  log_sync = lm(log_sync ~ log_richness + log_avg_max_int + gini_max_int, df_sem),
-  log_avg_cv_sp = lm(log_avg_cv_sp ~ log_richness + log_avg_max_int + gini_max_int, df_sem),
-  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, df_sem)
+  max_tlvl = lm(max_tlvl_alive ~ log_richness + ct_alive, sim_sem),
+  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive, sim_sem),
+  log_avg_max_int = lm(log_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive, sim_sem),
+  log_sync = lm(log_sync ~ log_richness + log_avg_max_int_alive + max_tlvl_alive + gini_max_int, sim_sem),
+  log_avg_cv_sp = lm(log_avg_cv_sp ~ log_richness + log_avg_max_int_alive + max_tlvl_alive + gini_max_int, sim_sem),
+  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, sim_sem)
 )
 
 sem_int <- as.psem(sem_int_list)
@@ -232,12 +294,30 @@ plot(sem_int)
 
 ```{r}
 map(setNames(sem_int_list, names(sem_int_list)), performance::check_collinearity)
-map_dfr(sem_list, rsquared)
-summary(sem)
+map_dfr(sem_int_list, rsquared)
+summary(sem_int)$coefficients[, c(1, 2, 8, 9)]
 ```
 
 ```{r}
 boot_int <- semEff(sem_int, R = 50, ci.type =  "perc")
 summary(boot_int)
+```
+
+# With Z
+
+```{r}
+colnames(simZ)
+corrplot::corrplot(
+  cor(simZ %>%
+    mutate(persistence = richness / S) %>%
+    select(
+      c(S, richness, persistence, ct, ct_alive, total_biomass, avg_max_int_alive,
+        max_max_int_alive, gini_max_int, w_avg_tlvl_alive, max_tlvl_alive, Z,
+        rho, env_stoch, stab_com, avg_cv_sp, sync
+        )
+      ),
+    method = "spearman"),
+  diag = FALSE, type = "upper"
+)
 ```
 

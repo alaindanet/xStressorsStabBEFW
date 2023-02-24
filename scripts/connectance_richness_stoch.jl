@@ -15,7 +15,8 @@ addprocs(ncpu - 1, exeflags=flag)
 println("Using $(ncpu -2) cores")
 
 @everywhere import Pkg
-@everywhere using DifferentialEquations, BEFWM2, Distributions, ProgressMeter, SparseArrays, LinearAlgebra, DataFrames
+@everywhere using DifferentialEquations, BEFWM2, SparseArrays,LinearAlgebra, DataFrames
+@everywhere using qistributions, ProgressMeter
 @everywhere using StatsBase, CSV, Arrow
 @everywhere include("../src/stochastic_mortality_model.jl")
 @everywhere include("../src/sim.jl")
@@ -29,7 +30,7 @@ rep = 1:20
 S = [5, 10, 20, 40, 60]
 C = 0.02:.05:.32
 sigma = [0.5, 1.0]
-Z = [10, 1000]
+Z = [50, 200, 500]
 ρ = [0, .5, 1]
 names = (:rep, :richness, :connectance, :Z, :sigma, :rho)
 param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...), Iterators.product(rep, S, C, Z, sigma, ρ))[:]
@@ -87,4 +88,4 @@ timing = @elapsed sim = @showprogress pmap(p ->
 df = DataFrame(sim)
 println("$(length(sim)) simulations took $(round(timing /60, digits = 2)) minutes to run")
 
-Arrow.write("sim_csZ.arrow", df)
+Arrow.write("sim_csZ2.arrow", df)
