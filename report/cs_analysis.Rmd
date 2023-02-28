@@ -2,7 +2,7 @@
 title: Simulation connectance richness
 author: Alain Danet
 output:
-  bookdown::psim_document2
+  bookdown::pdf_document2
 ---
 
 ```{r, echo = FALSE}
@@ -27,6 +27,8 @@ library(magrittr)
 library(cowplot)
 library(here)
 library(arrow)
+library(piecewiseSEM)
+library(semEff)
 
 mytheme <- theme_cowplot(font_size = 8) +
 background_grid() +
@@ -36,7 +38,9 @@ theme(legend.position = "bottom")
 theme_set(mytheme)
 ```
 ```{r}
-sim_brut <- open_dataset(here::here("res", "sim_cs_stdK.arrow"),
+sim_brut <- open_dataset(
+  here::here("res", "sim_cs.arrow"),
+  #here::here("res", "sim_cs_stdK.arrow"),
   format = "arrow")
 sim <- sim_brut %>%
   collect() %>%
@@ -68,32 +72,46 @@ sim <- sim_brut %>%
 ```{r}
 simZ <- open_dataset(here::here("res", "sim_csZ.arrow"),
   format = "arrow") %>%
-  collect() %>%
-  filter(!is.na(richness)) %>%
-  mutate(across(where(is.list), as.list)) %>%
-  mutate(across(c(int_strength, max_int),
-      ~map2(.x, S,
-        function(y, rich) {
-          matrix(y, nrow = rich)
-        }
+  collect()
+simZ2 <- open_dataset(here::here("res", "sim_csZ2.arrow"),
+  format = "arrow") %>%
+  collect()
+
+# TODO set extinction threshold in simulations
+simZ <- map_dfr(list(simZ, simZ2),
+  function (x) {
+    x %>%
+      filter(!is.na(richness)) %>%
+      mutate(across(where(is.list), as.list)) %>%
+      mutate(across(c(int_strength, max_int),
+          ~map2(.x, S,
+            function(y, rich) {
+              matrix(y, nrow = rich)
+            }
+          )
       )
-  )
-    ) %>%
-  mutate(max_int_alive  = map2(max_int, bm_sp,
-      function(mat, bm) {
-        mask <- bm > 10^-16
-        mat[mask, mask]
-      }
-      ),
-    ct_alive = map_dbl(max_int_alive, ~ sum(.x > 0) / ((ncol(.x) - 1)^2)),
-    bm_sp_alive = map(bm_sp, ~.x[.x > 10^-16]),
-    tlvl_alive = map2(tlvl, bm_sp, ~.x[.y > 10^-16]),
-    max_tlvl_alive = map_dbl(tlvl_alive, max),
-    w_avg_tlvl_alive = map2_dbl(tlvl_alive, bm_sp_alive, ~sum(.x * (.y / sum(.y)))),
-    max_max_int_alive = map_dbl(max_int_alive, ~max(.x[.x > 0])),
-    avg_max_int_alive = map_dbl(max_int_alive, ~mean(.x[.x > 0])),
-    #gini_max_int_alive = map_dbl(max_int_alive, ),
-  )
+        ) %>%
+      mutate(max_int_alive  = map2(max_int, bm_sp,
+          function(mat, bm) {
+            mask <- bm > 10^-16
+            mat[mask, mask]
+          }
+          ),
+        ct_alive = map_dbl(max_int_alive, ~ sum(.x > 0) / ((ncol(.x) - 1)^2)),
+        bm_sp_alive = map(bm_sp, ~.x[.x > 10^-16]),
+        tlvl_alive = map2(tlvl, bm_sp, ~.x[.y > 10^-16]),
+        max_tlvl_alive = map_dbl(tlvl_alive, max),
+        w_avg_tlvl_alive = map2_dbl(tlvl_alive, bm_sp_alive, ~sum(.x * (.y / sum(.y)))),
+        max_max_int_alive = map_dbl(max_int_alive, ~max(.x[.x > 0])),
+        avg_max_int_alive = map_dbl(max_int_alive, ~mean(.x[.x > 0])),
+        #gini_max_int_alive = map_dbl(max_int_alive, ),
+      )
+
+
+  }
+) %>%
+filter(max_max_int_alive != -Inf) %>%
+mutate(persistence = richness / S)
 ```
 
 
@@ -229,22 +247,20 @@ sim %>%
 
 # SEM
 
-```{r}
-library(piecewiseSEM)
-library(semEff)
-```
 
 ```{r}
 sim_sem <- sim %>%
   filter(rho == 0, env_stoch == .5) %>%
-  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}"))
+  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
+  as.data.frame() %>%
+  select(c(ct_alive, log_richness, max_tlvl_alive, Z, gini_max_int, log_avg_max_int_alive, env_stoch, log_stab_com, log_sync, log_avg_cv_sp))
 ```
 
 ```{r}
 pairs(
   sim_sem %>%
     select(ct_alive, log_richness, max_tlvl_alive,
-      log_gini_max_int, log_avg_max_int_alive, log_sync,
+      gini_max_int, log_avg_max_int_alive, log_sync,
       log_avg_cv_sp, log_stab_com),
     pch = 19)
 ```
@@ -309,7 +325,6 @@ summary(boot_int)
 colnames(simZ)
 corrplot::corrplot(
   cor(simZ %>%
-    mutate(persistence = richness / S) %>%
     select(
       c(S, richness, persistence, ct, ct_alive, total_biomass, avg_max_int_alive,
         max_max_int_alive, gini_max_int, w_avg_tlvl_alive, max_tlvl_alive, Z,
@@ -319,5 +334,130 @@ corrplot::corrplot(
     method = "spearman"),
   diag = FALSE, type = "upper"
 )
+```
+
+```{r}
+unique(simZ$richness)
+simZ %>%
+  ggplot(aes(x = as.factor(Z), y = avg_cv_sp, fill = richness)) +
+  geom_boxplot()
+```
+
+```{r}
+sim_sem <- simZ %>%
+  filter(S == richness) %>%
+  filter(rho == 0) %>%
+  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
+  select(c(ct_alive, log_richness, max_tlvl_alive, Z, gini_max_int, log_avg_max_int_alive, env_stoch, log_stab_com, log_sync, log_avg_cv_sp)) %>%
+  as.data.frame()
+```
+
+
+```{r}
+sem_int_list <- list(
+  ct = lm(ct_alive ~ log_richness, sim_sem),
+  max_tlvl = lm(max_tlvl_alive ~ log_richness + Z + ct_alive, sim_sem),
+  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive + Z, sim_sem),
+  log_avg_max_int = lm(log_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive + Z, sim_sem),
+  log_sync = lm(log_sync ~ log_richness + log_avg_max_int_alive + max_tlvl_alive + gini_max_int + env_stoch + Z, sim_sem),
+  log_avg_cv_sp = lm(log_avg_cv_sp ~ log_richness + log_avg_max_int_alive + max_tlvl_alive + gini_max_int + env_stoch + Z, sim_sem),
+  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, sim_sem)
+)
+
+sem_int <- as.psem(sem_int_list)
+plot(sem_int)
+```
+
+```{r}
+map(setNames(sem_int_list, names(sem_int_list)), performance::check_collinearity)
+map_dfr(sem_int_list, rsquared)
+summary(sem_int)$coefficients[, c(1, 2, 8, 9)]
+```
+
+```{r}
+summary(sim_sem$richness)
+summary(sim_sem$S)
+summary(sim_sem$persistence)
+```
+
+```{r}
+boot_int <- semEff(sem_int, ci.type = "perc", R = 50, ncpus = 2)
+summary(boot_int)
+```
+
+
+```{r}
+unique(simZ$Z)
+sim_sem <- simZ %>%
+  filter(rho == 0, Z == 50) %>%
+  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
+  select(c(ct_alive, log_richness, max_tlvl_alive, Z, gini_max_int, log_avg_max_int_alive, env_stoch, log_stab_com, log_sync, log_avg_cv_sp)) %>%
+  as.data.frame()
+```
+
+
+```{r}
+sem_int_list <- list(
+  ct = lm(ct_alive ~ log_richness, sim_sem),
+  max_tlvl = lm(max_tlvl_alive ~ log_richness + ct_alive, sim_sem),
+  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive , sim_sem),
+  log_avg_max_int = lm(log_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive, sim_sem),
+  log_sync = lm(log_sync ~ log_richness + log_avg_max_int_alive + max_tlvl_alive + gini_max_int + env_stoch , sim_sem),
+  log_avg_cv_sp = lm(log_avg_cv_sp ~ log_richness + log_avg_max_int_alive + max_tlvl_alive + gini_max_int + env_stoch , sim_sem),
+  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, sim_sem)
+)
+
+sem_int <- as.psem(sem_int_list)
+plot(sem_int)
+```
+
+```{r}
+boot_int <- semEff(sem_int, ci.type = "perc", R = 50, ncpus = 2)
+summary(boot_int)
+```
+
+
+```{r}
+unique(simZ$Z)
+sim_sem <- simZ %>%
+  filter(rho == 1) %>%
+  mutate(across(c(ct_alive, sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, .names = "log_{.col}")) %>%
+  select(c(log_ct_alive, log_richness, max_tlvl_alive, Z, gini_max_int, log_avg_max_int_alive, env_stoch, log_stab_com, log_sync, log_avg_cv_sp)) %>%
+  as.data.frame()
+pairs(sim_sem, pch = 19)
+```
+
+
+
+```{r}
+sem_int_list <- list(
+  ct = lm(log_ct_alive ~ log_richness, sim_sem),
+  max_tlvl = lm(max_tlvl_alive ~ log_richness + Z, sim_sem),
+  gini_max_int = lm(gini_max_int ~ log_ct_alive + max_tlvl_alive , sim_sem),
+  log_avg_max_int = lm(log_avg_max_int_alive ~ log_ct_alive + max_tlvl_alive + Z, sim_sem),
+  log_sync = lm(log_sync ~ log_richness + log_avg_max_int_alive + gini_max_int + env_stoch, sim_sem),
+  log_avg_cv_sp = lm(log_avg_cv_sp ~ log_richness + log_avg_max_int_alive + gini_max_int + env_stoch , sim_sem),
+  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, sim_sem)
+)
+
+sem_int <- as.psem(sem_int_list)
+plot(sem_int)
+```
+
+```{r}
+map(setNames(sem_int_list, names(sem_int_list)), performance::check_collinearity)
+map_dfr(sem_int_list, rsquared)
+summary(sem_int)$coefficients[, c(1, 2, 8, 9)]
+```
+
+```{r}
+boot_int <- semEff(sem_int, ci.type = "perc", R = 50, ncpus = 2)
+summary(boot_int)
+```
+
+```{r}
+simZ %>%
+  ggplot(aes(y = persistence, x = as.factor(Z))) +
+  geom_boxplot()
 ```
 
