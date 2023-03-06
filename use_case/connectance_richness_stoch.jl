@@ -11,8 +11,8 @@ flag = "--project=~/xStressorsStabBEFW/"
 #flag = "--project=."
 println("Workers run with flag: $(flag)")
 #addprocs(ncpu - 2, exeflags=flag)
-addprocs(5, exeflags=flag)
-println("Using $(ncpu -2) cores")
+#addprocs(5, exeflags=flag)
+#println("Using $(ncpu -2) cores")
 
 import Pkg
 using DifferentialEquations, BEFWM2, Distributions, ProgressMeter, SparseArrays, LinearAlgebra, DataFrames, CSV

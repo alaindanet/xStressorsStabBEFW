@@ -1,16 +1,16 @@
-using Revise 
+using Revise
 using BEFWM2
 using Plots
 using LinearAlgebra
-using DifferentialEquations 
+using DifferentialEquations
 using DataFrames
 using CSV
 
-A = [0 0 0 0; 1 0 0 0; 1 0 0 0; 0 1 1 0] 
+A = [0 0 0 0; 1 0 0 0; 1 0 0 0; 0 1 1 0]
 foodweb = FoodWeb(A)
 
 # Functional response
-## Preference of consumer 
+## Preference of consumer
 myω = zeros(4, 4)
 myω[:,1] = [0, 1, .98, 0]
 myω[4,:] = [0, .92, 1 - .92, 0]
@@ -23,9 +23,9 @@ myc
 ## Efficiency is implicitly one for all consumers in Vasseur & Fox
 mye = zeros(4, 4)
 # Consumer
-mye[:,1] = [0, 1, 1, 0] 
+mye[:,1] = [0, 1, 1, 0]
 # Predator
-mye[4,:] = [0, 1, 1, 0] 
+mye[4,:] = [0, 1, 1, 0]
 
 # Metabolic rates and maximum ingestion rates (merged in J parameter in Vasseur
 # & Fox)
@@ -48,7 +48,7 @@ bioener = BioenergeticResponse(foodweb,
 biorate = BioRates(foodweb,
         r = [1.0, 0, 0, 0],
         e = mye,
-        x = x, 
+        x = x,
         y = y
        )
 
@@ -81,7 +81,7 @@ function mydBdt!(dB, B, params::ModelParameters, t)
         growth = BEFWM2.logisticgrowth(i, B[1:S], r[i], K[i], network)
         eating, being_eaten = BEFWM2.consumption(i, B[1:S], params, response_matrix)
         # Metabolic loss as basal mortality times exponentional stochastic noise
-        metabolism_loss = params.biorates.x[i] * exp(B[i+S]) * B[i] 
+        metabolism_loss = params.biorates.x[i] * exp(B[i+S]) * B[i]
         net_growth_rate = growth + eating - metabolism_loss
         # net_growth_rate = BEFWM2.effect_competition(net_growth_rate, i, B, network)
         dB[i] = net_growth_rate - being_eaten
@@ -101,19 +101,19 @@ function stochastic_process(dW, B, params, t)
 
     S = length(params.network.species)
 
-    # Biomass dynamics have no stochasticity 
-    for i in 1:2*S 
+    # Biomass dynamics have no stochasticity
+    for i in 1:2*S
         dW[i] = 0.0
     end
 
-    # Stochastic mortality variable for consumer is... Stochastic!!! 
-    dW[S+2:S+3] .= params.env_stoch.σₑ 
+    # Stochastic mortality variable for consumer is... Stochastic!!!
+    dW[S+2:S+3] .= params.env_stoch.σₑ
 
 end
 
 
-# Stochastic strengh and correlation 
-ρₑ = 0 
+# Stochastic strengh and correlation
+ρₑ = 0
 
 # Build the covariance matrix of the size of two times the number of species
 S = BEFWM2.richness(foodweb)
@@ -124,11 +124,11 @@ vc[diagind(vc)] .= 1.0
 vc[S+2, S+3] = ρₑ
 vc[S+3, S+2] = ρₑ
 vc
- 
+
 # Generate the Wiener Process
 W = CorrelatedWienerProcess(vc, 0.0, zeros(size(vc, 1)))
 
-# define the starting values 
+# define the starting values
 stoch_starting_val = [0; 0; 0; 0]
 u0 = [rand(S); stoch_starting_val]
 tspan = (0, 1000)
@@ -151,7 +151,7 @@ plot(sol, idxs = 5:8)
 
 foodweb_cv(sol, last = 100, idxs = [1, 2, 3, 4])
 
-# Test with some noise 
+# Test with some noise
 params = ModelParameters(foodweb,
                 functional_response = bioener,
                 biorates = biorate,

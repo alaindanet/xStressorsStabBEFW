@@ -20,7 +20,7 @@ function simCS(C, S;
 
     # Generate a food-web with a given connectance
     fw = try
-        FoodWeb(nichemodel, S, C = C, Z = Z, tol = Ctol)
+        FoodWeb(nichemodel, S, C = C, Z = Z, tol_C = Ctol)
     catch
         missing
     end
@@ -240,7 +240,7 @@ end
 function mysim(A, n, Z, f, ρ, σₑ; max = 50000, last = 25000, dt = 0.1, corr_mat = vc, return_sol = false)
 
     fw = FoodWeb(A, Z = Z)
-    S = BEFWM2.richness(fw)
+    S = richness(fw)
     # change the parameters of the functional response
     # (we want the original functional response, as defined in Yodzis and Ines original paper)
     funcrep = BioenergeticResponse(fw; h = f.h, c = f.c)

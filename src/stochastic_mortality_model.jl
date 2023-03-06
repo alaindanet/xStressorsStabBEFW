@@ -15,10 +15,10 @@ function mydBdt!(dB, B, params::ModelParameters, t)
 
     for i in 1:S
         # sum(α[i, :] .* B)) measures competitive effects (s)
-        growth = BEFWM2.logisticgrowth(i, B, r[i], K[i], sum(α[i, :] .* B[1:S]), network)
-        eating, being_eaten = BEFWM2.consumption(i, B, params, response_matrix)
+        growth = EcologicalNetworksDynamics.logisticgrowth(i, B, r[i], K[i], sum(α[i, :] .* B[1:S]), network)
+        eating, being_eaten = EcologicalNetworksDynamics.consumption(i, B, params, response_matrix)
         metabolism_loss = params.biorates.x[i] * exp(B[i+S]) * B[i]
-        natural_death = BEFWM2.natural_death_loss(i, B, params)
+        natural_death = EcologicalNetworksDynamics.natural_death_loss(i, B, params)
         net_growth_rate = growth + eating - metabolism_loss
         # net_growth_rate = effect_competition(net_growth_rate, i, B, network)
         dB[i] = net_growth_rate - being_eaten - natural_death
@@ -31,7 +31,7 @@ function mydBdt!(dB, B, params::ModelParameters, t)
     end
 
     # Avoid zombie species by forcing extinct biomasses to zero.
-    # https://github.com/BecksLab/BEFWM2/issues/65
+    # https://github.com/BecksLab/EcologicalNetworksDynamics/issues/65
     # for sp in keys(extinct_sp)
         # B[sp] = 0.0
     # end
@@ -54,9 +54,9 @@ function stoch_d_dBdt!(dB, B, params::ModelParameters, t)
     # Compute ODE terms for each species
     for i in 1:S
         # sum(α[i, :] .* B)) measures competitive effects (s)
-        growth = BEFWM2.logisticgrowth(i, B, r[i], K[i], sum(α[i, :] .* B[1:S]), network)
-        eating, being_eaten = BEFWM2.consumption(i, B, params, response_matrix)
-        metabolism_loss = BEFWM2.metabolic_loss(i, B, params)
+        growth = EcologicalNetworksDynamics.logisticgrowth(i, B, r[i], K[i], sum(α[i, :] .* B[1:S]), network)
+        eating, being_eaten = EcologicalNetworksDynamics.consumption(i, B, params, response_matrix)
+        metabolism_loss = EcologicalNetworksDynamics.metabolic_loss(i, B, params)
         natural_death = d[i] * exp(B[i+S]) * B[i] # Stochastic natural death
         net_growth_rate = growth + eating - metabolism_loss
         # net_growth_rate = effect_competition(net_growth_rate, i, B, network)
@@ -64,7 +64,7 @@ function stoch_d_dBdt!(dB, B, params::ModelParameters, t)
     end
 
     # Avoid zombie species by forcing extinct biomasses to zero.
-    # https://github.com/BecksLab/BEFWM2/issues/65
+    # https://github.com/BecksLab/EcologicalNetworksDynamics/issues/65
     # for sp in keys(extinct_sp)
         # B[sp] = 0.0
     # end
