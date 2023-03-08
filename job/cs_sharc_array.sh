@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#$ -N myArrayTest
+#$ -N CSZenrich
 #$ -t 1-18000:2000
 #$ -o /home/$USER/logs/
 #$ -e /home/$USER/logs/
@@ -20,7 +20,8 @@ module load apps/julia/1.8.5/binary
 MY_JULIA=julia
 
 
+START=$SGE_TASK_ID
+END=$(($SGE_TASK_ID + $SGE_TASK_STEPSIZE - 1))
 
-
-echo "Starting task from $SGE_TASK_ID to $($SGE_TASK_ID + $SGE_TASK_STEPSIZE - 1)"
-cd ${DIR_ENV} && ${MY_JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/connectance_richness_stoch_array.jl $SGE_TASK_ID $($SGE_TASK_ID + $SGE_TASK_STEPSIZE - 1)
+echo "Starting task from ${START} to ${END}"
+cd ${DIR_ENV} && ${MY_JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/connectance_richness_stoch_array.jl ${START} ${END} 

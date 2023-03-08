@@ -4,7 +4,12 @@ import Pkg
 Pkg.instantiate()
 using Distributed, Serialization
 
-ncpu = length(Sys.cpu_info())
+first_sim = parse(Int, ARGS[1])
+last_sim = parse(Int, ARGS[2])
+
+println("Running parameters combination from $(ARGS[1]) to $(ARGS[2])")
+
+ncpu = maximum([length(Sys.cpu_info()), 15])
 
 #Flag enables all the workers to start on the project of the current dir
 flag = "--project=~/xStressorsStabBEFW/"
@@ -12,9 +17,10 @@ flag = "--project=~/xStressorsStabBEFW/"
 println("Workers run with flag: $(flag)")
 addprocs(ncpu - 1, exeflags=flag)
 #addprocs(5, exeflags=flag)
-println("Using $(ncpu -2) cores")
+println("Using $(ncpu -1) cores")
 
-@everywhere import Pkg
+
+@everywhere import Pkg, Random.seed!
 @everywhere using DifferentialEquations, EcologicalNetworksDynamics, SparseArrays
 @everywhere using LinearAlgebra, DataFrames
 @everywhere using Distributions, ProgressMeter
@@ -23,24 +29,15 @@ println("Using $(ncpu -2) cores")
 @everywhere include("../src/sim.jl")
 @everywhere include("../src/interaction_strength.jl")
 
-import Random.seed!
 
-param = DataFrame(Arrow.Table("../scripts/param_comb_connectance_richness.arrow"))
+param = DataFrame(Arrow.Table("/home/bi1ahd/xStressorsStabBEFW/scripts/param_comb_connectance_richness.arrow"))
 param = NamedTuple.(eachrow(param))
 
-first_sim = parse(Int, ARGS[1])
-last_sim = parse(Int, ARGS[2])
-
-println("From $(ARGS[1]) to $(ARGS[2])")
-
-if last_sim > size(param, 1)
-    last_sim = size(param, 1)
-end
-
-println("Running param sim from lines $first_sim to $last_sim")
 
 pm = sample(param)
-simCS(pm.connectance, pm.richness;
+println("Running warmup: r = $(pm.enrich.r), K = $(pm.enrich.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
+
+warmup = simCS(pm.connectance, pm.richness;
       Z = 100,
       d = 0.1, σₑ = pm.sigma, ρ = pm.rho,
       h = 2.0, c = 1.0,
@@ -50,6 +47,13 @@ simCS(pm.connectance, pm.richness;
       K_alpha_corrected = true,
       return_sol = false
      )
+println("$(warmup)")
+
+
+if last_sim > size(param, 1)
+    last_sim = size(param, 1)
+end
+println("Running param sim from lines $first_sim to $last_sim")
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
@@ -58,7 +62,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                      Z = p.Z,
                                      d = 0.1, σₑ = p.sigma, ρ = p.rho,
                                      h = 2.0, c = 1.0,
-                                     r = pm.enrich.r, K = pm.enrich.K,
+                                     r = p.enrich.r, K = p.enrich.K,
                                      alpha_ij = 0.5,
                                      max = 5000, last = 100, dt = 0.1,
                                      fun = stoch_d_dBdt!,
@@ -67,7 +71,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                      gc_thre = .2
                                     )
                               ),
-                         param,
+                         param[first_sim:last_sim],
                          batch_size = 100
                         )
 
