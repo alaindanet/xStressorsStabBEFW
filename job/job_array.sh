@@ -13,5 +13,5 @@ START=$SGE_TASK_ID
 LAST=$(($SGE_TASK_ID + $SGE_TASK_STEPSIZE - 1))
 
 echo "Starting task from ${START} to ${LAST}"
-julia -e 'println("From $(ARGS[1]) to $(ARGS[2])")' $SGE_TASK_ID $(($SGE_TASK_ID + $SGE_TASK_STEPSIZE - 1))
+julia -e 'println("From $(ARGS[1]) to $(ARGS[2])")' ${START} ${LAST}
 
