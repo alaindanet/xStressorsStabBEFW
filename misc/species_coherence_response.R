@@ -36,22 +36,28 @@ cross_correlated_response <- function(rho = 0, evt_sd = 1, n = 2, time_len = 100
 
 # With two species
 ti <- tibble(
-  rho = c(0, .8, -.8),
+  rho = c(0, .8),
   noise = map(rho, ~cross_correlated_response(rho = .x, evt_sd = 1, n = 2, time_len = 20))
 )
 
 
 p <- ti %>%
   unnest(noise) %>%
-  ggplot(aes(x = time, y = error, color = species))+
+  ggplot(aes(x = time, y = error, color = species)) +
   geom_line() +
-  facet_grid(cols = vars(rho)) +
+  labs(x = "Time", y = "Error") +
+  facet_grid(rows = vars(rho)) +
+  viridis::scale_color_viridis(discrete = TRUE) +
   cowplot::theme_half_open() +
   theme(legend.position = "none")
 
-save_plot(
-  "~/Téléchargements/coherence_two_sp.png",
-  p
+ggsave(
+  filename = here::here("fig", "coherence_two_sp.pdf"),
+  p,
+  scale = 1.5,
+  width = 88,
+  height = 88 * 1.1,
+  units = "mm"
 )
 
 # With four species

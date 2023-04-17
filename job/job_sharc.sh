@@ -2,7 +2,7 @@
 
 
 # Job name
-#$ -N cs_stoch 
+#$ -N cs_stoch
 
 # Error message
 #$ -e cs_stoch.error
@@ -16,6 +16,6 @@ DIR_ENV=/home/${USER}/xStressorsStabBEFW
 DIR_SCRIPT=use_case
 
 # Load modules
-module load apps/julia
+module load apps/julia/1.8.5/binary
 
 julia --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/connectance_richness_stoch.jl ${DIR_ENV} #vasseur_fox_2007.jl
