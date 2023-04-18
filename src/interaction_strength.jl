@@ -48,20 +48,32 @@ function gini(x)
 end
 
 """
-    empirical_interaction_strength(solution, params::ModelParameters; last::Int64 = 1000)
+    empirical_interaction_strength(solution, params; kwargs...)
 
-Computex the empirical interaction strength using the average biomass of the predators and
-the preys over the `last` timesteps.
+Computes the empirical trophic interaction strength over the `last` timesteps.
+It returns the mean, max, min, standard deviation of each trophic interaction in the
+network, and return the timeseries as well.
 
 """
-function empirical_interaction_strength(solution, params::ModelParameters; last::Int64 = 1000)
-    bm = biomass(
-                 solution,
-                 last = last,
-                 idxs = collect(1:1:size(params.network.species, 1))
-                ).sp
+function empirical_interaction_strength(solution, params::ModelParameters; kwargs...)
 
-    empirical_interaction_strength(bm, params)
+    measure_on = extract_last_timesteps(solution; kwargs...)
+
+    S = richness(params.network)
+    ntimestep = size(measure_on, 2)
+    out = zeros(S, S, ntimestep)
+    for i in 1:ntimestep
+        out[:, :, i] = empirical_interaction_strength(measure_on[:, i], params)
+    end
+
+    (
+     mean = mean(out, dims = 3)[:, :, 1],
+     max = maximum(out, dims = 3)[:, :, 1],
+     min = minimum(out, dims = 3)[:, :, 1],
+     std = std(out, dims = 3)[:,:, 1],
+     all = out
+   )
+
 end
 
 function empirical_interaction_strength(B::Vector{Float64}, params::ModelParameters)

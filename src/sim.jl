@@ -4,14 +4,13 @@ function simCS(C, S;
         h = 2.0, c = 1.0,
         r = 1.0, K = 1.0, alpha_ij = 0.5,
         max = 5000, last = 1000, dt = 0.1,
-        fun = stoch_d_dBdt!,
         return_sol = false,
         K_alpha_corrected = true,
         Ctol = .02,
         gc_thre = .02
     )
 
-    if rand(Uniform(0, 1)) < gc_thre
+    if rand(Distributions.Uniform(0, 1)) < gc_thre
         println("")
         GC.gc()
         ccall(:malloc_trim, Cvoid, (Cint,), 0)
@@ -20,7 +19,9 @@ function simCS(C, S;
 
     # Generate a food-web with a given connectance
     fw = try
-        FoodWeb(nichemodel, S, C = C, Z = Z, tol_C = Ctol)
+        FoodWeb(nichemodel, S, C = C, Z = Z, tol_C = Ctol,
+                check_cycle = true,
+                check_disconnected = true)
     catch
         missing
     end
@@ -50,31 +51,16 @@ function simCS(C, S;
                             environment = env,
                             producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
                             env_stoch = EnvStoch(σₑ))
-        stoch_starting_val = repeat([0], S)
-        u0 = [rand(S); stoch_starting_val]
-
-        # Make the stochastic matrix
-        corr_mat = zeros(S * 2, S * 2)
-        corr_mat .= ρ
-        corr_mat[diagind(corr_mat)] .= 1.0
-        wiener = CorrelatedWienerProcess(corr_mat, 0.0, zeros(size(corr_mat, 1)))
-
-        prob = SDEProblem(
-                          fun,
-                          gen_stochastic_process,
-                          u0,
-                          [0, max],
-                          p,
-                          noise = wiener
-                         )
-        # Try to simulate
-        timing = @elapsed m = try
-            solve(prob;
-                  saveat = collect(0:1:max),
-                  dt = dt,
-                  adaptive = false
-                 )
-
+    B0 = rand(S)
+    # Simulate
+    timing = @elapsed m = try
+        simulate(p, B0;
+                 rho = ρ,
+                 dt = dt,
+                 tmax = max,
+                 extinction_threshold = 1e-5,
+                 verbose = false
+                );
         catch
             (t = 0, x = missing)
         end
@@ -89,11 +75,16 @@ function simCS(C, S;
     end
 
     out = get_stab_fw(m; last = last)
+    # Collect timeseries
+    time_species = transpose(round.(m[1:S, end-(last-1):end], digits = 5))
+    time_stoch = transpose(round.(m[S+1:2*S, end-(last-1):end], digits = 5))
 
-    merge(
-          (S = S, ct = C, rho = ρ, env_stoch = σₑ, alpha_ij = alpha_ij, Z = Z, timing = timing),
-          out
-         )
+    out = merge(
+                (S = S, ct = C, A = fw.A, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
+                out,
+                (time_species = time_species, time_stoch = time_stoch)
+               )
+    out
 end
 
 function sim_int_mat(A;
@@ -101,7 +92,6 @@ function sim_int_mat(A;
         alpha_ij = 0, Z = 100,
         h = 2.0, c = 1.0, K = 1.0,
         r = 1.0,
-        fun = stoch_d_dBdt!,
         max = 5000, last = 1000,dt = 0.1,
         K_alpha_corrected = true,
         return_sol = false)
@@ -129,31 +119,16 @@ function sim_int_mat(A;
                         producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
                         env_stoch = EnvStoch(σₑ)
                        )
-    stoch_starting_val = repeat([0], S)
-    u0 = [rand(S); stoch_starting_val]
-
-    # Make the stochastic matrix
-    corr_mat = zeros(S * 2, S * 2)
-    corr_mat .= ρ
-    corr_mat[diagind(corr_mat)] .= 1.0
-    # Generate the Wiener Process
-    wiener = CorrelatedWienerProcess(corr_mat, 0.0, zeros(size(corr_mat, 1)))
-
-    prob = SDEProblem(
-                      fun,
-                      gen_stochastic_process,
-                      u0,
-                      [0, max],
-                      p,
-                      noise = wiener
-                     )
+    B0 = rand(S)
     # Simulate
     timing = @elapsed m = try
-        solve(prob;
-              saveat = collect(0:1:max),
-              dt = dt,
-              adaptive = false
-             )
+        simulate(p, B0;
+                 rho = ρ,
+                 dt = dt,
+                 tmax = max,
+                 extinction_threshold = 1e-5,
+                 verbose = false
+                );
 
     catch
         (t = 0, x = missing)
@@ -164,11 +139,16 @@ function sim_int_mat(A;
     end
 
     out = get_stab_fw(m; last = last)
+    # Collect timeseries
+    time_species = transpose(round.(m[1:S, end-(last-1):end], digits = 5))
+    time_stoch = transpose(round.(m[S+1:2*S, end-(last-1):end], digits = 5))
 
     out = merge(
-                (S = S, rho = ρ, env_stoch = σₑ, alpha_ij = alpha_ij, Z = Z, timing = timing),
-                out
+                (S = S, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
+                out,
+                (time_species = time_species, time_stoch = time_stoch)
                )
+    out
 end
 
 function get_stab_fw(m; last = 10)
@@ -200,27 +180,26 @@ function get_stab_fw(m; last = 10)
     if length(m.t) >= last
         p = get_parameters(m)
         fw = p.network
-        S = richness(fw)
-        bm_cv = cv(m, last = last, idxs = collect(1:1:S))
-        bm = biomass(m, last = last, idxs = collect(1:1:S))
-        int_strength = empirical_interaction_strength(m, p, last = last)
-        non_zero_int = [i for i in int_strength if i != 0]
+        bm_cv = coefficient_of_variation(m, last = last)
+        bm = biomass(m, last = last)
+        emp_int_strength = empirical_interaction_strength(m, p, last = last)
+        non_zero_int = [i for i in emp_int_strength.mean if i != 0]
         max_int = max_interaction_strength(p)
         non_zero_max_int = [i for i in max_int if i != 0]
-        tlvl = trophic_levels(fw)
+        troph_struc = trophic_structure(m, last = last)
 
         values = (
-                  species_richness(m, last = last, idxs = collect(1:1:S)),
-                  1 / bm_cv.cv_com,
-                  bm_cv.avg_cv_sp,
+                  richness(m, last = last),
+                  1 / bm_cv.community,
+                  bm_cv.average_species,
                   bm_cv.synchrony,
                   bm.total,
-                  bm.sp,
-                  bm_cv.cv_sp,
-                  tlvl,
-                  sum(tlvl .* (bm.sp ./ sum(bm.sp))),
-                  maximum(tlvl),
-                  int_strength,
+                  bm.species,
+                  bm_cv.species,
+                  troph_struc.alive_trophic_level,
+                  troph_struc.weighted_average,
+                  troph_struc.max,
+                  emp_int_strength.mean,
                   mean(non_zero_int),
                   maximum(non_zero_int, init = 0),
                   minimum(non_zero_int, init = 0),

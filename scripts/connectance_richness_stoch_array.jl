@@ -78,5 +78,5 @@ timing = @elapsed sim = @showprogress pmap(p ->
 df = DataFrame(sim)
 println("$(length(sim)) simulations took $(round(timing /60, digits = 2)) minutes to run")
 
-file = string("simCS_", first_sim, "_", last_sim, ".arrow")
+file = string("simCSZ_", first_sim, "_", last_sim, ".arrow")
 Arrow.write(file, df)

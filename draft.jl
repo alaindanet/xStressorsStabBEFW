@@ -3,6 +3,7 @@ using EcologicalNetworksDynamics
 using SparseArrays
 using LinearAlgebra
 using DifferentialEquations
+using Distributions
 using Statistics
 using DataFrames
 using Plots
@@ -11,18 +12,45 @@ using CSV
 using Arrow
 include("src/minmax.jl")
 include("src/interaction_strength.jl")
-include("src/stochastic_mortality_model.jl")
+#include("src/stochastic_mortality_model.jl")
 include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
+const fractional_digits = 4
 
-ti = DataFrame(Arrow.Table("../param_comb_connectance_richness.arrow"))
-seq = collect(1:2000:size(ti, 1))
+foodweb = FoodWeb([0 0 0; 1 0 0; 0 1 0]);
+params = ModelParameters(foodweb,
+                         biorates = BioRates(foodweb, d = .1),
+                         env_stoch = EnvStoch(.5)
+                        );
+B0 = [0.5, 0.5, 0.5];
+sol = simulate(params, B0;
+               rho = 1,
+               dt = .1,
+               tmax = 5000,
+               extinction_threshold = 1e-5,
+               verbose = false
+              );
+mat_rounded = round.(sol[:,:], digits = 5)
+mat = sol[:,:]
+coefficient_of_variation(sol)
+cv_sp(sol)
+ti = empirical_interaction_strength(sol, params, last = 100)
+trophic_structure(sol, last = 100)
 
-for i in seq
-    println("$i:$(i+2000 - 1)")
-end
+richness(sol)
+species_persistence(sol)
+ti = rand(2, 2, 3)
+ti.round()
+round.(ti; digits = 5)
+ti[:,:, 1]
+richness(params.network)
+
+ti = simCS(.1, 20, ρ = 1.0, max = 200, last = 100)
+ti.time_species
+ti.time_stoch
+varinfo(r"ti")
 
 
 
