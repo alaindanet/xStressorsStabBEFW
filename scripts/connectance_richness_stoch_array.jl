@@ -40,7 +40,7 @@ println("Running warmup: r = $(pm.enrich.r), K = $(pm.enrich.K), σₑ = $(pm.si
 warmup = simCS(pm.connectance, pm.richness;
       Z = 100,
       d = 0.1, σₑ = pm.sigma, ρ = pm.rho,
-      h = 2.0, c = 1.0,
+      h = 2.0, c = 0.0,
       r = pm.enrich.r, K = pm.enrich.K, alpha_ij = 0.5,
       max = 50, last = 10, dt = 0.1,
       fun = stoch_d_dBdt!,
@@ -61,7 +61,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                simCS(p.connectance, p.richness;
                                      Z = p.Z,
                                      d = 0.1, σₑ = p.sigma, ρ = p.rho,
-                                     h = 2.0, c = 1.0,
+                                     h = 2.0, c = 0.0,
                                      r = p.enrich.r, K = p.enrich.K,
                                      alpha_ij = 0.5,
                                      max = 5000, last = 100, dt = 0.1,

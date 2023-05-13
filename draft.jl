@@ -20,12 +20,14 @@ using LinearAlgebra
 using EcologicalNetworksDynamics
 
 
-stab = []
+stab, sync, pop_stab = [], [], []
 for i in 1:20
-    ti = simCS(.1, 10, ρ = 0.5, d = .1, σₑ = 0.25, c = 0, h = 2, K = 40.0, r = 1.0, max = 1000, last = 100)
+    ti = simCS(.1, 10, ρ = 0, d = .1, σₑ = 0.25, c = 0, h = 2, K = 20.0, r = 1.0, max = 1000, last = 100)
     push!(stab, ti.stab_com)
+    push!(sync, ti.sync)
+    push!(pop_stab, 1/ti.avg_cv_sp)
 end
-mean(skipmissing(stab))
+mean.([Iterators.filter(!isnan, stab), Iterators.filter(!isnan, sync), Iterators.filter(!isnan, pop_stab)])
 varinfo(r"ti")
 ti.time_stoch
 
