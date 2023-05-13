@@ -30,12 +30,14 @@ library(arrow)
 library(piecewiseSEM)
 library(semEff)
 library(easystats)
+library(glmmTMB)
 
 mytheme <- theme_cowplot(font_size = 8) +
 background_grid() +
 theme(legend.position = "bottom")
 theme_set(mytheme)
 source(here::here("R", "network_metrics.R"))
+source(here::here("R", "string_replacements.R"))
 ```
 
 ```{r}
@@ -78,9 +80,11 @@ simZ_prep <- map_dfr(sim_list,
 simZ <- simZ_prep %>%
   mutate(
     persistence = richness / S,
+    async = 1 / sync,
+    stab_pop = 1 / avg_cv_sp,
     ct_alive = map_dbl(max_int_alive,
       ~ifelse(sum(.x) == 0, 0,
-      sum(.x > 0) / ((ncol(.x) - 1)^2))),
+      sum(.x > 0) / ((ncol(.x))^2))),
     bm_sp_alive = map(bm_sp, ~.x[.x > 10^-6]),
     tlvl_alive = map2(tlvl, bm_sp, ~.x[.y > 10^-6]),
     max_tlvl_alive = map_dbl(tlvl_alive, max),
@@ -93,6 +97,8 @@ simZ <- simZ_prep %>%
       ),
     gini_max_int_alive = map_dbl(max_int_alive, ~gini(.x))
       )
+simZ$tlvl_alive[[3]]
+simZ$max_int_alive[[3]]
 ```
 
 
@@ -110,7 +116,6 @@ summary(simZ$gini_max_int_alive)
 ```{r}
 simZ %>%
   filter(rho == 0) %>%
-  mutate(stab_pop = 1/ avg_cv_sp) %>%
   pivot_longer(
     c(stab_com, stab_pop, sync, total_biomass),
     names_to = "metric",
@@ -165,7 +170,8 @@ p_enrich <- ~corrplot::corrplot(
 )
 plot_grid(
   ggdraw(p_basic),
-  ggdraw(p_enrich)
+  ggdraw(p_enrich),
+  nrow = 2
 )
 ```
 
@@ -203,10 +209,9 @@ compute_rotated_pca <- function(.data = NULL, naxis = 2) {
 
 
 ```{r}
-library(glmmTMB)
 sim_sem <- simZ %>%
   filter(rho == 0) %>%
-  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
+  mutate(across(c(async, sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
   mutate(
     log1_avg_max_int_alive = log(avg_max_int_alive + 1),
     productivity_f = factor(productivity)
@@ -216,9 +221,9 @@ sim_sem <- simZ %>%
   select(c(
       ct_alive, log_richness, max_tlvl_alive, Z,
       gini_max_int, avg_max_int_alive, log1_avg_max_int_alive, env_stoch,
-      log_stab_com, log_sync, log_avg_cv_sp, productivity, productivity_f)
+      log_stab_com, log_sync, log_async, log_avg_cv_sp, productivity, productivity_f)
   )
-test <- sim_sem %>%
+scaled_sim_sem <- sim_sem %>%
   mutate(across(where(is.double), ~scale(.x)[,1]))
 ```
 
@@ -226,102 +231,236 @@ test <- sim_sem %>%
 pred_may <- "log1_avg_max_int_alive*log_richness*ct_alive*productivity + env_stoch"
 rand <- "(1 | Z)"
 
-mod_may_single <- lm(formula(str_replace_all(paste0("log_stab_com ~ ", pred_may), "\\*", "+")), test)
+mod_may_single <- lm(formula(str_replace_all(paste0("log_stab_com ~ ", pred_may), "\\*", "+")),
+  scaled_sim_sem)
 performance::check_collinearity(mod_may_single)
 ```
 
 ```{r}
-mod_may <- glmmTMB(formula(paste0("log_stab_com ~ ", pred_may, " + ", rand)), test)
+mod_may <- glmmTMB(formula(paste0("log_stab_com ~ ", pred_may, " + ", rand)), scaled_sim_sem)
 
 r2_nakagawa(mod_may)
+par_mod_may <- parameters(mod_may)
 plot(parameters(mod_may))
 ```
 
 ```{r}
 mod_may_sync <- glmmTMB(formula(paste0("log_sync ~ ", pred_may, " + ", rand)),
-  test)
+  scaled_sim_sem)
 r2_nakagawa(mod_may_sync)
 plot(parameters(mod_may_sync))
 ```
 
 ```{r}
 mod_may_cv_sp <- glmmTMB(formula(paste0("log_avg_cv_sp ~ ", pred_may, " + ", rand)),
-  test)
+  scaled_sim_sem)
 r2_nakagawa(mod_may_cv_sp)
 plot(parameters(mod_may_cv_sp))
 ```
 
 ## Rho model
 
+- Should be include also the monotrophic communities ? I.e. Communities
+  containing only plants?
+
 ```{r}
 sim_rho <- simZ %>%
-  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
+  #filter(ct_alive != 0) %>%
+  mutate(across(c(async, sync, stab_pop, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
   mutate(
     log1_avg_max_int_alive = log(avg_max_int_alive + 1),
     productivity_f = factor(productivity)
 
     ) %>%
-  as.data.frame() %>%
   select(c(
       ct_alive, log_richness, max_tlvl_alive, Z, rho,
       gini_max_int, avg_max_int_alive, log1_avg_max_int_alive, env_stoch,
-      log_stab_com, log_sync, log_avg_cv_sp, productivity, productivity_f,
+      log_stab_com, log_sync, log_async, log_stab_pop, log_avg_cv_sp, productivity, productivity_f,
       persistence)
   )
 sim_rho_scaled <- sim_rho %>%
   mutate(across(where(is.double), ~scale(.x)[,1]))
 ```
 
+```{r}
+sim_rho %>%
+  filter(ct_alive == 0, env_stoch == 0.5) %>%
+  ggplot(aes(x = log_richness, y = log_stab_com)) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(cols = vars(rho), rows = vars(productivity_f))
+```
 
 ```{r}
-pred_rho <- "log1_avg_max_int_alive * log_richness * rho +
-log1_avg_max_int_alive * log_richness * productivity +
-log1_avg_max_int_alive * log_richness * ct_alive +
-log1_avg_max_int_alive * ct_alive * rho +
-log1_avg_max_int_alive * ct_alive * rho +
-log1_avg_max_int_alive * ct_alive * productivity +
-log_richness * rho * productivity +
-log_richness * ct_alive * productivity +
-log_richness * ct_alive * rho +
-env_stoch"
+pred_rho <- "log_richness +
+ct_alive +
+log1_avg_max_int_alive +
+productivity +
+rho +
+I(rho^2) +
+env_stoch +
+
+log_richness:ct_alive +
+log_richness:log1_avg_max_int_alive +
+log_richness:productivity +
+log_richness:rho +
+
+log1_avg_max_int_alive:ct_alive +
+log1_avg_max_int_alive:productivity +
+log1_avg_max_int_alive:rho +
+
+ct_alive:rho +
+ct_alive:productivity +
+rho:productivity +
+I(rho^2):productivity +
+
+
+log_richness:log1_avg_max_int_alive:ct_alive +
+log_richness:log1_avg_max_int_alive:productivity +
+log_richness:log1_avg_max_int_alive:rho +
+log_richness:ct_alive:productivity +
+log_richness:ct_alive:rho +
+log_richness:rho:productivity +
+
+log1_avg_max_int_alive:ct_alive:rho +
+log1_avg_max_int_alive:ct_alive:productivity +
+log1_avg_max_int_alive:rho:productivity +
+
+ct_alive:rho:productivity"
 rand <- "(1 | Z)"
 
-mod_rho_single <- lm(formula(str_replace_all(paste0("log_stab_com ~ ", pred_rho), "\\*", "+")),
+mod_rho_single <- lm(formula(str_replace_all(paste0("log_stab_com ~ ", pred_rho), "(\\*|:)", "+")),
   sim_rho_scaled)
 performance::check_collinearity(mod_rho_single)
 ```
 
 ```{r}
-mod_rho <- glmmTMB(formula(paste0("log_stab_com ~ ", pred_rho, " + ", rand)),
-  sim_rho_scaled)
+model2tibble <- function(x, response = NULL) {
+  out <- parameters(x) %>%
+    filter(Effects == "fixed", Parameter != "(Intercept)") %>%
+    as_tibble() %>%
+    janitor::clean_names() %>%
+    mutate(
+      response = var_replacement()[as.character(formula(x)[2])],
+      parameter = str_replace_all(parameter, var_replacement()),
+      count_int = str_count(parameter, ":"),
+      effect_type = case_when(
+        count_int == 0 ~ "single",
+        count_int == 1 ~ "double",
+        count_int == 2 ~ "triple",
+        TRUE ~ "other"
 
-r2_nakagawa(mod_rho)
-plot(parameters(mod_rho))
+      )
+    ) %>%
+    select(response, parameter:ci_high, effect_type)
+    out
+}
+plot_effect_type <- function(x) {
+  effect <- c("single", "double", "triple")
+  p <- map(effect,
+    function(y) {
+      x %>%
+        filter(effect_type == y) %>%
+        arrange(coefficient) %>%
+        ggplot(aes(
+            y = reorder(parameter, -coefficient),
+            x = coefficient,xmin = ci_low, xmax = ci_high,
+            color = response
+            )) +
+        geom_vline(xintercept = 0, color = "black", linetype = "dashed", linewidth = 1.5) +
+        geom_pointrange(position = position_dodge(width = 0.5)) +
+        labs(x = "Standardized Coefficients")
+    }
+  )
+  names(p) <- effect
+  p
+}
 ```
 
 ```{r}
-mod_rho_sync <- glmmTMB(formula(paste0("log_sync ~ ", pred_rho, " + ", rand)),
-  sim_rho_scaled)
-
-r2_nakagawa(mod_rho_sync)
-p_mod_rho_sync <- plot(parameters(mod_rho_sync))
-```
-
-```{r}
-mod_rho_cv_sp <- glmmTMB(formula(paste0("log_avg_cv_sp ~ ", pred_rho, " + ", rand)),
-  sim_rho_scaled)
-
-r2_nakagawa(mod_rho_cv_sp)
-p_mod_rho_cv_sp <- plot(parameters(mod_rho_cv_sp))
-```
-
-```{r}
-plot_grid(
-  p_mod_rho_sync,
-  p_mod_rho_cv_sp
+mod_rho_scaled <- map(setNames(
+    c("log_stab_com", "log_stab_pop", "log_async"),
+    c("log_stab_com", "log_stab_pop", "log_async")
+    ),
+  function (x) {
+    glmmTMB(formula(paste0(x, " ~ ", pred_rho, " + ", rand)),
+      sim_rho_scaled)
+  }
 )
+coef_mod_rho_scaled <- map_dfr(mod_rho_scaled, ~model2tibble(.x))
+ti <- map_dfr(mod_rho_scaled, ~as.data.frame(r2_nakagawa(.x)), .id = "response") %>%
+  mutate(response = var_replacement()[response])
+p_mod_rho_scaled <- plot_effect_type(coef_mod_rho_scaled)
+plot_grid(plotlist = p_mod_rho_scaled)
 ```
 
+```{r}
+mod_rho <- map(setNames(
+    c("log_stab_com", "log_stab_pop", "log_async"),
+    c("log_stab_com", "log_stab_pop", "log_async")
+    ),
+  function (x) {
+    glmmTMB(formula(paste0(x, " ~ ", pred_rho, " + ", rand)),
+      sim_rho)
+  }
+)
+coef_mod_rho <- map_dfr(mod_rho, ~model2tibble(.x))
+ti <- map_dfr(mod_rho, ~as.data.frame(r2_nakagawa(.x)), .id = "response") %>%
+  mutate(response = var_replacement()[response])
+p_mod_rho <- plot_effect_type(coef_mod_rho)
+plot_grid(plotlist = p_mod_rho)
+```
+
+```{r, eval = FALSE}
+sim_rho
+```
+
+
+```{r}
+pred_list <- list(
+  log_richness = c(log(1), log(5), log(10), log(20), log(30), log(50)),
+  ct_alive = c(0, .10, .20),
+  rho = c(0, .5, 1),
+  log1_avg_max_int_alive = c(log(0 + 1), round(log(.81 + 1), 1), round(log(5.65 + 1), 1)),
+  env_stoch = .5,
+  productivity = c("basic", "enrichment"),
+  Z = 100
+)
+pred_rho <- expand.grid(pred_list) %>%
+  filter(
+    !(log1_avg_max_int_alive == 0 & ct_alive != 0 | ct_alive == 0 & log1_avg_max_int_alive != 0)
+  )
+
+pred_rho$log_stab_com <- predict(mod_rho[["log_stab_com"]], newdata = pred_rho)
+
+pred_rho %>%
+  ggplot(aes(
+      y = log_stab_com,
+      x = log_richness,
+      color = factor(ct_alive),
+      linewidth = factor(log1_avg_max_int_alive)
+      )) +
+  geom_line() +
+  facet_grid(
+    rows = vars(rho),
+    cols = vars(productivity)
+  )
+```
+
+
+
+
+```{r, eval = FALSE}
+mod_rho_tot <- glmmTMB(
+  log_stab_com ~ log1_avg_max_int_alive*log_richness*ct_alive*rho*productivity +
+    env_stoch + (1 | Z),
+  sim_rho_scaled)
+coef_mod_rho_tot <- model2tibble(mod_rho_tot)
+coef_mod_rho_tot %>%
+  ggplot(aes(y = parameter, x = coefficient, xmin = ci_low, xmax = ci_high)) +
+  geom_pointrange() +
+  labs(x = "Standardized Coefficients")
+```
 
 ```{r}
 sim_rho_pers <- simZ %>%
@@ -359,171 +498,53 @@ r2_nakagawa(mod_rho_pers)
 plot(parameters(mod_rho_pers))
 ```
 
-```{r}
+## Regression tree
 
+```{r}
 ```
 
-
-
-
-
-
-# SEM
-
-
-```{r}
-
-sim_sem_basic <- sim_sem %>%
-  filter(productivity == "basic")
-
-sim_sem_enrich <- sim_sem %>%
-  filter(productivity == "enrichment")
+```{r, eval = FALSE}
+library(rpart)
+library(rpart.plot)
+set.seed(123)
+m1 <- rpart(
+  formula = log_stab_com ~ .,
+  data    = sim_rho %>%
+    select(log_stab_com, log_richness, ct_alive, rho, env_stoch,
+      gini_max_int, max_tlvl_alive, log1_avg_max_int_alive, productivity),
+  method  = "anova"
+  )
+rpart.plot(m1)
 ```
 
-```{r}
-pairs(
-  sim_sem %>%
-    select(ct_alive, log_richness, max_tlvl_alive,
-      gini_max_int, log1_avg_max_int_alive, log_sync,
-      log_avg_cv_sp, log_stab_com),
-    pch = 19)
-```
-
-```{r}
-sem_list <- list(
-  max_tlvl = lm(max_tlvl_alive ~ log_richness + ct_alive, sim_sem),
-  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive, sim_sem),
-  log_avg_max_int = lm(log1_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive + Z, sim_sem),
-  log_sync = lm(log_sync ~ ct_alive + log_richness + max_tlvl_alive + gini_max_int, sim_sem),
-  log_avg_cv_sp = lm(log_avg_cv_sp ~ ct_alive + log_richness + max_tlvl_alive +  gini_max_int, sim_sem),
-  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, sim_sem)
-)
-
-sem <- as.psem(sem_list)
-
-ti <- psem(
-  max_tlvl = lm(max_tlvl_alive ~ log_richness + ct_alive, sim_sem),
-  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive, sim_sem),
-  log_avg_max_int = lm(log1_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive + Z, sim_sem),
-  log_sync = lm(log_sync ~ ct_alive + log_richness + max_tlvl_alive + gini_max_int, sim_sem),
-  log_avg_cv_sp = lm(log_avg_cv_sp ~ ct_alive + log_richness + max_tlvl_alive +  gini_max_int, sim_sem)
-)
-
-group_sem <- multigroup(ti, group = "productivity_f")
-```
-
-```{r}
-sem_list_basic <- list(
-  max_tlvl = lm(max_tlvl_alive ~ log_richness + ct_alive, sim_sem_basic),
-  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive, sim_sem_basic),
-  log_avg_max_int = lm(log1_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive + Z, sim_sem_basic),
-  log_sync = lm(log_sync ~ ct_alive + log_richness + max_tlvl_alive + gini_max_int, sim_sem),
-  log_avg_cv_sp = lm(log_avg_cv_sp ~ ct_alive + log_richness + max_tlvl_alive +  gini_max_int, sim_sem_basic),
-  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, sim_sem_basic)
-)
-
-sem_basic <- as.psem(sem_list_basic)
-
-map_dfr(setNames(sem_list_basic, names(sem_list_basic)), performance::check_collinearity, .id = "response")
-map_dfr(sem_list_basic, rsquared)
-summary(sem)$coefficients[, c(1, 2, 8, 9)]
-```
-
-
-```{r}
-sem_int_list_basic <- list(
-  max_tlvl = lm(max_tlvl_alive ~ log_richness + ct_alive + Z, sim_sem_basic),
-  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive + Z, sim_sem_basic),
-  log_avg_max_int = lm(log1_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive + Z,
-    sim_sem_basic),
-  log_sync = lm(log_sync ~ log_richness + log1_avg_max_int_alive + max_tlvl_alive + gini_max_int + Z,
-    sim_sem_basic),
-  log_avg_cv_sp = lm(log_avg_cv_sp ~ log_richness + log1_avg_max_int_alive + max_tlvl_alive + gini_max_int + Z,
-    sim_sem_basic),
-  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp,
-    sim_sem_basic)
-)
-
-sem_int_basic <- as.psem(sem_int_list_basic)
-plot(sem_int_basic)
-```
-
-```{r}
-map_dfr(setNames(sem_int_list_basic, names(sem_int_list_basic)),
-  performance::check_collinearity, .id = "response")
-map_dfr(sem_int_list_basic, rsquared)
-summary(sem_int_basic)$coefficients[, c(1, 2, 8, 9)]
-```
-
-
-
-
-```{r}
-sem_int_list_enrich <- list(
-  max_tlvl = lm(max_tlvl_alive ~ log_richness + ct_alive + Z, sim_sem_enrich),
-  gini_max_int = lm(gini_max_int ~ log_richness + ct_alive + max_tlvl_alive + Z, sim_sem_enrich),
-  log_avg_max_int = lm(log1_avg_max_int_alive ~ log_richness + ct_alive + max_tlvl_alive + Z, sim_sem_enrich),
-  log_sync = lm(log_sync ~ log_richness + log1_avg_max_int_alive + max_tlvl_alive + gini_max_int + Z, sim_sem_enrich),
-  log_avg_cv_sp = lm(log_avg_cv_sp ~ log_richness + log1_avg_max_int_alive + max_tlvl_alive + gini_max_int + Z, sim_sem_enrich),
-  log_stab_com = lm(log_stab_com ~ log_sync + log_avg_cv_sp, sim_sem_enrich)
-)
-
-sem_int_enrich <- as.psem(sem_int_list_enrich)
-plot(sem_int_enrich)
-```
-
-```{r}
-map_dfr(setNames(sem_int_list_enrich, names(sem_int_list_enrich)),
-  performance::check_collinearity, .id = "response")
-map_dfr(sem_int_list_enrich, rsquared)
-summary(sem_int_enrich)$coefficients[, c(1, 2, 8, 9)]
-```
-
-```{r}
-summary(sem_int_basic)$coefficients[, c(1, 2, 8, 9)]
-summary(sem_int_enrich)$coefficients[, c(1, 2, 8, 9)]
-```
-
-```{r}
-boot_int_basic <- semEff(sem_int_basic, R = 50, ci.type =  "perc")
-boot_int_enrich <- semEff(sem_int_enrich, R = 50, ci.type =  "perc")
-summary(boot_int_basic)
-summary(boot_int_enrich)
-```
-```{r}
-tot_sem_int <- rbind(
-  from_semEff_to_table(boot_int_basic) %>%
-    mutate(productivity = "basic"),
-  from_semEff_to_table(boot_int_enrich) %>%
-    mutate(productivity = "enrichment")
+```{r, eval=FALSE}
+bagged_m1 <- bagging(
+  formula = log_stab_com ~ .,
+  data    = sim_rho %>%
+    select(log_stab_com, log_richness, ct_alive, rho, env_stoch,
+      gini_max_int, max_tlvl_alive, log1_avg_max_int_alive, productivity),
+  coob    = TRUE
 )
 ```
 
 ```{r}
-tot_sem_int %>%
-  filter(
-    effect_type == "total",
-    response %in% c("log_stab_com", "log_sync", "log_avg_cv_sp"),
-    !predictor %in% c("log_sync", "log_avg_cv_sp"),
+library(ipred)
+ctrl <- trainControl(method = "cv",  number = 10)
 
-    ) %>%
-  ggplot(aes(
-      y = predictor, x = effect,
-      xmin = lower_ci, xmax = upper_ci,
-      color = productivity)
-    ) +
-  geom_pointrange() +
-  facet_grid(cols = vars(response))
+# CV bagged model
+bagged_cv <- train(
+  Sale_Price ~ .,
+  data = ames_train,
+  method = "treebag",
+  trControl = ctrl,
+  importance = TRUE
+  )
 ```
+
+
 
 
 # Effect of species richness
-
-```{r}
-unique(simZ$Z)
-```
-
-
 
 
 ```{r}
@@ -570,150 +591,4 @@ ggsave(
   units = "mm"
 )
 ```
-
-```{r}
-sim_rich_prod %>%
-  mutate(stab_pop = 1/ avg_cv_sp) %>%
-  pivot_longer(
-    c(stab_com, stab_pop, sync),
-    names_to = "metric",
-    values_to = "stab") %>%
-  mutate(
-    metric = var_replacement()[metric],
-    rho = rho_replacement()[as.character(rho)]
-  ) %>%
-  ggplot(aes(x = avg_max_int_alive, y = stab, color = factor(productivity))) +
-  geom_point(alpha = .1, shape = 20) +
-  geom_smooth() +
-  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y")
-```
-
-```{r}
-library(easystats)
-
-sim_sem <- simZ %>%
-  filter(env_stoch == .5) %>%
-  mutate(across(c(sync, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
-  mutate(
-    log1_avg_max_int_alive = log(avg_max_int_alive + 1),
-    productivity_f = factor(productivity)
-
-    ) %>%
-  as.data.frame() %>%
-  select(c(
-      ct_alive, log_richness, max_tlvl_alive, Z, rho, w_avg_tlvl_alive,
-      gini_max_int, avg_max_int_alive, log1_avg_max_int_alive, env_stoch,
-      log_stab_com, log_sync, log_avg_cv_sp, productivity, productivity_f)
-  )
-
-#model <- lm(log_stab_com ~ log_richness * log1_avg_max_int_alive * rho * productivity_f, data = sim_sem)
-#
-#vizdata <- sim_sem %>%
-#  visualisation_matrix(at = c("log_richness", "log1_avg_max_int_alive"), length = 2) %>%
-#  visualisation_matrix("ct_alive", length = 3, numerics = "all")
-#vizdata$Predicted <- insight::get_predicted(model, vizdata)
-#vizdata
-```
-
-```{r}
-sim_sem %>%
-  filter(log1_avg_max_int_alive > 0, rho == 0) %>%
-  mutate(
-   cat_log1_avg_max_int_alive = cut(
-     log1_avg_max_int_alive,
-     breaks= 3, ordered_result = TRUE)
-
-  ) %>%
-  ggplot(aes(x = log_richness, y = log_stab_com, color =
-      cat_log1_avg_max_int_alive)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  facet_grid(cols = vars(productivity_f)) +
-  #  geom_line(data = vizdata, aes(y = Predicted, group = log1_avg_max_int_alive), size = 1) +
-  theme_modern()
-```
-
-```{r}
-sim_sem %>%
-  filter(rho == 0) %>%
-  mutate(
-   cat_max_tlvl_alive = cut(
-     max_tlvl_alive,
-     breaks= 3, ordered_result = TRUE)
-  ) %>%
-  ggplot(aes(x = log_richness, y = log_stab_com, color =
-      cat_max_tlvl_alive)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  facet_grid(cols = vars(productivity_f)) +
-  #  geom_line(data = vizdata, aes(y = Predicted, group = log1_avg_max_int_alive), size = 1) +
-  theme_modern()
-```
-
-```{r}
-sim_sem %>%
-  filter(rho == 0) %>%
-  mutate(
-   cat_w_avg_tlvl_alive = cut(
-     w_avg_tlvl_alive,
-     breaks= 3, ordered_result = TRUE)
-  ) %>%
-  ggplot(aes(
-      x = log_richness,
-      y = log_stab_com,
-      color = cat_w_avg_tlvl_alive)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  facet_grid(cols = vars(productivity_f)) +
-  #  geom_line(data = vizdata, aes(y = Predicted, group = log1_avg_max_int_alive), size = 1) +
-  theme_modern()
-```
-
-
-```{r}
-sim_sem %>%
-  filter(rho == 0) %>%
-  mutate(
-   cat_ct_alive = cut(
-     ct_alive,
-     breaks = 3,
-     ordered_result = TRUE)
-  ) %>%
-  ggplot(aes(x = log_richness, y = log_stab_com, color =
-      cat_ct_alive)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  facet_grid(cols = vars(productivity_f)) +
-  theme_modern()
-```
-
-
-```{r}
-sim_sem %>%
-  ggplot(aes(x = log_richness, y = log_stab_com, color =
-      as.factor(rho))) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  facet_grid(cols = vars(productivity_f)) +
-  #  geom_line(data = vizdata, aes(y = Predicted, group = log1_avg_max_int_alive), size = 1) +
-  theme_modern()
-```
-
-```{r}
-sim_rich_prod %>%
-  mutate(stab_pop = 1/ avg_cv_sp) %>%
-  pivot_longer(
-    c(stab_com, stab_pop, sync),
-    names_to = "metric",
-    values_to = "stab") %>%
-  mutate(
-    metric = var_replacement()[metric],
-    rho = rho_replacement()[as.character(rho)]
-  ) %>%
-  ggplot(aes(x = max_tlvl_alive, y = stab, color = factor(productivity))) +
-  geom_point(alpha = .1, shape = 20) +
-  geom_smooth() +
-  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y")
-```
-
 
