@@ -16,42 +16,18 @@ include("src/interaction_strength.jl")
 include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
+using LinearAlgebra
+using EcologicalNetworksDynamics
 
-const fractional_digits = 4
 
-foodweb = FoodWeb([0 0 0; 1 0 0; 0 1 0]);
-params = ModelParameters(foodweb,
-                         biorates = BioRates(foodweb, d = .1),
-                         env_stoch = EnvStoch(.5)
-                        );
-B0 = [0.5, 0.5, 0.5];
-sol = simulate(params, B0;
-               rho = 1,
-               dt = .1,
-               tmax = 5000,
-               extinction_threshold = 1e-5,
-               verbose = false
-              );
-mat_rounded = round.(sol[:,:], digits = 5)
-mat = sol[:,:]
-coefficient_of_variation(sol)
-cv_sp(sol)
-ti = empirical_interaction_strength(sol, params, last = 100)
-trophic_structure(sol, last = 100)
-
-richness(sol)
-species_persistence(sol)
-ti = rand(2, 2, 3)
-ti.round()
-round.(ti; digits = 5)
-ti[:,:, 1]
-richness(params.network)
-
-ti = simCS(.1, 20, ρ = 1.0, max = 200, last = 100)
-ti.time_species
-ti.time_stoch
+stab = []
+for i in 1:20
+    ti = simCS(.1, 10, ρ = 0.5, d = .1, σₑ = 0.25, c = 0, h = 2, K = 40.0, r = 1.0, max = 1000, last = 100)
+    push!(stab, ti.stab_com)
+end
+mean(skipmissing(stab))
 varinfo(r"ti")
-
+ti.time_stoch
 
 
 #########

@@ -3,11 +3,11 @@ using CSV, StatsBase, DataFrames, Arrow
 rep = 1:20
 S = [5, 10, 20, 40, 60]
 C = 0.02:.05:.32
-sigma = [0.5, 1.0]
-Z = [10, 50, 100, 500, 1000]
-ρ = [0, .5, 1]
+sigma = .1:.1:.6
+Z = [5, 10, 50, 100, 250, 500, 1000]
+ρ = 0:.1:1
 enrich = [(K = 1.0, r = 1.0, name = "basic"),
-          (K = 20.0, r = 1.8, name = "enrichment")]
+          (K = 20.0, r = 1.0, name = "enrichment")]
 
 names = (:rep, :richness, :connectance, :Z, :sigma, :rho, :enrich)
 param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...),
