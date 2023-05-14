@@ -24,6 +24,7 @@ knitr::opts_chunk$set(
 ```{r, results = FALSE}
 library(tidyverse)
 library(magrittr)
+library(ggcorrplot)
 library(cowplot)
 library(here)
 library(arrow)
@@ -31,6 +32,12 @@ library(piecewiseSEM)
 library(semEff)
 library(easystats)
 library(glmmTMB)
+library(targets)
+
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(ipred)
 
 mytheme <- theme_cowplot(font_size = 8) +
 background_grid() +
@@ -40,68 +47,6 @@ source(here::here("R", "network_metrics.R"))
 source(here::here("R", "string_replacements.R"))
 ```
 
-```{r}
-sim_files <- list.files(here("res", "simCSZenrich"))
-sim_list <- map(sim_files, function (x) {
-  open_dataset(here::here("res", "simCSZenrich", x),
-    format = "arrow") %>%
-  collect()
-})
-```
-
-```{r}
-# TODO set extinction threshold in simulations
-simZ_prep <- map_dfr(sim_list,
-  function (x) {
-    x %>%
-      # Remove simulation that have failed to run
-      filter(!is.na(richness)) %>%
-      # Transform back interaction strength into matrices
-      mutate(across(where(is.list), as.list)) %>%
-      mutate(across(c(int_strength, max_int),
-          ~map2(.x, S,
-            function(y, rich) {
-              matrix(y, nrow = rich)
-            }
-          )
-      )
-        ) %>%
-      # Get matrix of alive species
-      mutate(max_int_alive  = map2(max_int, bm_sp,
-          function(mat, bm) {
-            mask <- bm > 10^-6
-            mat[mask, mask, drop = FALSE]
-          }
-        )
-        )
-  }
-)
-# Compute metrics of interest
-simZ <- simZ_prep %>%
-  mutate(
-    persistence = richness / S,
-    async = 1 / sync,
-    stab_pop = 1 / avg_cv_sp,
-    ct_alive = map_dbl(max_int_alive,
-      ~ifelse(sum(.x) == 0, 0,
-      sum(.x > 0) / ((ncol(.x))^2))),
-    bm_sp_alive = map(bm_sp, ~.x[.x > 10^-6]),
-    tlvl_alive = map2(tlvl, bm_sp, ~.x[.y > 10^-6]),
-    max_tlvl_alive = map_dbl(tlvl_alive, max),
-    w_avg_tlvl_alive = map2_dbl(tlvl_alive, bm_sp_alive, ~sum(.x * (.y / sum(.y)))),
-    max_max_int_alive = map_dbl(max_int_alive,
-      ~ifelse(length(.x[.x > 0]) == 0, 0, max(.x[.x > 0]))
-      ),
-    avg_max_int_alive = map_dbl(max_int_alive,
-      ~ifelse(length(.x[.x > 0]) == 0, 0, mean(.x[.x > 0]))
-      ),
-    gini_max_int_alive = map_dbl(max_int_alive, ~gini(.x))
-      )
-simZ$tlvl_alive[[3]]
-simZ$max_int_alive[[3]]
-```
-
-
 ```{r, eval = FALSE}
 colnames(sim)
 unique(simZ$env_stoch)
@@ -109,6 +54,63 @@ summary(simZ$total_biomass)
 summary(simZ$persistence)
 summary(simZ$ct_alive)
 summary(simZ$gini_max_int_alive)
+```
+
+# Introduction
+
+- Response diversity is key in driving stability in ecological communities
+- Response diversity control asynchrony with richness
+- Mainly done in plants
+- Food-webs structure can also modulate synchrony by predator-prey relationships
+- Interaction strength, connectance, richness and enrichment can also drive more
+
+# Research questions
+
+##  What are the mecanisms driving stability in food-webs ?
+
+- How structure of food-webs (connectance, species richness, prey-predator
+     size ratio) gives emergence to food-web structure (max trophic level,
+     weighted avg trophic level, omnivory) ?
+- How food-web structure influence biomass fluxes (avg interaction
+     strength, sd of interaction strength, asymetry)?
+- How food-web structure and biomass fluxes affect stability components?
+     total biomass, species variability, statistical averaging, evenness,
+     compensatory dynamics (interaction and environment)?
+
+# What is the effects of species richness on stability facing multiple stressors in competitive and food-webs communities?
+
+- How do species richness drive average population stability and asynchrony
+  in competitive and food-webs communities ?
+- How is it affected by enrichment and response diversity?
+
+# Material & Methods
+
+
+
+## Bioenergetic model
+
+TO Complete
+
+- Important bits:
+  - Niche model (Connectance highly constrained by richness)
+  - Type III functional response
+  - No predator interference
+  - Standardize carrying capacity? (Remove the effect of species richness on
+    total biomass, i.e. remove the effect of niche complementarity on biomass
+    produced by primary producers)
+
+## Variables
+
+- S: 5 to 60
+- C: .02 to .3
+- K: 1 and 20
+- $\rho$: 0 to 1
+- Z: 10 to 1000
+
+```{r}
+tar_load(simZ)
+tar_load(sim_rho)
+tar_load(sim_rho_scaled)
 ```
 
 
@@ -150,28 +152,38 @@ simZ %>%
 
 
 ```{r}
-p_basic <- ~corrplot::corrplot(
-  cor(simZ %>%
+cor_enrich <- cor(simZ %>%
     filter(productivity == "enrichment") %>%
     select(c(S, richness, ct, Z, ct_alive, total_biomass, avg_max_int_alive,
         w_avg_tlvl_alive, max_tlvl_alive, rho, env_stoch, stab_com, avg_cv_sp,
         sync)),
-    method = "spearman"),
-  diag = FALSE, type = "upper"
-)
-p_enrich <- ~corrplot::corrplot(
-  cor(simZ %>%
+    method = "spearman")
+cor_basic <- cor(simZ %>%
     filter(productivity == "basic") %>%
     select(c(S, richness, ct, Z, ct_alive, total_biomass, avg_max_int_alive,
         w_avg_tlvl_alive, max_tlvl_alive, rho, env_stoch, stab_com, avg_cv_sp,
         sync)),
-    method = "spearman"),
-  diag = FALSE, type = "upper"
+    method = "spearman")
+p_cor_basic <- ggcorrplot(cor_basic, type = "lower",
+   lab = TRUE)
+p_cor_enrich <- ggcorrplot(cor_enrich, type = "lower",
+   lab = TRUE)
+p_cor <- plot_grid(
+  p_cor_basic,
+  p_cor_enrich,
+  ncol = 2
 )
-plot_grid(
-  ggdraw(p_basic),
-  ggdraw(p_enrich),
-  nrow = 2
+ggsave(here("report", "figures", "p_cor.pdf"),
+  plot = p_cor,
+  device = NULL,
+  path = NULL,
+  scale = 3.0,
+  units = "mm",
+  width = 140,
+  height = 140 * .5,
+  dpi = 300,
+  limitsize = TRUE,
+  bg = NULL
 )
 ```
 
@@ -188,6 +200,129 @@ plot_grid(
   - Same effects of food-web structure on both Synchrony and Population variability
     - Surpringly, as in Danet et al. (2021), connectance has little effect on
       temporal stability and its components!
+
+# Effect of species richness
+
+```{r}
+sim_rich_prod <- simZ %>%
+  filter(
+    Z == 100,
+    env_stoch == .5,
+    rho %in% c(0, 1)
+  )
+```
+
+```{r}
+p_sim_rich_prod <- sim_rich_prod %>%
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  mutate(
+    metric = var_replacement()[metric],
+    rho = rho_replacement()[as.character(rho)]
+  ) %>%
+  ggplot(aes(x = richness, y = stab, color = factor(productivity))) +
+  geom_point(alpha = .1, shape = 20) +
+  geom_smooth() +
+  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
+  labs(
+    color = "Productivity",
+    x = "Species richness",
+    y = "Stability component"
+  ) +
+  scale_x_continuous(
+    sec.axis = sec_axis(~ . ,
+      name = "Response diversity",
+      breaks = NULL,
+      labels = NULL)
+  )
+ggsave(
+  filename = here::here("fig", "stability_rich.pdf"),
+  p_sim_rich_prod,
+  scale = 1.8,
+  width = 88,
+  height = 88 * .6,
+  units = "mm"
+)
+```
+
+
+```{r}
+p_sim_rich_prod <- sim_rich_prod %>%
+  filter(ct_alive != 0) %>%
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  mutate(
+    metric = var_replacement()[metric],
+    rho = rho_replacement()[as.character(rho)]
+  ) %>%
+  ggplot(aes(x = richness, y = stab, color = factor(productivity))) +
+  geom_point(alpha = .1, shape = 20) +
+  geom_smooth() +
+  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
+  labs(
+    color = "Productivity",
+    x = "Species richness",
+    y = "Stability component"
+  ) +
+  scale_x_continuous(
+    sec.axis = sec_axis(~ . ,
+      name = "Response diversity",
+      breaks = NULL,
+      labels = NULL)
+  )
+ggsave(
+  filename = here::here("fig", "stability_rich_fw_only.pdf"),
+  p_sim_rich_prod,
+  scale = 1.8,
+  width = 88,
+  height = 88 * .6,
+  units = "mm"
+)
+```
+
+
+```{r}
+p_sim_rich_prod_p_only <- sim_rich_prod %>%
+  filter(ct_alive == 0) %>%
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  mutate(
+    metric = var_replacement()[metric],
+    rho = rho_replacement()[as.character(rho)]
+  ) %>%
+  ggplot(aes(x = richness, y = stab, color = factor(productivity))) +
+  geom_point(alpha = .1, shape = 20) +
+  geom_smooth() +
+  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
+  labs(
+    color = "Productivity",
+    x = "Species richness",
+    y = "Stability component"
+  ) +
+  scale_x_continuous(
+    sec.axis = sec_axis(~ .,
+      name = "Response diversity",
+      breaks = NULL,
+      labels = NULL)
+  )
+ggsave(
+  filename = here::here("fig", "stability_rich_p_only.pdf"),
+  p_sim_rich_prod_p_only,
+  scale = 1.8,
+  width = 88,
+  height = 88 * .6,
+  units = "mm"
+)
+```
 
 
 # Covariation
@@ -263,24 +398,6 @@ plot(parameters(mod_may_cv_sp))
 - Should be include also the monotrophic communities ? I.e. Communities
   containing only plants?
 
-```{r}
-sim_rho <- simZ %>%
-  #filter(ct_alive != 0) %>%
-  mutate(across(c(async, sync, stab_pop, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
-  mutate(
-    log1_avg_max_int_alive = log(avg_max_int_alive + 1),
-    productivity_f = factor(productivity)
-
-    ) %>%
-  select(c(
-      ct_alive, log_richness, max_tlvl_alive, Z, rho,
-      gini_max_int, avg_max_int_alive, log1_avg_max_int_alive, env_stoch,
-      log_stab_com, log_sync, log_async, log_stab_pop, log_avg_cv_sp, productivity, productivity_f,
-      persistence)
-  )
-sim_rho_scaled <- sim_rho %>%
-  mutate(across(where(is.double), ~scale(.x)[,1]))
-```
 
 ```{r}
 sim_rho %>%
@@ -547,48 +664,31 @@ bagged_cv <- train(
 # Effect of species richness
 
 
+
 ```{r}
-sim_rich_prod <- simZ %>%
-  filter(
-    Z == 100,
-    env_stoch == .5,
-    rho %in% c(0, 1)
+ctrl <- trainControl(method = "cv",  number = 10)
+
+# CV bagged model
+bagged_cv <- train(
+  stab_com ~ richness + ct_alive + rho + productivity + max_tlvl_alive +
+    avg_max_int_alive,
+  data = simZ,
+  cp = .2,
+  maxdepth = 6,
+  method = "treebag",
+  trControl = ctrl,
+  importance = TRUE
   )
+plot(varImp(bagged_cv), 20)
+plot(bagged_cv)
 ```
 
 ```{r}
-p_sim_rich_prod <- sim_rich_prod %>%
-  mutate(stab_pop = 1/ avg_cv_sp) %>%
-  pivot_longer(
-    c(stab_com, stab_pop, sync),
-    names_to = "metric",
-    values_to = "stab") %>%
-  mutate(
-    metric = var_replacement()[metric],
-    rho = rho_replacement()[as.character(rho)]
-  ) %>%
-  ggplot(aes(x = richness, y = stab, color = factor(productivity))) +
-  geom_point(alpha = .1, shape = 20) +
-  geom_smooth() +
-  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
-  labs(
-    color = "Productivity",
-    x = "Species richness",
-    y = "Stability component"
-  ) +
-  scale_x_continuous(
-    sec.axis = sec_axis(~ . ,
-      name = "Response diversity",
-      breaks = NULL,
-      labels = NULL)
+m1 <- rpart(
+  formula = stab_com ~ richness + ct_alive + rho + productivity + max_tlvl_alive +
+    avg_max_int_alive,
+  data    = simZ,
+  method  = "anova"
   )
-ggsave(
-  filename = here::here("fig", "stability_rich.pdf"),
-  p_sim_rich_prod,
-  scale = 1.8,
-  width = 88,
-  height = 88 * .6,
-  units = "mm"
-)
+rpart.plot(m1)
 ```
-

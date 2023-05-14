@@ -1,0 +1,178 @@
+---
+title: "Target Markdown"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+Target Markdown is a powerful R Markdown interface for reproducible analysis pipelines, and the chapter at https://books.ropensci.org/targets/markdown.html walks through it in detail. This R Markdown report the example from the chapter. Try it out in both interactive and non-interactive modes, either by running the code chunks in different ways or setting the `tar_interactive` chunk option.
+
+# Packages
+
+The example requires several R packages, and `targets` must be version 0.5.0.9000 or above.
+
+```{r, eval = FALSE}
+install.packages(c("biglm", "dplyr", "ggplot2", "readr", "targets", "tidyr"))
+```
+
+# Setup
+
+If you are using old versions of `targets` (<= 0.7.0) and/or `knitr` (<= 1.33), you will need to load the `targets` package in the R Markdown document in order for Target Markdown code chunks to work.
+
+```{r}
+library(targets)
+```
+
+Near the top of the document, you may also wish to remove the `_targets_r` directory previously written by non-interactive runs of the report. Otherwise, your pipeline may contain superfluous targets.
+
+```{r}
+library(targets)
+tar_unscript()
+```
+
+# Globals
+
+We first define some global options/functions common to all targets. The function below plots a histogram of ozone concentrations, and our histogram target will need it.
+
+```{targets example-globals, tar_globals = TRUE}
+options(tidyverse.quiet = TRUE)
+tar_option_set(packages = c("tidyverse", "magrittr", "cowplot", "here", "arrow", "piecewiseSEM", "semEff", "easystats", "glmmTMB"))
+source(here::here("R", "network_metrics.R"))
+source(here::here("R", "string_replacements.R"))
+```
+
+# Targets
+
+Our first target borrows the `airquality` dataset built into base R.
+
+```{targets raw-data}
+list(
+  tar_target(sim_list, {
+    sim_files <- list.files(here("res", "simCSZenrich"))
+    map(sim_files,
+      function (x) {
+        open_dataset(here::here("res", "simCSZenrich", x),
+          format = "arrow") %>%
+        collect()
+      })
+}
+    ),
+  tar_target(simZ_prep,
+    map_dfr(sim_list,
+      function (x) {
+        x %>%
+          # Remove simulation that have failed to run
+          filter(!is.na(richness)) %>%
+          # Transform back interaction strength into matrices
+          mutate(across(where(is.list), as.list)) %>%
+          mutate(across(c(int_strength, max_int),
+              ~map2(.x, S,
+                function(y, rich) {
+                  matrix(y, nrow = rich)
+                }
+              )
+          )
+            ) %>%
+          # Get matrix of alive species
+          mutate(max_int_alive  = map2(max_int, bm_sp,
+              function(mat, bm) {
+                mask <- bm > 10^-6
+                mat[mask, mask, drop = FALSE]
+              }
+            )
+          )
+      }
+    )
+    ),
+  tar_target(simZ,
+    simZ_prep %>%
+      mutate(
+        persistence = richness / S,
+        async = 1 / sync,
+        stab_pop = 1 / avg_cv_sp,
+        ct_alive = map_dbl(max_int_alive,
+          ~ifelse(sum(.x) == 0, 0,
+            sum(.x > 0) / ((ncol(.x))^2))),
+        bm_sp_alive = map(bm_sp, ~.x[.x > 10^-6]),
+        tlvl_alive = map2(tlvl, bm_sp, ~.x[.y > 10^-6]),
+        max_tlvl_alive = map_dbl(tlvl_alive, max),
+        w_avg_tlvl_alive = map2_dbl(tlvl_alive, bm_sp_alive,
+          ~sum(.x * (.y / sum(.y)))
+          ),
+        max_max_int_alive = map_dbl(max_int_alive,
+          ~ifelse(length(.x[.x > 0]) == 0, 0, max(.x[.x > 0]))
+          ),
+        avg_max_int_alive = map_dbl(max_int_alive,
+          ~ifelse(length(.x[.x > 0]) == 0, 0, mean(.x[.x > 0]))
+          ),
+        sd_max_int_alive = map_dbl(max_int_alive,
+          ~ifelse(length(.x[.x > 0]) == 0, 0, sd(.x[.x > 0]))
+          ),
+        cv_max_int_alive = sd_max_int_alive / avg_max_int_alive,
+        gini_max_int_alive = map_dbl(max_int_alive,
+          ~ifelse(length(.x[.x > 0]) == 0, 0, gini(.x[.x > 0])))
+      )
+  )
+)
+```
+
+```{targets sim_rho, tar_simple = TRUE}
+simZ %>%
+  mutate(across(c(async, sync, stab_pop, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
+  mutate(
+    log1_avg_max_int_alive = log(avg_max_int_alive + 1),
+    productivity_f = factor(productivity)
+    ) %>%
+  select(c(
+      ct_alive, log_richness, max_tlvl_alive, Z, rho,
+      gini_max_int, avg_max_int_alive, log1_avg_max_int_alive, env_stoch,
+      log_stab_com, log_sync, log_async, log_stab_pop, log_avg_cv_sp, productivity, productivity_f,
+      persistence)
+  )
+```
+
+```{targets sim_rho_scaled, tar_simple = TRUE}
+sim_rho %>%
+  mutate(across(where(is.double), ~scale(.x)[,1]))
+```
+
+
+
+# Pipeline
+
+If you ran all the `{targets}` chunks in non-interactive mode, then your R scripts are set up to run the pipeline.
+
+```{r}
+tar_make()
+```
+
+# Output
+
+You can retrieve results from the `_targets/` data store using `tar_read()` or `tar_load()`.
+
+```{r, message = FALSE}
+library(tidyverse)
+library(magrittr)
+library(cowplot)
+library(here)
+library(arrow)
+library(piecewiseSEM)
+library(semEff)
+library(easystats)
+library(glmmTMB)
+library(biglm)
+```
+
+```{r}
+tar_read(sim_rho)
+```
+
+The `targets` dependency graph helps your readers understand the steps of your pipeline at a high level.
+
+```{r}
+tar_visnetwork()
+```
+
+At this point, you can go back and run `{targets}` chunks in interactive mode without interfering with the code or data of the non-interactive pipeline.
