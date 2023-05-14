@@ -96,3 +96,55 @@ function empirical_interaction_strength(B::Vector{Float64}, params::ModelParamet
     end
     sparse(int)
 end
+
+"""
+```jldoctest
+fw = FoodWeb(nichemodel, 10, C = .3)
+# My function non weighted is equivalent to the one of EcologicalNetworks pkg
+omnivory(fw.A, weighted = false)
+EcologicalNetworks.omnivory(UnipartiteNetwork(fw.A))
+# Weighted = true correspond to the original definition of Pauly (1987)
+omnivory(fw; weighted = false)
+omnivory(fw; weighted = true)
+
+# ModelParameters
+p = ModelParameters(fw)
+omnivory(p.functional_response.ω)
+omnivory(p; weighted = false)
+```
+"""
+function omnivory(A; weighted = true)
+    # Convert to Bool if preference matrix
+    tlvl = trophic_levels(A .!= 0)
+    omnivory = []
+    for i in 1:size(A, 1)
+        link_indexes = findall(!=(0), A[i,:])
+        prey_tlvl = tlvl[link_indexes]
+        # Relative preference:
+        if sum(A[i,:]) == 0 # if no prey
+            rel_pref = []
+            push!(omnivory, 0)
+            out = 0
+        else
+            # To vector if sparse vector
+            prey_tlvl_var = (prey_tlvl .- mean(prey_tlvl)).^2
+            if weighted
+                rel_pref = Vector(A[i,link_indexes] ./ sum(A[i,:]))
+                out = sum(prey_tlvl_var .* rel_pref)
+            else
+                out = sum(prey_tlvl_var)
+            end
+            push!(omnivory, out)
+        end
+    end
+    omnivory
+end
+
+
+function omnivory(fw::FoodWeb; kwargs...)
+    (species = fw.species, omnivory = omnivory(fw.A; kwargs...))
+end
+
+function omnivory(p::ModelParameters; kwargs...)
+    omnivory(p.functional_response.ω; kwargs...)
+end

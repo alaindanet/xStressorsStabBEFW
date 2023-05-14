@@ -76,13 +76,12 @@ function simCS(C, S;
 
     out = get_stab_fw(m; last = last)
     # Collect timeseries
-    time_species = transpose(round.(m[1:S, end-(last-1):end], digits = 5))
-    time_stoch = transpose(round.(m[S+1:2*S, end-(last-1):end], digits = 5))
+    time_series = get_time_series(m; last = last)
 
     out = merge(
                 (S = S, ct = C, A = fw.A, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
                 out,
-                (time_species = time_species, time_stoch = time_stoch)
+                time_series
                )
     out
 end
@@ -140,20 +139,34 @@ function sim_int_mat(A;
 
     out = get_stab_fw(m; last = last)
     # Collect timeseries
-    time_species = transpose(round.(m[1:S, end-(last-1):end], digits = 5))
-    time_stoch = transpose(round.(m[S+1:2*S, end-(last-1):end], digits = 5))
+    time_series = get_time_series(m; last = last)
 
     out = merge(
                 (S = S, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
                 out,
-                (time_species = time_species, time_stoch = time_stoch)
+                time_series
                )
     out
 end
 
+function get_time_series(m; last = 10)
+    names_output = (
+                    :species,
+                    :stoch
+                   )
+    if length(m.t) >= last
+        S = richness(get_parameters(m).network)
+        values = (
+                  transpose(round.(m[1:S, end-(last-1):end], digits = 5)),
+                  transpose(round.(m[S+1:2*S, end-(last-1):end], digits = 5))
+                 )
+    else
+        values = repeat([missing], length(names_output))
+    end
+    (; zip(names_output, values)...)
+end
+
 function get_stab_fw(m; last = 10)
-
-
     names_output = (
                     :richness          ,
                     :stab_com          ,
@@ -174,7 +187,8 @@ function get_stab_fw(m; last = 10)
                     :avg_max_int       ,
                     :max_max_int       ,
                     :min_max_int       ,
-                    :gini_max_int
+                    :gini_max_int,
+                    :omnivory
                    )
 
     if length(m.t) >= last
@@ -208,7 +222,8 @@ function get_stab_fw(m; last = 10)
                   mean(non_zero_max_int),
                   maximum(non_zero_max_int, init = 0),
                   minimum(non_zero_max_int, init = 0),
-                  gini(non_zero_max_int)
+                  gini(non_zero_max_int),
+                  omnivory(p; weighted = true)
                  )
     else
         values = repeat([missing], length(names_output))
