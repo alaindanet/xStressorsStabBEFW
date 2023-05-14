@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-#$ -N test
-#$ -t 1-1000:500
+#$ -N cs_big
+#$ -t 1-277200:2000
 #$ -o /home/$USER/log_test/
 #$ -e /home/$USER/log_test/
 

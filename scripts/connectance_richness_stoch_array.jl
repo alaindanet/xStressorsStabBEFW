@@ -43,7 +43,6 @@ warmup = simCS(pm.connectance, pm.richness;
       h = 2.0, c = 0.0,
       r = pm.enrich.r, K = pm.enrich.K, alpha_ij = 0.5,
       max = 50, last = 10, dt = 0.1,
-      fun = stoch_d_dBdt!,
       K_alpha_corrected = true,
       return_sol = false
      )
@@ -65,7 +64,6 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                      r = p.enrich.r, K = p.enrich.K,
                                      alpha_ij = 0.5,
                                      max = 5000, last = 100, dt = 0.1,
-                                     fun = stoch_d_dBdt!,
                                      K_alpha_corrected = true,
                                      return_sol = false,
                                      gc_thre = .2

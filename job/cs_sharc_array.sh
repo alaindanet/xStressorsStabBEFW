@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #$ -N CSZenrich
-#$ -t 1-18000:2000
+#$ -t 1-277200:4000
 #$ -o /home/$USER/logs/
 #$ -e /home/$USER/logs/
 #

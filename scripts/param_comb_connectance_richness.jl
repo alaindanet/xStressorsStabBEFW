@@ -1,3 +1,5 @@
+import Pkg
+Pkg.instantiate()
 using CSV, StatsBase, DataFrames, Arrow
 
 rep = 1:20
