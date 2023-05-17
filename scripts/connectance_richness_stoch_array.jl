@@ -1,7 +1,6 @@
 println("Rundir is $(pwd())")
 
 import Pkg
-Pkg.instantiate()
 using Distributed, Serialization
 
 first_sim = parse(Int, ARGS[1])
