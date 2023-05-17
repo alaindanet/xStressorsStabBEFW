@@ -18,20 +18,6 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
-ti = simCS(.3, 10, ρ = 0, d = .1, σₑ = 0.6, c = 0, h = 2, K = 10.0, r = 1.0,
-           max = 1000, last = 100, return_sol = false);
-
-stab, sync, pop_stab = [], [], []
-for i in 1:20
-    push!(stab, ti.stab_com)
-    push!(sync, ti.sync)
-    push!(pop_stab, 1/ti.avg_cv_sp)
-end
-mean.([Iterators.filter(!isnan, stab), Iterators.filter(!isnan, sync), Iterators.filter(!isnan, pop_stab)])
-varinfo(r"ti")
-ti.time_stoch
-
-
 #########
 #  Sim  #
 #########
@@ -39,13 +25,11 @@ ti.time_stoch
 #simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
 using Distributions
 
-
-
-ti = simCS(0.1, 20;
+ti = simCS(0.4, 20;
            d = .1,
            Z = 100, h = 2.0, c = 0.0,
            σₑ = 1.0, K = 5, max = 5000,
-           last = 100, dt = 0.1, return_sol = true
+           last = 100, dt = 0.1, return_sol = false
           )
 
 plot(ti, idxs = collect(1:1:length(get_parameters(ti).network.species)))

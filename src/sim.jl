@@ -28,6 +28,9 @@ function simCS(C, S;
 
     if ismissing(fw)
         println("FoodWeb generation has failed with C = $(C), S = $(S)")
+        A = missing
+    else
+        A = fw.A
     end
 
     # If the generation of the food-web worked
@@ -79,7 +82,7 @@ function simCS(C, S;
     time_series = get_time_series(m; last = last)
 
     out = merge(
-                (S = S, ct = C, A = fw.A, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
+                (S = S, ct = C, A = A, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
                 out,
                 time_series
                )
