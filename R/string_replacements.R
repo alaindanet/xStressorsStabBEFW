@@ -10,8 +10,12 @@ var_replacement <- function() {
     log_async = "Asynchrony",
     async = "Asynchrony",
     log1_avg_max_int_alive = "Interaction strength",
+    avg_max_int_alive = "Avg interaction strength",
+    sd_max_int_alive = "SD interaction strength",
+    w_avg_tlvl_alive = "Avg trophic level",
     ct_alive = "Connectance",
     log_richness = "Richness",
+    richness = "Richness",
     rho = "Env Corr",
     productivityenrichment = "Enrichment",
     env_stoch = "Env variance"
@@ -24,5 +28,4 @@ rho_replacement <- function() {
     `0.5` = "Medium",
     `1` = "No"
   )
-
 }

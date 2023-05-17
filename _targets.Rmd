@@ -7,7 +7,11 @@ output: html_document
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
-Target Markdown is a powerful R Markdown interface for reproducible analysis pipelines, and the chapter at https://books.ropensci.org/targets/markdown.html walks through it in detail. This R Markdown report the example from the chapter. Try it out in both interactive and non-interactive modes, either by running the code chunks in different ways or setting the `tar_interactive` chunk option.
+Target Markdown is a powerful R Markdown interface for reproducible analysis
+pipelines, and the chapter at https://books.ropensci.org/targets/markdown.html
+walks through it in detail. This R Markdown report the example from the chapter.
+Try it out in both interactive and non-interactive modes, either by running the
+code chunks in different ways or setting the `tar_interactive` chunk option.
 
 # Packages
 
@@ -41,6 +45,7 @@ options(tidyverse.quiet = TRUE)
 tar_option_set(packages = c("tidyverse", "magrittr", "cowplot", "here", "arrow", "piecewiseSEM", "semEff", "easystats", "glmmTMB"))
 source(here::here("R", "network_metrics.R"))
 source(here::here("R", "string_replacements.R"))
+source(here::here("R", "model_helpers.R"))
 ```
 
 # Targets
@@ -108,9 +113,10 @@ list(
           ~ifelse(length(.x[.x > 0]) == 0, 0, mean(.x[.x > 0]))
           ),
         sd_max_int_alive = map_dbl(max_int_alive,
-          ~ifelse(length(.x[.x > 0]) == 0, 0, sd(.x[.x > 0]))
+          ~ifelse(length(.x[.x > 0]) <= 1, 0, sd(.x[.x > 0]))
           ),
         cv_max_int_alive = sd_max_int_alive / avg_max_int_alive,
+        inv_sd_max_int_alive = 1 / sd_max_int_alive,
         gini_max_int_alive = map_dbl(max_int_alive,
           ~ifelse(length(.x[.x > 0]) == 0, 0, gini(.x[.x > 0])))
       )
@@ -120,6 +126,7 @@ list(
 
 ```{targets sim_rho, tar_simple = TRUE}
 simZ %>%
+  filter(ct_alive != 0, avg_max_int_alive != 0) %>%
   mutate(across(c(async, sync, stab_pop, avg_cv_sp, stab_com, richness, avg_max_int_alive, gini_max_int), log, , .names = "log_{.col}")) %>%
   mutate(
     log1_avg_max_int_alive = log(avg_max_int_alive + 1),
@@ -137,6 +144,100 @@ simZ %>%
 sim_rho %>%
   mutate(across(where(is.double), ~scale(.x)[,1]))
 ```
+
+```{targets rho_model}
+list(
+  tar_target(formula_fixed_rho, "log_richness +
+    ct_alive +
+    log1_avg_max_int_alive +
+    productivity +
+    rho +
+    I(rho^2) +
+    env_stoch +
+
+    log_richness:ct_alive +
+    log_richness:log1_avg_max_int_alive +
+    log_richness:productivity +
+    log_richness:rho +
+
+    log1_avg_max_int_alive:ct_alive +
+    log1_avg_max_int_alive:productivity +
+    log1_avg_max_int_alive:rho +
+
+    ct_alive:rho +
+    ct_alive:productivity +
+    rho:productivity +
+    I(rho^2):productivity +
+
+
+    log_richness:log1_avg_max_int_alive:ct_alive +
+    log_richness:log1_avg_max_int_alive:productivity +
+    log_richness:log1_avg_max_int_alive:rho +
+    log_richness:ct_alive:productivity +
+    log_richness:ct_alive:rho +
+    log_richness:rho:productivity +
+
+    log1_avg_max_int_alive:ct_alive:rho +
+    log1_avg_max_int_alive:ct_alive:productivity +
+    log1_avg_max_int_alive:rho:productivity +
+
+    ct_alive:rho:productivity"
+    ),
+  tar_target(formula_rand_rho, "(1 | Z)"),
+  tar_target(mod_rho, map(setNames(
+    c("log_stab_com", "log_stab_pop", "log_async"),
+    c("log_stab_com", "log_stab_pop", "log_async")
+    ),
+  function (x) {
+    glmmTMB(formula(paste0(x, " ~ ", formula_fixed_rho, " + ", formula_rand_rho)),
+      sim_rho)
+  }
+  )),
+  tar_target(coef_mod_rho, map_dfr(mod_rho, ~model2tibble(.x))),
+  tar_target(r2_mod_rho, map_dfr(mod_rho, ~as.data.frame(r2_nakagawa(.x)), .id = "response") %>%
+  mutate(response = var_replacement()[response])),
+  tar_target(p_mod_rho, plot_effect_type(coef_mod_rho)),
+  tar_target(mod_rho_scaled, map(setNames(
+    c("log_stab_com", "log_stab_pop", "log_async"),
+    c("log_stab_com", "log_stab_pop", "log_async")
+    ),
+  function (x) {
+    glmmTMB(formula(paste0(x, " ~ ", formula_fixed_rho, " + ", formula_rand_rho)),
+      sim_rho_scaled)
+  }
+)
+    ),
+  tar_target(coef_mod_rho_scaled, map_dfr(mod_rho_scaled, ~model2tibble(.x))),
+  tar_target(r2_mod_rho_scaled,
+    map_dfr(mod_rho_scaled, ~as.data.frame(r2_nakagawa(.x)), .id = "response") %>%
+      mutate(response = var_replacement()[response])),
+  tar_target(colin_rho, performance::check_collinearity(lm(formula(str_replace_all(paste0("log_stab_com ~ ", formula_fixed_rho), "(\\*|:)", "+")),
+  sim_rho_scaled))),
+    tar_target(p_mod_rho_scaled, plot_effect_type(coef_mod_rho_scaled))
+)
+```
+
+```{targets pred_rho}
+tar_target(pred_rho,
+  {
+  pred_rho <- list(
+    log_richness = c(log(1), log(5), log(10), log(20), log(30), log(50)),
+    ct_alive = c(.05, .10, .40),
+    rho = c(0, .5, 1),
+    log1_avg_max_int_alive = c(log(0.2 + 1), round(log(.81 + 1), 1), round(log(5.65 + 1), 1)),
+    env_stoch = .5,
+    productivity = c("basic", "enrichment"),
+    Z = 100
+    ) %>% expand.grid() %>%
+  filter(
+    !(log1_avg_max_int_alive == 0 & ct_alive != 0 | ct_alive == 0 & log1_avg_max_int_alive != 0)
+  )
+  pred_rho$log_stab_com <- predict(mod_rho[["log_stab_com"]], newdata = pred_rho)
+  pred_rho
+  }
+)
+```
+
 
 
 
