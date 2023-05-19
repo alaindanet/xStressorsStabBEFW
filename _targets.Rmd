@@ -45,6 +45,7 @@ options(tidyverse.quiet = TRUE)
 tar_option_set(packages = c("tidyverse", "magrittr", "cowplot", "here", "arrow", "piecewiseSEM", "semEff", "easystats", "glmmTMB"))
 source(here::here("R", "network_metrics.R"))
 source(here::here("R", "string_replacements.R"))
+source(here::here("R", "stability_decomposition.R"))
 source(here::here("R", "model_helpers.R"))
 ```
 
@@ -123,6 +124,105 @@ list(
   )
 )
 ```
+
+```{targets raw_sim}
+list(
+  tar_target(var_param_sim, c("rep", "productivity", "S", "ct", "rho", "env_stoch", "Z")),
+  tar_target(sim_files, list.files(here::here("res", "simCSZenrich2/simCSZenrich2"))),
+  tar_target(sim_ts,
+    map_dfr(sim_files,
+      function (x) {
+        open_dataset(here::here("res", "simCSZenrich2/simCSZenrich2", x),
+          format = "arrow") %>%
+        collect() %>%
+      filter(!is.na(richness)) %>%
+      select(c(var_param_sim, "species", "stoch")) %>%
+      # Transform back interaction strength into matrices
+      mutate(across(where(is.list), as.list)) %>%
+      mutate(
+        stoch_d = map2(species, stoch, function(bm, d_stoch) {
+          .1 * bm * exp(d_stoch)
+          }),
+        species = map(species, ~matrix(.x, nrow = 100)),
+        stoch = map(stoch, ~matrix(.x, nrow = 100)),
+        stoch_d = map(stoch_d, ~matrix(.x, nrow = 100)),
+        cpe = map_dbl(species, compensatory_effect),
+        cpe_env = map_dbl(stoch_d, compensatory_effect),
+        cpe_int = cpe / cpe_env,
+        stab_com = map_dbl(species, community_stability),
+        pop_stab = map_dbl(species, population_stability),
+        async = map_dbl(species, asynchrony),
+        sae = map(species, statistical_averaging_effect)
+      )
+      })
+  ),
+  tar_target(sim_stab, sim_ts %>% select(-species, -stoch_d, -stoch)),
+  tar_target(sim_prep,
+map_dfr(sim_files,
+      function (x) {
+        open_dataset(here::here("res", "simCSZenrich2/simCSZenrich2", x),
+          format = "arrow") %>%
+        collect() %>%
+      filter(!is.na(richness)) %>%
+      select(-species, -stoch, -A) %>%
+      # Transform back interaction strength into matrices
+      mutate(across(where(is.list), as.list)) %>%
+      mutate(across(c(int_strength, max_int),
+          ~map2(.x, S,
+            function(y, rich) {
+              matrix(y, nrow = rich)
+            }
+          )
+      )
+        ) %>%
+      # Get matrix of alive species
+      mutate(max_int_alive  = map2(max_int, bm_sp,
+          function(mat, bm) {
+            mask <- bm > 10^-6
+            mat[mask, mask, drop = FALSE]
+          }
+        )
+      )
+      }
+
+    )),
+  tar_target(sim,
+    sim_prep %>%
+      mutate(
+        persistence = richness / S,
+        async = 1 / sync,
+        stab_pop = 1 / avg_cv_sp,
+        ct_alive = map_dbl(max_int_alive,
+          ~ifelse(sum(.x) == 0, 0,
+            sum(.x > 0) / ((ncol(.x))^2))),
+        bm_sp_alive = map(bm_sp, ~.x[.x > 10^-6]),
+        tlvl_alive = map2(tlvl, bm_sp, ~.x[.y > 10^-6]),
+        max_tlvl_alive = map_dbl(tlvl_alive, max),
+        w_avg_tlvl_alive = map2_dbl(tlvl_alive, bm_sp_alive,
+          ~sum(.x * (.y / sum(.y)))
+          ),
+        max_max_int_alive = map_dbl(max_int_alive,
+          ~ifelse(length(.x[.x > 0]) == 0, 0, max(.x[.x > 0]))
+          ),
+        avg_max_int_alive = map_dbl(max_int_alive,
+          ~ifelse(length(.x[.x > 0]) == 0, 0, mean(.x[.x > 0]))
+          ),
+        sd_max_int_alive = map_dbl(max_int_alive,
+          ~ifelse(length(.x[.x > 0]) <= 1, 0, sd(.x[.x > 0]))
+          ),
+        cv_max_int_alive = sd_max_int_alive / avg_max_int_alive,
+        inv_sd_max_int_alive = 1 / sd_max_int_alive,
+        gini_max_int_alive = map_dbl(max_int_alive,
+          ~ifelse(length(.x[.x > 0]) == 0, 0, gini(.x[.x > 0]))),
+        avg_omnivory = map_dbl(omnivory, mean),
+        disconnected_prod = map_lgl(max_int_alive,
+        ~any(colSums(.x) == 0 & rowSums(.x) == 0))
+      ) %>%
+    select(!where(is.list))
+  )
+)
+```
+
 
 ```{targets sim_rho, tar_simple = TRUE}
 simZ %>%
@@ -263,8 +363,12 @@ library(piecewiseSEM)
 library(semEff)
 library(easystats)
 library(glmmTMB)
-library(biglm)
 ```
+
+```{r}
+tar_read(sim_ts)
+```
+
 
 ```{r}
 tar_read(sim_rho)

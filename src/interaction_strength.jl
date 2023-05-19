@@ -116,14 +116,14 @@ omnivory(p; weighted = false)
 function omnivory(A; weighted = true)
     # Convert to Bool if preference matrix
     tlvl = trophic_levels(A .!= 0)
-    omnivory = []
+    omnivory = Float64[]
     for i in 1:size(A, 1)
         link_indexes = findall(!=(0), A[i,:])
         prey_tlvl = tlvl[link_indexes]
         # Relative preference:
         if sum(A[i,:]) == 0 # if no prey
             rel_pref = []
-            push!(omnivory, 0)
+            push!(omnivory, 0.0)
             out = 0
         else
             # To vector if sparse vector

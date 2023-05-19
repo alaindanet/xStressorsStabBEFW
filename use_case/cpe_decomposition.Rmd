@@ -1,0 +1,164 @@
+---
+title: "Test CPE decomposition"
+author: Alain Danet
+date: \today
+output:
+  bookdown::pdf_document2:
+    fig_caption: true
+    keep_tex: true
+    toc: true
+    fontsize: 12pt
+    geometry: margin=2cm
+    number_sections: true
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  cache = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  #fig.dim = c(7, 7),
+  fig.fullwidth = TRUE,
+  fig.show = "hold",
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  results = TRUE,
+  fig.path="figures/"
+)
+```
+
+```{r, results = FALSE}
+library(tidyverse)
+library(magrittr)
+library(cowplot)
+library(here)
+library(arrow)
+
+source(here::here("R", "stability_decomposition.R"))
+source(here::here("R", "cross_correlated_error.R"))
+
+mytheme <- theme_cowplot(font_size = 12) +
+  background_grid() +
+  theme(legend.position = "bottom")
+theme_set(mytheme)
+options(knitr.table.format = "latex")
+```
+
+# Toy examples
+
+```{r}
+# No interaction, common environment response, CPE inf to 1
+mat <- matrix(
+  c(1, 1,
+    0, 0,
+    1, 1,
+    0, 0), byrow = T, ncol = 2)
+compensatory_effect(mat)
+```
+
+```{r}
+# No interaction, opposite environment response, CPE sup to 1
+mat <- matrix(
+  c(1, 0,
+    1, 1,
+    1, 0,
+    0, 1), byrow = T, ncol = 2)
+compensatory_effect(mat)
+```
+
+
+# In simulation without interactions
+
+```{r}
+# Common environmental response + no interaction
+ti <- cross_correlated_response(
+  rho = 1,
+  evt_sd = .6, n = 10, time_len = 1000,
+  return_tbl = TRUE) %>%
+mutate(
+  bm_brut = rnorm(length(error), mean = 100, sd = 1),
+  stoch_d = .1 * bm_brut * exp(error),
+  bm = bm_brut - stoch_d
+)
+mat <- ti %>%
+  pivot_wider(c(time), names_from = "species", values_from = "bm") %>%
+  select(-time) %>%
+  as.matrix()
+
+mat_stoch <- ti %>%
+  pivot_wider(c(time), names_from = "species", values_from = "stoch_d") %>%
+  select(-time) %>%
+  as.matrix()
+# Due to interaction, should be 1
+compensatory_effect(mat) / compensatory_effect(mat_stoch)
+# Due to common environmental response, should be less than 1, destabilizing:
+compensatory_effect(mat_stoch)
+```
+
+```{r}
+# Independent fluctuations + no interaction
+ti <- cross_correlated_response(
+  rho = 0,
+  evt_sd = .6, n = 10, time_len = 1000,
+  return_tbl = TRUE) %>%
+mutate(
+  bm_brut = rnorm(length(error), mean = 100, sd = 1),
+  stoch_d = .1 * bm_brut * exp(error),
+  bm = bm_brut - stoch_d
+)
+mat <- ti %>%
+  pivot_wider(c(time), names_from = "species", values_from = "bm") %>%
+  select(-time) %>%
+  as.matrix()
+
+mat_stoch <- ti %>%
+  pivot_wider(c(time), names_from = "species", values_from = "stoch_d") %>%
+  select(-time) %>%
+  as.matrix()
+# Due to interaction, should be 1
+compensatory_effect(mat) / compensatory_effect(mat_stoch)
+# Due to Independent environmental response, should be 1, i.e:
+compensatory_effect(mat_stoch)
+```
+
+```{r}
+data_raw <- open_dataset(here::here("res", "simCSZenrich2", "sim_toy_compensatory_dyn.arrow"),
+          format = "arrow") %>%
+collect() %>%
+filter(!is.na(richness)) %>%
+mutate(
+  stoch_d = map2(species, stoch, function(bm, d_stoch) {
+    .1 * bm * exp(d_stoch)
+    }),
+  species = map(species, ~matrix(.x, nrow = 100)),
+  stoch = map(stoch, ~matrix(.x, nrow = 100)),
+  stoch_d = map(stoch_d, ~matrix(.x, nrow = 100)),
+  cpe = map_dbl(species, compensatory_effect),
+  cpe_env = map_dbl(stoch_d, compensatory_effect),
+  cpe_int = cpe / cpe_env
+)
+```
+
+```{r}
+data_raw %>%
+  ggplot(aes(x = as.factor(rho), y = cpe_env)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1) +
+  geom_hline(yintercept = .5, linetype = "dashed")
+
+data_raw %>%
+  ggplot(aes(x = as.factor(rho), y = cpe)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1) +
+  geom_hline(yintercept = 2, linetype = "dotted") +
+  geom_hline(yintercept = .5, linetype = "dashed")
+
+data_raw %>%
+  ggplot(aes(x = as.factor(rho), y = cpe_int)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1) +
+  geom_hline(yintercept = 2, linetype = "dashed")
+```
+
+

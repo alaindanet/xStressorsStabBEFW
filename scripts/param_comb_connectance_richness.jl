@@ -1,19 +1,16 @@
-import Pkg
-Pkg.instantiate()
 using CSV, StatsBase, DataFrames, Arrow
 
-rep = 1:20
+rep = 1:50
 S = [5, 10, 20, 40, 60]
 C = 0.02:.05:.32
-sigma = .1:.1:.6
-Z = [5, 10, 50, 100, 250, 500, 1000]
-ρ = 0:.1:1
-enrich = [(K = 1.0, r = 1.0, name = "basic"),
-          (K = 20.0, r = 1.0, name = "enrichment")]
+sigma = .2:.2:1.0
+Z = [1, 2, 5, 10, 20, 40, 100]
+ρ = 0:.2:1
+K = [5, 10, 20, 30]
 
-names = (:rep, :richness, :connectance, :Z, :sigma, :rho, :enrich)
+names = (:rep, :richness, :connectance, :Z, :sigma, :rho, :K)
 param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...),
-            Iterators.product(rep, S, C, Z, sigma, ρ, enrich)
+            Iterators.product(rep, S, C, Z, sigma, ρ, K)
            )[:]
 
 

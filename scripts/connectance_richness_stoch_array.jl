@@ -34,13 +34,13 @@ param = NamedTuple.(eachrow(param))
 
 
 pm = sample(param)
-println("Running warmup: r = $(pm.enrich.r), K = $(pm.enrich.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
+println("Running warmup: r = $(pm.r), K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
 
 warmup = simCS(pm.connectance, pm.richness;
       Z = 100,
       d = 0.1, σₑ = pm.sigma, ρ = pm.rho,
       h = 2.0, c = 0.0,
-      r = pm.enrich.r, K = pm.enrich.K, alpha_ij = 0.5,
+      r = 1.0, K = pm.K, alpha_ij = 0.5,
       max = 50, last = 10, dt = 0.1,
       K_alpha_corrected = true,
       return_sol = false
@@ -55,12 +55,12 @@ println("Running param sim from lines $first_sim to $last_sim")
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
-                               (rep = p.rep, productivity = p.enrich.name),
+                               (rep = p.rep, productivity = p.K),
                                simCS(p.connectance, p.richness;
                                      Z = p.Z,
                                      d = 0.1, σₑ = p.sigma, ρ = p.rho,
                                      h = 2.0, c = 0.0,
-                                     r = p.enrich.r, K = p.enrich.K,
+                                     r = 1.0, K = p.K,
                                      alpha_ij = 0.5,
                                      max = 5000, last = 100, dt = 0.1,
                                      K_alpha_corrected = true,
@@ -75,5 +75,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
 df = DataFrame(sim)
 println("$(length(sim)) simulations took $(round(timing /60, digits = 2)) minutes to run")
 
+file_ts = string("simCSZ_", first_sim, "_", last_sim, "_ts.arrow")
+Arrow.write(file_ts, select(df, [:species, :stoch]))
 file = string("simCSZ_", first_sim, "_", last_sim, ".arrow")
-Arrow.write(file, df)
+Arrow.write(file, select(df, Not([:species, :stoch])))

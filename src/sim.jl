@@ -1,8 +1,8 @@
 function simCS(C, S;
         Z = 100,
         d = 0, σₑ = .5, ρ = 0.0,
-        h = 2.0, c = 1.0,
-        r = 1.0, K = 1.0, alpha_ij = 0.5,
+        h = 2.0, c = 0.0,
+        r = 1.0, K = 5.0, alpha_ij = 0.5,
         max = 5000, last = 1000, dt = 0.1,
         return_sol = false,
         K_alpha_corrected = true,
@@ -54,6 +54,7 @@ function simCS(C, S;
                             environment = env,
                             producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
                             env_stoch = EnvStoch(σₑ))
+        ω = p.functional_response.ω
     B0 = rand(S)
     # Simulate
     timing = @elapsed m = try
@@ -71,6 +72,7 @@ function simCS(C, S;
     else
         m = (t = 0, x = missing)
         timing = missing
+        ω = missing
     end
 
     if return_sol
@@ -82,7 +84,7 @@ function simCS(C, S;
     time_series = get_time_series(m; last = last)
 
     out = merge(
-                (S = S, ct = C, A = A, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
+                (S = S, ct = C, omega = ω, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
                 out,
                 time_series
                )
@@ -178,6 +180,7 @@ function get_stab_fw(m; last = 10)
                     :total_biomass     ,
                     :bm_sp             ,
                     :cv_sp             ,
+                    :alive_species     ,
                     :tlvl              ,
                     :w_avg_tlvl        ,
                     :max_tlvl          ,
@@ -190,8 +193,9 @@ function get_stab_fw(m; last = 10)
                     :avg_max_int       ,
                     :max_max_int       ,
                     :min_max_int       ,
-                    :gini_max_int,
-                    :omnivory
+                    :gini_max_int      ,
+                    :omnivory          ,
+                    :avg_omnivory
                    )
 
     if length(m.t) >= last
@@ -204,6 +208,8 @@ function get_stab_fw(m; last = 10)
         max_int = max_interaction_strength(p)
         non_zero_max_int = [i for i in max_int if i != 0]
         troph_struc = trophic_structure(m, last = last)
+        alive_species = troph_struc.alive_species
+        omnivory_alive = omnivory(emp_int_strength.mean[troph_struc.alive_species, troph_struc.alive_species])
 
         values = (
                   richness(m, last = last),
@@ -213,6 +219,7 @@ function get_stab_fw(m; last = 10)
                   bm.total,
                   bm.species,
                   bm_cv.species,
+                  alive_species,
                   troph_struc.alive_trophic_level,
                   troph_struc.weighted_average,
                   troph_struc.max,
@@ -226,7 +233,8 @@ function get_stab_fw(m; last = 10)
                   maximum(non_zero_max_int, init = 0),
                   minimum(non_zero_max_int, init = 0),
                   gini(non_zero_max_int),
-                  omnivory(p; weighted = true)
+                  omnivory_alive,
+                  mean(omnivory_alive)
                  )
     else
         values = repeat([missing], length(names_output))

@@ -3,6 +3,8 @@ title: Simulation connectance richness
 author: Alain Danet
 output:
   bookdown::pdf_document2
+always_allow_html: true
+bibliography: references.bib
 ---
 
 ```{r, echo = FALSE}
@@ -23,6 +25,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r, results = FALSE}
+library(targets)
 library(tidyverse)
 library(magrittr)
 library(ggcorrplot)
@@ -33,7 +36,6 @@ library(piecewiseSEM)
 library(semEff)
 library(easystats)
 library(glmmTMB)
-library(targets)
 
 library(rpart)
 library(rpart.plot)
@@ -49,22 +51,283 @@ source(here::here("R", "network_metrics.R"))
 source(here::here("R", "string_replacements.R"))
 ```
 
-```{r, eval = FALSE}
-colnames(sim)
-unique(simZ$env_stoch)
-summary(simZ$total_biomass)
-summary(simZ$persistence)
-summary(simZ$ct_alive)
-summary(simZ$gini_max_int_alive)
-```
-
 # Introduction
 
-- Response diversity is key in driving stability in ecological communities
-- Response diversity control asynchrony with richness
-- Mainly done in plants or in same food-web modules
-- Food-webs structure can also modulate synchrony and population stability by
-  the strength of trophic interactions
+Understanding the drivers of temporal stability is a key question in Ecology.
+BEF theory shows that species richness is a key driver to understand the
+temporal stability of community biomass.
+
+Species richness was demonstrated to increase community stability by driving higher
+asynchrony in community in various assemblages and ecosystems. In particular,
+high response diversity, which drives independant species fluctuations, seems to a key
+factor driving the positive effect of species richness of stability
+[@loreau_species_2008; @thibaut_understanding_2013; @zhao_biodiversity_2022]. However,
+those studies were often limited to monotrophic assemblages. As natural
+communities are often composed of multiple trophic level, our understanding of
+community stability needs to incorporate food-web structure.
+
+Food-web structure has been shown to have tremendous effect on community
+stability. The degree of generalism of predator was shown to modulate
+stability-richness relationships [@thebault_trophic_2005]. The strength and distribution of
+interaction strength was also shown to be strong driver of community stability
+[@mccann_weak_1998]. Omnivory was also shown to drive higher stability
+[@mccann_reevaluating_1997]. However, it is quite unkown how those food-web
+structure elements would affect stability-species richness relationships.
+
+The effect of environmental stressors can also strongly affect community
+variability. Higher environmental stress and variability may dampens the effect
+of richness on stability [@loreau_biodiversity_2001]. Lastly, productivity of a
+system, as the quantity of biomass input in the ecosystem, can have tremendous
+effect on both community structure and stabilty [@lindeman_trophic-dynamic_1942;
+@binzer_dynamics_2012; @binzer_interactive_2016]. Productivity can increase
+species richness in the food-web by increasing the level of energy input
+[@lindeman_trophic-dynamic_1942] but also destabilises community biomass by
+increasing population variability, a behavior coined as the paradox of
+enrichment [@rosenzweig_paradox_1971]. A better understanding of the effect of
+species richness on community stability should then include environmental
+gradient and stressors.
+
+Community stability can itself be partitioned in several components, i.e.
+population stability and population asynchrony [@thibaut_understanding_2013;
+@zhao_biodiversity_2022]. Population stability can be itself partioned in total
+biomass and population variability effect. Population asynchrony can further be
+partioned in statistical averaging effect and compensatory dynamics effects
+[@zhao_biodiversity_2022]. Partitioning stability allows to better understand
+how food-web structure and external factors affect stability. For exemple,
+environmental stochasticity is expected to primarily affect population
+stability, while response diversity should affect primarily compensatory
+dynamics.
+
+
+```{r}
+concept_cap <- "Food-web structure, response diversity and enviromental gradient
+can modulate stability-richness relationships. (a & b) Food-web structure may
+modulate stability-richness relationships additively (a) or interactively (b).
+(c) Decrease in response diversity and increase in environmental variability
+should dampen stability-richness relationships. While the loss of response
+diversity should dampen the effect of species richness on asynchrony, the
+increase in environmental variability should decrease primarily population
+stability. (d) Increase in productivity should increase species richness
+(trophic energy hypothesis) but also dampens the relationship between stability
+and species richness (paradox of enrichment). (e) Summary of the framework, how
+food-web structure and external perturbations modulate the effects of species
+richness on community stability. More precisely, how they affect the different
+components of stability: total biomass, population variability, statistical
+averaging effects and compensatory dynamics."
+```
+
+
+```{r, fig.cap=concept_cap}
+knitr::include_graphics(here("report", "figures", "conceptual_figures.pdf"))
+```
+
+```{r}
+tribble(
+  ~Type, ~`Food-web structure`, ~`Effect on stability-richness`,
+  "Food-web structure", "Connectance", "Strengthen (Miele et al., 2016) / No effect (Thébault & Loreau, 2005)",
+  "Food-web structure", "Omnivory", "Strengthen (Mccann et al., 1997)",
+  "Food-web structure", "Interaction strength", "Destabilising (Mccann et al., 1998) / Stabilising in
+  productive (Binzer et al., 2012; Binzer et al., 2016; Tabi et al., 2019)",
+  "Response diversity", "", "Dampens",
+  "Productivity", "", "Dampens (Binzer et al., 2012; Binzer et al., 2016; Tabi et al., 2019)",
+  "Environmental variability", "", "Dampens",
+)
+```
+
+```{r, eval = FALSE}
+tar_load(sim_prep)
+# test for disconnected species
+ti <- sim_prep %>%
+  filter(max_tlvl > 1) %>%
+  mutate(
+    disconnected_prod = map_lgl(max_int_alive,
+      # which species has no predator (colsum) is not a predator
+      ~any(colSums(.x) == 0 & rowSums(.x) == 0)
+    )
+  )
+
+ti %>%
+  ggplot(aes(x = as.factor(disconnected_prod), y = stab_com)) +
+  geom_boxplot()
+```
+
+
+```{r}
+tar_load(sim_stab)
+sim_stab %<>%
+  mutate(
+    sae_even = map_dbl(sae, ~.x["even"]),
+    evenness_sae = map_dbl(sae, ~.x["eveness"]),
+    sae_total = map_dbl(sae, ~.x["total"])
+  )
+tar_load(sim)
+sim_ok <- sim %>%
+  select(-stab_com, -async) %>%
+  left_join(sim_stab) %>%
+  mutate(inv_sum_pop_var = pop_stab / total_biomass)
+```
+
+
+
+```{r}
+sim_ok %>%
+  filter(ct_alive != 0, rho == 0, env_stoch == .1)
+sim_sem <- sim_ok %>%
+  filter(ct_alive != 0) %>%
+  mutate(across(c(stab_com, async, pop_stab, total_biomass, inv_sum_pop_var, sae_even, evenness_sae, cpe_env, cpe_int), log, , .names = "log_{.col}")) %>%
+  na.omit()
+```
+
+```{r}
+sem_list_basic <- list(
+  w_avg_tlvl_alive = lm(w_avg_tlvl_alive ~ richness + ct_alive, sim_sem),
+#  avg_omnivory = lm(avg_omnivory ~ richness + ct_alive + w_avg_tlvl_alive, sim_sem),
+  sd_max_int_alive = lm(sd_max_int_alive ~ richness + ct_alive + w_avg_tlvl_alive + Z, sim_sem),
+  avg_max_int_alive = lm(avg_max_int_alive ~ richness + ct_alive + w_avg_tlvl_alive + Z, sim_sem),
+  log_inv_sum_pop_var = lm(log_inv_sum_pop_var ~ richness + avg_max_int_alive + sd_max_int_alive + w_avg_tlvl_alive + ct_alive + env_stoch + rho, sim_sem),
+  log_total_biomass = lm(log_total_biomass ~ richness + avg_max_int_alive + sd_max_int_alive + w_avg_tlvl_alive + ct_alive + env_stoch + rho, sim_sem),
+  log_sae_even = lm(log_sae_even ~ richness, sim_sem),
+  log_evenness_sae = lm(log_evenness_sae ~ richness + avg_max_int_alive + sd_max_int_alive + w_avg_tlvl_alive + ct_alive, sim_sem),
+  log_cpe_env = lm(log_cpe_env ~ richness + avg_max_int_alive + sd_max_int_alive + w_avg_tlvl_alive + ct_alive + rho + env_stoch, sim_sem),
+  log_cpe_int = lm(log_cpe_int ~ richness + avg_max_int_alive + sd_max_int_alive + w_avg_tlvl_alive + ct_alive, sim_sem),
+  log_async = lm(log_async ~ log_sae_even + log_evenness_sae + log_cpe_env + log_cpe_int, sim_sem),
+  #log_stab_pop = lm(log_pop_stab ~ log_total_biomass + log_inv_sum_pop_var, sim_sem),
+  log_stab_com = lm(log_stab_com ~ log_total_biomass + log_inv_sum_pop_var + log_async, sim_sem)
+)
+sem_basic <- as.psem(sem_list_basic)
+ti <- summary(sem_basic)$coefficients[, c(1, 2, 8, 9)]
+colnames(ti)[4] <- "Signif"
+ti
+```
+```{r, eval = FALSE}
+lm(
+  log_stab_com ~ log_total_biomass + log_inv_sum_pop_var + log_async,
+  sim_ok %>%
+    filter(ct_alive == 0) %>%
+    mutate(across(c(stab_com, async, pop_stab, total_biomass, inv_sum_pop_var, sae_even, evenness_sae, cpe_env, cpe_int), log, , .names = "log_{.col}"))%>%
+    mutate(across(where(is.double), ~scale(.x)[,1]))
+)
+```
+
+
+
+```{r}
+sim_stab %>%
+  ggplot(aes(x = as.factor(rho), y = cpe_env)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+sim_stab %>%
+  ggplot(aes(x = as.factor(env_stoch), y = cpe)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+
+sim_stab %>%
+  ggplot(aes(x = as.factor(env_stoch), y = stab_com)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+sim_stab %>%
+  ggplot(aes(x = as.factor(rho), y = stab_com)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+sim_stab %>%
+  ggplot(aes(x = as.factor(rho), y = evenness_sae)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+sim_stab %>%
+  ggplot(aes(x = as.factor(rho), y = sae_total)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+
+sim_stab %>%
+  ggplot(aes(x = as.factor(env_stoch), y = sae_total)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+sim_stab %>%
+  ggplot(aes(x = as.factor(env_stoch), y = evenness_sae)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+
+sim_stab %>%
+  ggplot(aes(x = as.factor(env_stoch), y = pop_stab)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+sim_stab %>%
+  ggplot(aes(x = as.factor(rho), y = pop_stab)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+```
+
+```{r}
+sim %>%
+  filter(ct_alive != 0) %>%
+  ggplot(aes(y = avg_omnivory, x = richness)) +
+  geom_point()
+
+sim %>%
+  filter(ct_alive != 0) %>%
+  ggplot(aes(y = avg_omnivory, x = ct_alive)) +
+  geom_point()
+
+sim %>%
+  filter(ct_alive != 0) %>%
+  ggplot(aes(x = avg_omnivory, y = 1/avg_cv_sp)) +
+  geom_point()
+
+sim %>%
+  filter(ct_alive != 0) %>%
+  ggplot(aes(x = avg_omnivory, y = sync)) +
+  geom_point()
+
+sim %>%
+  filter(ct_alive != 0) %>%
+  ggplot(aes(x = Z, y = max_tlvl_alive)) +
+  geom_point()
+```
+
+```{r}
+p_sim_sync_rich <- sim %>%
+  filter(ct_alive != 0) %>%
+  ggplot(aes(x = richness, y = sync, color = as.factor(env_stoch))) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(cols = vars(productivity), rows = vars(rho))
+
+p_sim_pop_rich <- sim %>%
+  filter(ct_alive != 0) %>%
+  ggplot(aes(x = richness, y = 1/avg_cv_sp, color = as.factor(env_stoch))) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(cols = vars(productivity), rows = vars(rho))
+```
+
+
+```{r}
+p_sim_stab_rich <- sim %>%
+  filter(ct_alive != 0) %>%
+  ggplot(aes(x = richness, y = stab_com, color = as.factor(env_stoch))) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(cols = vars(productivity), rows = vars(rho))
+ggsave(
+  filename = here("report", "figures", "sim_stab_richnness_rho_stoch.pdf"),
+  p_sim_stab_rich,
+  width = 80,
+  height = 80 * 4,
+  units = "mm",
+  scale = 2.4
+)
+```
+
+```{r}
+knitr::include_graphics(here::here("report", "figures", "sim_stab_richnness_rho_stoch.pdf"))
+```
+
+
+
+
+
+
+# Annexes
 
 # Research questions
 
@@ -102,6 +365,8 @@ TO Complete
   - Standardized carrying capacity (Remove the effect of species richness on
     total biomass, i.e. remove the effect of niche complementarity on biomass
     produced by primary producers)
+
+- Brose started with 5 basal species and K = 1, so his minimum total K is 5
 
 ## Variables
 
@@ -686,3 +951,35 @@ m1 <- rpart(
   )
 rpart.plot(m1)
 ```
+
+# Appendix
+
+```{r}
+sim_ok %>%
+  ggplot(aes(x = as.factor(Z), y = max_tlvl_alive, color = as.factor(S))) +
+  geom_boxplot() +
+  facet_grid(cols = vars(productivity))
+sim_ok %>%
+  ggplot(aes(x = as.factor(Z), y = max_tlvl_alive, color = as.factor(S))) +
+  geom_boxplot() +
+  facet_grid(cols = vars(env_stoch), rows = vars(productivity))
+sim_ok %>%
+  ggplot(aes(x = as.factor(Z), y = avg_max_int_alive, color = as.factor(S))) +
+  geom_boxplot() +
+  facet_grid(cols = vars(productivity))
+
+sim_ok %>%
+  ggplot(aes(x = as.factor(Z), y = persistence, color = as.factor(S))) +
+  geom_boxplot() +
+  facet_grid(cols = vars(env_stoch), rows = vars(productivity))
+sim_ok %>%
+  ggplot(aes(x = as.factor(Z), y = pop_stab, color = as.factor(S))) +
+  geom_boxplot() +
+  facet_grid(cols = vars(env_stoch), rows = vars(productivity))
+sim_ok %>%
+  ggplot(aes(x = ct_alive, y = persistence, color = as.factor(S))) +
+  geom_point()
+```
+
+- K = 1 is too low for meaningful food-webs, I should start with K = 5 as in
+  Brose et al. (2006)
