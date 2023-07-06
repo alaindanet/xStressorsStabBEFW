@@ -4,6 +4,7 @@
 using EcologicalNetworksDynamics
 using Plots
 
+
 function get_parameters_two_species_kuramoto(;
         ### Mortality rates for consumers
         dcons = .1,
@@ -82,10 +83,11 @@ end
 # Trophic coupling
 p = get_parameters_two_species_kuramoto(B = 0.01, α = 0)
 m = simulate(p, [.1, .3, .1, .3],
-             tmax = 600,
+             tmax = 2000,
              callback = nothing
             );
 p1 = plot(m, idxs = [3, 4], legend = false, title = "Trophic coupling")
+coefficient_of_variation(m, idxs = [3, 4])
 
 # Resource coupling
 p = get_parameters_two_species_kuramoto(B = 0.00, α = .1)

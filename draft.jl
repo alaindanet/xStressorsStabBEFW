@@ -104,6 +104,23 @@ sim_int_mat([0 0 0; 0 0 0; 1 1 0];
             fun = stoch_d_dBdt!,
             max = 500, last = 100, dt = 0.1, return_sol = false)
 
+#############
+#  testing  #
+#############
+
+fw = FoodWeb([0 0; 0 0])
+p = ModelParameters(fw)
+# Default
+sim = simulate(p, [1, 1], tmax = 2000, callback = CallbackSet(
+          TerminateSteadyState(1e-6, 1e-4),
+          ExtinctionCallback(10e-6, true),
+      ),)
+out_inv = simulate(p, b0_Inv, tmax = 2000, callback = DifferentialEquations.CallbackSet(
+          ExtinctionCallback(10^-4, true),
+      ))
+maximum(sim.t)
+
+sim2 = simulate(p, [1, 1], tmax = 2000, callback = ExtinctionCallback())
 
 
 ###########

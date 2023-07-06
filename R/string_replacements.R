@@ -18,7 +18,9 @@ var_replacement <- function() {
     richness = "Richness",
     rho = "Env Corr",
     productivityenrichment = "Enrichment",
-    env_stoch = "Env variance"
+    env_stoch = "Env variance",
+    sae_total = "Stat Avg eff",
+    cpe = "Compensatory eff"
 
   )
 }

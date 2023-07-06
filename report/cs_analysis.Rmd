@@ -53,50 +53,76 @@ source(here::here("R", "string_replacements.R"))
 
 # Introduction
 
-Understanding the drivers of temporal stability is a key question in Ecology.
-BEF theory shows that species richness is a key driver to understand the
-temporal stability of community biomass.
+Global change and their effects constitute major treats to ecosystem stability.
+Among them, global change is predicted to lead dramatically more variable
+environments [@pachauri_climate_2015]. This new threat adds to current
+eutrophication in many ecosystems [@maure_globally_2021, add ref], which is
+known to dramatically impair ecosystem functioning. Understanding how
+environmental variability and eutrophication will alter ecosystem stability is
+then a timely question.
 
-Species richness was demonstrated to increase community stability by driving higher
-asynchrony in community in various assemblages and ecosystems. In particular,
-high response diversity, which drives independant species fluctuations, seems to a key
-factor driving the positive effect of species richness of stability
-[@loreau_species_2008; @thibaut_understanding_2013; @zhao_biodiversity_2022]. However,
-those studies were often limited to monotrophic assemblages. As natural
-communities are often composed of multiple trophic level, our understanding of
-community stability needs to incorporate food-web structure.
+Biodiversity, in terms of species richness, has been repeatedly shown to drive
+higher temporal stability of ecological communities, across various taxa and
+ecosystems. Species richness can dampen the effects of perturbations on the
+temporal variability of community biomass because more diverse communities
+contain species with more diversity of responses to perturbations, which
+generates asynchrony in population fluctuations, thereby stabilizing community
+biomass fluctuations [@loreau_species_2008; @thibaut_understanding_2013;
+@zhao_biodiversity_2022]. In turn, the effects of human pressures on biotic
+homogenization reported in various ecosystems [@buisson_toward_2013;
+@muthukrishnan_invasive_2020; @saladin_rapid_2020] is another threat, which
+might in turn affect dampens the effects of species richness on ecosystem
+stability. However, the joint effects of external stressors such as
+environmental variability and eutrophication and internal stressors such as the
+loss response diversity has been rarely assessed in temporal stability areas.
 
+The question of stressors can even become complex in multitrophic communities,
+where species richness corresponds both to horizontal and vertical diversity.
 Food-web structure has been shown to have tremendous effect on community
 stability. The degree of generalism of predator was shown to modulate
-stability-richness relationships [@thebault_trophic_2005]. The strength and distribution of
-interaction strength was also shown to be strong driver of community stability
-[@mccann_weak_1998]. Omnivory was also shown to drive higher stability
-[@mccann_reevaluating_1997]. However, it is quite unkown how those food-web
-structure elements would affect stability-species richness relationships.
+stability-richness relationships [@thebault_trophic_2005]. The strength and
+distribution of interaction strength was also shown to be strong driver of
+community stability [@mccann_weak_1998]. Omnivory was also shown to drive higher
+stability [@mccann_reevaluating_1997]. The effects of food-web structure on
+ecosystem stability has been mostly assessed with small modules [but see
+@eschenbrenner_diversity_nodate], and we know very little how food-web structure
+affects the relationships between species richness and temporal stability.
 
-The effect of environmental stressors can also strongly affect community
-variability. Higher environmental stress and variability may dampens the effect
-of richness on stability [@loreau_biodiversity_2001]. Lastly, productivity of a
-system, as the quantity of biomass input in the ecosystem, can have tremendous
-effect on both community structure and stabilty [@lindeman_trophic-dynamic_1942;
-@binzer_dynamics_2012; @binzer_interactive_2016]. Productivity can increase
-species richness in the food-web by increasing the level of energy input
-[@lindeman_trophic-dynamic_1942] but also destabilises community biomass by
-increasing population variability, a behavior coined as the paradox of
-enrichment [@rosenzweig_paradox_1971]. A better understanding of the effect of
-species richness on community stability should then include environmental
-gradient and stressors.
+Both stressors and food-web structure are expected to have different effects on
+temporal stability. Stability of community biomass can itself be partitioned in
+several components, i.e. population stability and population asynchrony
+[@thibaut_understanding_2013; @zhao_biodiversity_2022]. Population stability can
+be itself partioned in total biomass and population variability effect.
+Population asynchrony can further be partioned in statistical averaging effect
+and compensatory dynamics effects [@zhao_biodiversity_2022]. Partitioning
+stability allows to better understand how food-web structure and external
+factors affect stability. We expect that environmental variability will
+primarily affect. For exemple, environmental stochasticity is expected to
+primarily affect population variance. Productivity is expected to have two
+effects on stability. First, productivity may increase species richness and
+average trophic level by increasing the flux of biomass in the system
+[@lindeman_trophic-dynamic_1942] but on the other side, the resulting higher growth rate
+of primary producers may increase the population variability
+[@binzer_interactive_2016] and thus decreases the temporal stability of
+community biomass. Response diversity is expected to act primarily on
+compensatory dynamics in the food-webs, as low response diversity will decrease
+the effects. Higher connectance and interaction strength are expected to dampens
+population variability but to lead to higher synchrony at the same time.
 
-Community stability can itself be partitioned in several components, i.e.
-population stability and population asynchrony [@thibaut_understanding_2013;
-@zhao_biodiversity_2022]. Population stability can be itself partioned in total
-biomass and population variability effect. Population asynchrony can further be
-partioned in statistical averaging effect and compensatory dynamics effects
-[@zhao_biodiversity_2022]. Partitioning stability allows to better understand
-how food-web structure and external factors affect stability. For exemple,
-environmental stochasticity is expected to primarily affect population
-stability, while response diversity should affect primarily compensatory
-dynamics.
+---
+#Understanding the mechanisms that determine temporal
+#stability of ecosystem functioning is a long standing
+#question in Ecology [@may_will_1972; @angelis_stability_1975;
+#@mccann_diversitystability_2000; @tilman_biodiversity_2006;
+#@donohue_navigating_2016; @kefi_advancing_2019].
+---
+
+In this study, we investigated both the effects of stressors (productivity,
+environnmental variability and response diversity) and of food-web structure
+(connectance, average interaction strength, average trophic level) on species
+richness-stability relationships. To do, we used a bioenergetic food-web model
+[@yodzis_body_1992; @brose_allometric_2006; @delmas_simulations_2017] added to
+environmental stochasticity.
 
 
 ```{r}
@@ -130,8 +156,9 @@ tribble(
   productive (Binzer et al., 2012; Binzer et al., 2016; Tabi et al., 2019)",
   "Response diversity", "", "Dampens",
   "Productivity", "", "Dampens (Binzer et al., 2012; Binzer et al., 2016; Tabi et al., 2019)",
-  "Environmental variability", "", "Dampens",
-)
+  "Environmental variability", "", "Dampens",) %>%
+kbl(caption = "Predictions of stability-richness relationship from the literature.") %>%
+kable_styling()
 ```
 
 ```{r, eval = FALSE}
@@ -170,13 +197,93 @@ sim_ok <- sim %>%
 
 
 ```{r}
-sim_ok %>%
-  filter(ct_alive != 0, rho == 0, env_stoch == .1)
 sim_sem <- sim_ok %>%
-  filter(ct_alive != 0) %>%
+  filter(max_tlvl_alive > 1) %>%
   mutate(across(c(stab_com, async, pop_stab, total_biomass, inv_sum_pop_var, sae_even, evenness_sae, cpe_env, cpe_int), log, , .names = "log_{.col}")) %>%
   na.omit()
 ```
+
+```{r}
+summary(sim_sem$max_tlvl_alive)
+```
+
+
+```{r}
+p_sim_rich_prod_fw_only <- sim_sem %>%
+  mutate(stab_pop = 1/ avg_cv_sp) %>%
+  filter(rho %in% c(0, 1)) %>%
+  pivot_longer(
+    c(stab_com, stab_pop, sync),
+    names_to = "metric",
+    values_to = "stab") %>%
+  mutate(
+    metric = var_replacement()[metric],
+    rho = rho_replacement()[as.character(rho)]
+  ) %>%
+  ggplot(aes(x = log(richness), y = log(stab), color = factor(productivity))) +
+  geom_point(alpha = .1, shape = 20) +
+  geom_smooth(method = "lm") +
+  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
+  labs(
+    color = "Productivity",
+    x = "Species richness",
+    y = "Stability component"
+  ) +
+  scale_x_continuous(
+    sec.axis = sec_axis(~ . ,
+      name = "Response diversity",
+      breaks = NULL,
+      labels = NULL)
+  )
+ggsave(
+  filename = here("report", "figures", "p_sim_rich_prod_fw_only.png"),
+  p_sim_rich_prod_fw_only,
+  scale = 1.4,
+  width = 88,
+  height = 88 * 1,
+  units = "mm"
+)
+colnames(sim_sem)
+```
+
+```{r}
+p_sim_rich_prod_fw_only_cpe <- sim_sem %>%
+  mutate(stab_pop = 1/ avg_cv_sp, ) %>%
+  filter(rho %in% c(0, 1)) %>%
+  pivot_longer(
+    c(sae_total, cpe),
+    names_to = "metric",
+    values_to = "stab") %>%
+  mutate(
+    metric = var_replacement()[metric],
+    rho = rho_replacement()[as.character(rho)]
+  ) %>%
+  ggplot(aes(x = log(richness), y = log(stab), color = factor(productivity))) +
+  geom_point(alpha = .1, shape = 20) +
+  geom_smooth(method = "lm") +
+  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
+  labs(
+    color = "Productivity",
+    x = "Species richness",
+    y = "Stability component"
+  ) +
+  scale_x_continuous(
+    sec.axis = sec_axis(~ . ,
+      name = "Response diversity",
+      breaks = NULL,
+      labels = NULL)
+  )
+ggsave(
+  filename = here("report", "figures", "p_sim_rich_prod_fw_only_cpe.png"),
+  p_sim_rich_prod_fw_only_cpe,
+  scale = 1.4,
+  width = 88,
+  height = 88 * 1,
+  units = "mm"
+)
+```
+
+
 
 ```{r}
 sem_list_basic <- list(
@@ -209,13 +316,22 @@ lm(
 )
 ```
 
+```{r}
+sim_ok %>%
+  filter(max_tlvl_alive > 1)
+```
+
 
 
 ```{r}
 sim_stab %>%
   ggplot(aes(x = as.factor(rho), y = cpe_env)) +
   geom_boxplot() +
-  geom_hline(yintercept = 1)
+  geom_hline(yintercept = c(.5, 1))
+sim_stab %>%
+  ggplot(aes(x = as.factor(env_stoch), y = cpe_env)) +
+  geom_boxplot() +
+  geom_hline(yintercept = c(.5, 1))
 sim_stab %>%
   ggplot(aes(x = as.factor(env_stoch), y = cpe)) +
   geom_boxplot() +
@@ -231,6 +347,16 @@ sim_stab %>%
   geom_hline(yintercept = 1)
 sim_stab %>%
   ggplot(aes(x = as.factor(rho), y = evenness_sae)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+sim_ok %>%
+  filter(max_tlvl_alive > 1) %>%
+  ggplot(aes(x = as.factor(as.integer(richness)), y = evenness_sae)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1)
+sim_ok %>%
+  filter(max_tlvl_alive > 1) %>%
+  ggplot(aes(x = as.factor(as.integer(max_tlvl_alive)), y = evenness_sae)) +
   geom_boxplot() +
   geom_hline(yintercept = 1)
 sim_stab %>%
