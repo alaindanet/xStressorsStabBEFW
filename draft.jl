@@ -17,15 +17,21 @@ include("src/interaction_strength.jl")
 include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
+?readdir
 
-files = readdir("res/simCSZenrich2")
-df = DataFrame(Arrow.Table(join(["res/simCSZenrich2/", files[1]])))
+raw_files = readdir("res/simCSZenrich3")
+all_files = raw_files[.!occursin.("simCSZenrich3", raw_files)]
+mask_ts_files = occursin.("ts", all_files)
+files = all_files[.!mask_ts_files]
+
+df = DataFrame(Arrow.Table(join(["res/simCSZenrich3/", files[1]])))
+df[1, :cv_sp]
 
 select(df, [:species, :stoch])
-for i in files[isfile.([join(["res/simCSZenrich2/", i]) for i in files])]
-    df = DataFrame(Arrow.Table(join(["res/simCSZenrich2/", i])))
+for i in files[isfile.([join(["res/simCSZenrich3/", i]) for i in files])]
+    df = DataFrame(Arrow.Table(join(["res/simCSZenrich3/", i])))
     select!(df, Not([:cv_sp]))
-    Arrow.write(join(["res/simCSZenrich2/simCSZenrich2/", i]), df, ntasks = 2)
+    Arrow.write(join(["res/simCSZenrich3/simCSZenrich3/", i]), df, ntasks = 2)
 end
 
 

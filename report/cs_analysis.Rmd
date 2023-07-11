@@ -53,13 +53,13 @@ source(here::here("R", "string_replacements.R"))
 
 # Introduction
 
-Global change and their effects constitute major treats to ecosystem stability.
-Among them, global change is predicted to lead dramatically more variable
-environments [@pachauri_climate_2015]. This new threat adds to current
-eutrophication in many ecosystems [@maure_globally_2021, add ref], which is
-known to dramatically impair ecosystem functioning. Understanding how
-environmental variability and eutrophication will alter ecosystem stability is
-then a timely question.
+Global change and its simultaneous increasing stressors constitute a major
+threat to biodiversity and ecosystem functioning [@pachauri_climate_2015;
+@simmons_refocusing_2021]. Among them, climate change is predicted to lead
+dramatically more variable environments [@pachauri_climate_2015], adding to
+other persistent stressors such as eutrophication [@maure_globally_2021, add
+ref]. Understanding how environmental variability and eutrophication will
+affects ecosystem stability is then a timely question.
 
 Biodiversity, in terms of species richness, has been repeatedly shown to drive
 higher temporal stability of ecological communities, across various taxa and
@@ -86,7 +86,8 @@ community stability [@mccann_weak_1998]. Omnivory was also shown to drive higher
 stability [@mccann_reevaluating_1997]. The effects of food-web structure on
 ecosystem stability has been mostly assessed with small modules [but see
 @eschenbrenner_diversity_nodate], and we know very little how food-web structure
-affects the relationships between species richness and temporal stability.
+affects the relationships between species richness and temporal stability in
+complex food-webs.
 
 Both stressors and food-web structure are expected to have different effects on
 temporal stability. Stability of community biomass can itself be partitioned in
@@ -160,6 +161,8 @@ tribble(
 kbl(caption = "Predictions of stability-richness relationship from the literature.") %>%
 kable_styling()
 ```
+
+\pagebreak
 
 ```{r, eval = FALSE}
 tar_load(sim_prep)
@@ -487,7 +490,7 @@ TO Complete
   - Niche model (Connectance highly constrained by richness)
   - Type III functional response
   - No predator interference
-  - Enrichment: K = 1 or 20
+  - Enrichment: K = 5 to 30
   - Standardized carrying capacity (Remove the effect of species richness on
     total biomass, i.e. remove the effect of niche complementarity on biomass
     produced by primary producers)
@@ -498,57 +501,11 @@ TO Complete
 
 - S: 5 to 60
 - C: .02 to .3
-- K: 1 and 20
+- K: 1 and 30
 - $\rho$: 0 to 1
+- $\sigma_e$: from 0.2 to 0.6
 - Z: 5 to 1000
 
-```{r}
-tar_load(simZ)
-tar_load(sim_rho)
-tar_load(sim_rho_scaled)
-```
-
-
-```{r}
-cor_enrich <- cor(simZ %>%
-    filter(productivity == "enrichment") %>%
-    select(c(S, richness, ct, Z, ct_alive, total_biomass, avg_max_int_alive,
-        sd_max_int_alive, cv_max_int_alive,
-        gini_max_int_alive,
-        w_avg_tlvl_alive, max_tlvl_alive, rho, env_stoch, stab_com, avg_cv_sp,
-        sync)) %>% na.omit(),
-    method = "spearman")
-cor_basic <- cor(simZ %>%
-    filter(productivity == "basic") %>%
-select(c(S, richness, ct, Z, ct_alive, total_biomass, avg_max_int_alive,
-        sd_max_int_alive, cv_max_int_alive,
-        gini_max_int_alive,
-        w_avg_tlvl_alive, max_tlvl_alive, rho, env_stoch, stab_com, avg_cv_sp,
-        sync)) %>% na.omit(),
-    method = "spearman")
-p_cor_basic <- ggcorrplot(cor_basic, type = "lower",
-   lab = TRUE)
-p_cor_enrich <- ggcorrplot(cor_enrich, type = "lower",
-   lab = TRUE)
-p_cor <- plot_grid(
-  p_cor_basic,
-  p_cor_enrich,
-  ncol = 2,
-  labels = "auto"
-)
-ggsave(here("report", "figures", "p_cor.pdf"),
-  plot = p_cor,
-  device = NULL,
-  path = NULL,
-  scale = 3.0,
-  units = "mm",
-  width = 140,
-  height = 140 * .5,
-  dpi = 300,
-  limitsize = TRUE,
-  bg = NULL
-)
-```
 
 ```{r}
 cor_cap <- "Correlation among foodweb structure and stability for basic (a) and
@@ -557,137 +514,15 @@ enriched (b) environments."
 
 
 ```{r, fig.cap=cor_cap}
-knitr::include_graphics(here::here("report", "figures", "p_cor.pdf"))
+tar_read(p_cor)
 ```
 
 # Effect of species richness
 
-```{r}
-sim_rich_prod <- simZ %>%
-  filter(
-    env_stoch == .5
-  )
+```{r, fig.cap = "Effect of stressors on community stability."}
+tar_read(p_stab_s_stress)
 ```
 
-```{r}
-p_sim_rich_prod <- sim_rich_prod %>%
-  mutate(stab_pop = 1/ avg_cv_sp) %>%
-  pivot_longer(
-    c(stab_com, stab_pop, sync),
-    names_to = "metric",
-    values_to = "stab") %>%
-  mutate(
-    metric = var_replacement()[metric],
-    rho = rho_replacement()[as.character(rho)]
-  ) %>%
-  ggplot(aes(x = richness, y = stab, color = factor(productivity))) +
-  geom_point(alpha = .1, shape = 20) +
-  geom_smooth() +
-  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
-  labs(
-    color = "Productivity",
-    x = "Species richness",
-    y = "Stability component"
-  ) +
-  scale_x_continuous(
-    sec.axis = sec_axis(~ . ,
-      name = "Response diversity",
-      breaks = NULL,
-      labels = NULL)
-  )
-ggsave(
-  filename = here::here("report", "figures", "stability_rich.pdf"),
-  p_sim_rich_prod,
-  scale = 1.8,
-  width = 88,
-  height = 88 * .6,
-  units = "mm"
-)
-```
-
-
-```{r}
-p_sim_rich_prod_fw_only <- sim_rich_prod %>%
-  filter(ct_alive != 0, avg_max_int_alive != 0) %>%
-  mutate(stab_pop = 1/ avg_cv_sp) %>%
-  pivot_longer(
-    c(stab_com, stab_pop, sync),
-    names_to = "metric",
-    values_to = "stab") %>%
-  mutate(
-    metric = var_replacement()[metric],
-    rho = rho_replacement()[as.character(rho)]
-  ) %>%
-  ggplot(aes(x = log(richness), y = log(stab), color = factor(productivity))) +
-  geom_point(alpha = .1, shape = 20) +
-  geom_smooth(method = "lm") +
-  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
-  labs(
-    color = "Productivity",
-    x = "Species richness",
-    y = "Stability component"
-  ) +
-  scale_x_continuous(
-    sec.axis = sec_axis(~ . ,
-      name = "Response diversity",
-      breaks = NULL,
-      labels = NULL)
-  )
-ggsave(
-  filename = here("report", "figures", "p_sim_rich_prod_fw_only.pdf"),
-  p_sim_rich_prod_fw_only,
-  scale = 1.8,
-  width = 88,
-  height = 88 * .6,
-  units = "mm"
-)
-```
-
-
-```{r}
-p_sim_rich_prod_p_only <- sim_rich_prod %>%
-  filter(ct_alive == 0) %>%
-  mutate(stab_pop = 1/ avg_cv_sp) %>%
-  pivot_longer(
-    c(stab_com, stab_pop, sync),
-    names_to = "metric",
-    values_to = "stab") %>%
-  mutate(
-    metric = var_replacement()[metric],
-    rho = rho_replacement()[as.character(rho)]
-  ) %>%
-  ggplot(aes(x = richness, y = stab, color = factor(productivity))) +
-  geom_point(alpha = .1, shape = 20) +
-  geom_smooth() +
-  facet_grid(rows = vars(metric), cols = vars(rho), scales = "free_y") +
-  labs(
-    color = "Productivity",
-    x = "Species richness",
-    y = "Stability component"
-  ) +
-  scale_x_continuous(
-    sec.axis = sec_axis(~ .,
-      name = "Response diversity",
-      breaks = NULL,
-      labels = NULL)
-  )
-ggsave(
-  filename = here("report", "figures", "p_sim_rich_prod_p_only.pdf"),
-  p_sim_rich_prod_p_only,
-  scale = 1.8,
-  width = 88,
-  height = 88 * .6,
-  units = "mm"
-)
-```
-
-```{r, fig.cap = "Food-Web only."}
-knitr::include_graphics(here("report", "figures", "p_sim_rich_prod_fw_only.pdf"))
-```
-
-```{r, fig.cap = "Primary producers only."}
-knitr::include_graphics(here::here("report", "figures", "p_sim_rich_prod_p_only.pdf"))
-```
 
 - Enrichment decreases the effect of response diversity of stability
 - Enrichment increases synchrony
@@ -697,128 +532,7 @@ knitr::include_graphics(here::here("report", "figures", "p_sim_rich_prod_p_only.
   diversity but synchrony increase with richness in basic environment
 
 
-```{r}
-simZ %>%
-  filter(rho == 1) %>%
-  mutate(stab_pop = 1/ avg_cv_sp) %>%
-  pivot_longer(
-    c(stab_com, stab_pop, sync, total_biomass),
-    names_to = "metric",
-    values_to = "stab") %>%
-  ggplot(aes(x = richness, y = stab, color = factor(env_stoch))) +
-  geom_point() +
-  facet_grid(rows = vars(metric), cols = vars(productivity), scales = "free_y") +
-  labs(
-    color = "Evironmental stochasticity",
-    x = "Species richness",
-    y = "Stability component"
-  )
-```
 
-# Food-web structure and interaction strength drive stability
-
-```{r}
-compute_rotated_pca <- function(.data = NULL, naxis = 2) {
-  .data <- na.omit(.data)
-  pca <- ade4::dudi.pca(as.data.frame(.data),
-    scannf = FALSE, nf = naxis, center = TRUE, scale = TRUE
-  )
-  pca_rotated <- psych::principal(.data,
-    rotate = "varimax", nfactors = naxis,
-    scores = TRUE
-  )
-
-  return(list(normal = pca, rotated = pca_rotated))
-}
-```
-
-
-```{r}
-sim_sem <- simZ %>%
-  filter(ct_alive != 0, env_stoch == 0.5, rho == 0) %>%
-  mutate(across(c(async, stab_pop, stab_com, richness, ct_alive, sd_max_int_alive, avg_max_int_alive), log, , .names = "log_{.col}")) %>%
-  mutate(
-    log1_avg_max_int_alive = log(avg_max_int_alive + 1),
-    log1_sd_max_int_alive = log(sd_max_int_alive + 1),
-    productivity_f = factor(productivity)
-    ) %>%
-  as.data.frame()
-scaled_sim_sem <- sim_sem %>%
-  mutate(across(where(is.double), ~scale(.x)[,1]))
-```
-
-```{r}
-var_fw_struct <- c("richness", "ct_alive", "Z")
-var_fw_emergent_struct <- c("max_tlvl_alive", "w_avg_tlvl_alive")
-var_fw_flux <- c("gini_max_int_alive", "avg_max_int_alive", "sd_max_int_alive",
-  "cv_max_int_alive")
-var_stab <- c("async", "stab_com", "stab_pop")
-```
-
-
-```{r}
-#colnames(simZ)
-pairs(sim_sem %>%
-  filter(env_stoch == .5) %>%
-  select(c(var_fw_struct, var_fw_emergent_struct, var_fw_flux, stab_pop)))
-```
-
-```{r, eval = FALSE}
-performance::check_collinearity(lm(w_avg_tlvl_alive ~ max_tlvl_alive,sim_sem))
-performance::check_collinearity(lm(w_avg_tlvl_alive ~ ct_alive + richness,sim_sem))
-performance::check_collinearity(lm(w_avg_tlvl_alive ~ ct_alive + richness,sim_sem))
-performance::check_collinearity(lm(avg_max_int_alive ~ w_avg_tlvl_alive + ct_alive + richness,sim_sem))
-performance::check_collinearity(lm(avg_max_int_alive ~ max_tlvl_alive + ct_alive,sim_sem))
-performance::check_collinearity(lm(stab_com ~ log_richness + log1_avg_max_int_alive + log1_sd_max_int_alive + w_avg_tlvl_alive + ct_alive,sim_sem))
-performance::check_collinearity(lm(stab_com ~ richness + avg_max_int_alive + sd_max_int_alive + w_avg_tlvl_alive + ct_alive,sim_sem))
-```
-
-```{r}
-sem_list_basic <- list(
-  w_avg_tlvl_alive = lm(w_avg_tlvl_alive ~ richness + ct_alive, sim_sem),
-  sd_max_int_alive = lm(sd_max_int_alive ~ richness + ct_alive + w_avg_tlvl_alive, sim_sem),
-  avg_max_int_alive = lm(avg_max_int_alive ~ richness + ct_alive + w_avg_tlvl_alive, sim_sem),
-  log_async = lm(log_async ~ richness + avg_max_int_alive + sd_max_int_alive + w_avg_tlvl_alive + ct_alive, sim_sem),
-  log_stab_pop = lm(log_stab_pop ~ richness + avg_max_int_alive + sd_max_int_alive + w_avg_tlvl_alive + ct_alive, sim_sem),
-  log_stab_com = lm(log_stab_com ~ log_async + log_stab_pop, sim_sem)
-)
-sem_basic <- as.psem(sem_list_basic)
-```
-
-```{r}
-ti <- summary(sem_basic)$coefficients[, c(1, 2, 8, 9)]
-colnames(ti)[4] <- "Signif"
-ti %>%
-  mutate(
-    Response = var_replacement()[Response],
-    Predictor = var_replacement()[Predictor]
-  ) %>%
-  kable(caption = "Standardized estimates for the Structural Equation Models.") %>%
-  collapse_rows(1, valign = "middle") %>%
-  kable_styling()
-```
-
-```{r, eval = FALSE}
-ti <- map_dfr(setNames(sem_list_basic, names(sem_list_basic)),
-  performance::check_collinearity,
-  .id = "response") %>%
-  as_tibble
-ti %>%
-  mutate(
-    response = var_replacement()[response],
-    Term = var_replacement()[Term]
-  ) %>%
-  kable(caption = "Variance Inflation Factors for the Structural Equation Model.") %>%
-  kable_styling()
-```
-
-```{r, eval = FALSE}
-map_dfr(sem_list_basic, rsquared) %>%
-  mutate(Response = var_replacement()[Response]) %>%
-  select(Response, R.squared) %>%
-  kable(caption = "Rsquared for the Structural Equation Model.") %>%
-  kable_styling()
-```
 
 
 
