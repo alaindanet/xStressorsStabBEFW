@@ -34,7 +34,7 @@ param = NamedTuple.(eachrow(param))
 
 
 pm = sample(param)
-println("Running warmup: r = $(pm.r), K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
+println("Running warmup: K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
 
 warmup = simCS(pm.connectance, pm.richness;
       Z = 100,
