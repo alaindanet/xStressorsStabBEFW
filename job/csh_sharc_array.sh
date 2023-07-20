@@ -9,7 +9,7 @@ DIR_SCRIPT=scripts
 # Set number of iteration
 #IDNB=($(wc -l ${DIR_ENV}/${DIR_SCRIPT}/param_comb_ct_S_h.csv))
 #IDNB=
-#$ -t 1-288000:4000
+#$ -t 1-216000:4000
 #$ -o /home/$USER/logs/
 #$ -e /home/$USER/logs/
 #

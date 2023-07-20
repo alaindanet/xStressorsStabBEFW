@@ -72,7 +72,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
                                            max = 5000, last = 100,
                                            K_alpha_corrected = true,
-                                           dt = 0.1, gc_thre = .2,
+                                           dt = 0.1, gc_thre = .01,
                                            return_sol = false
                                           )
                               ),
