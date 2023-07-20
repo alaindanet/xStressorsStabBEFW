@@ -5,6 +5,7 @@ function simCS(C, S;
         r = 1.0, K = 5.0, alpha_ij = 0.5,
         max = 5000, last = 1000, dt = 0.1,
         return_sol = false,
+        dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
         K_alpha_corrected = true,
         Ctol = .02,
         gc_thre = .02
@@ -63,6 +64,7 @@ function simCS(C, S;
                  dt = dt,
                  tmax = max,
                  extinction_threshold = 1e-5,
+                 diff_code_data = (dbdt, p),
                  verbose = false
                 );
         catch
@@ -98,10 +100,20 @@ function sim_int_mat(A;
         r = 1.0,
         max = 5000, last = 1000,dt = 0.1,
         K_alpha_corrected = true,
+        dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+        gc_thre = .02,
         return_sol = false)
+
+    if rand(Distributions.Uniform(0, 1)) < gc_thre
+        println("")
+        GC.gc()
+        ccall(:malloc_trim, Cvoid, (Cint,), 0)
+        GC.safepoint()
+    end
 
     fw = FoodWeb(A, Z = Z, quiet = true)
     S = richness(fw)
+    C = connectance(fw)
 
     # Parameters of the functional response
     funcrep = BioenergeticResponse(fw; h = h, c = c)
@@ -123,6 +135,8 @@ function sim_int_mat(A;
                         producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
                         env_stoch = EnvStoch(σₑ)
                        )
+
+    ω = p.functional_response.ω
     B0 = rand(S)
     # Simulate
     timing = @elapsed m = try
@@ -131,6 +145,7 @@ function sim_int_mat(A;
                  dt = dt,
                  tmax = max,
                  extinction_threshold = 1e-5,
+                 diff_code_data = (dbdt, p),
                  verbose = false
                 );
 
@@ -147,7 +162,7 @@ function sim_int_mat(A;
     time_series = get_time_series(m; last = last)
 
     out = merge(
-                (S = S, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
+                (S = S, ct = C, omega = ω, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
                 out,
                 time_series
                )
@@ -171,7 +186,7 @@ function get_time_series(m; last = 10)
     (; zip(names_output, values)...)
 end
 
-function get_stab_fw(m; last = 10)
+function get_stab_fw(m; last = 10, kwargs...)
     names_output = (
                     :richness          ,
                     :stab_com          ,
@@ -201,7 +216,7 @@ function get_stab_fw(m; last = 10)
     if length(m.t) >= last
         p = get_parameters(m)
         fw = p.network
-        bm_cv = coefficient_of_variation(m, last = last)
+        bm_cv = coefficient_of_variation(m; last = last, kwargs...)
         bm = biomass(m, last = last)
         emp_int_strength = empirical_interaction_strength(m, p, last = last)
         non_zero_int = [i for i in emp_int_strength.mean if i != 0]

@@ -44,14 +44,14 @@ param = NamedTuple.(eachrow(param))
 
 # Warm-up
 pm = sample(param)
-println("Running warmup: r = $(pm.r), K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
+println("Running warmup:K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
 
 warmup = sim_int_mat(pm.A;
-            ρ = 1.0, alpha_ij = 0,
+            ρ = pm.rho, alpha_ij = 0,
             d = 0.0,
-            σₑ = .5, Z = 1000, h = 2.0, c = 0.0, K = 1.0,
+            σₑ = pm.sigma, Z = pm.Z, h = pm.h, c = 0.0, K = pm.K,
             dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
-            max = 50, last = 10, dt = 0.1, return_sol = false)
+            max = 5000, last = 100, dt = 0.1, return_sol = false)
 println("$(warmup)")
 
 
@@ -62,7 +62,7 @@ println("Running param sim from lines $first_sim to $last_sim")
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
-                               (rep = p.rep, productivity = p.K, h = p.h),
+                               (rep = p.rep, productivity = p.K, h = p.h, fw_id = p.fw_id),
                                sim_int_mat(p.A;
                                            ρ = p.rho,
                                            alpha_ij = 0.5,

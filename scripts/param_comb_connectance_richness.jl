@@ -3,9 +3,9 @@ using CSV, StatsBase, DataFrames, Arrow
 rep = 1:50
 S = [5, 10, 20, 40, 60]
 C = 0.02:.05:.32
-sigma = .2:.2:1.0
+sigma = .1:.2:0.6
 Z = [1, 2, 5, 10, 20, 40, 100]
-ρ = 0:.2:1
+ρ = 0:.25:1
 K = [5, 10, 20, 30]
 
 names = (:rep, :richness, :connectance, :Z, :sigma, :rho, :K)

@@ -17,7 +17,6 @@ include("src/interaction_strength.jl")
 include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
-?readdir
 
 raw_files = readdir("res/simCSZenrich3")
 all_files = raw_files[.!occursin.("simCSZenrich3", raw_files)]
@@ -49,91 +48,93 @@ Arrow.write("res/simCSZenrich2/simCSZenrich2/sim_toy_compensatory_dyn.arrow", to
 #  Sim  #
 #########
 
-#simCS(C, S, Z, h, c, σₑ, K; max = 50000, last = 25000, dt = 0.1, return_sol = false)
-using Distributions
+df = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h.arrow"))
+reshape_array(vec) = reshape(vec, (
+                                   round(Int, sqrt(length(vec))),
+                                   round(Int, sqrt(length(vec)))
+                                  )
+                            )
+df[!, :A] = map(x -> reshape_array(x), df[:, :A])
 
-ti = simCS(.4, 5;
-           d = .2,
-           Z = 1, h = 2.0, ρ = -1,
-           σₑ = 1.0, K = .5, max = 500,
-           last = 100, dt = 0.1, return_sol = false
-          )
-map(typeof, ti)
-convert.(Float64, ti.omnivory)
+param = NamedTuple.(eachrow(df))
 
+pm = sample(param)
+println("Running warmup: K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
 
-nb_alive_species = try
-    length(trophic_structure(ti, last = 1000).alive_species)
-catch
-    missing
-end
-
-plot(ti, idxs = collect(1:1:length(get_parameters(ti).network.species)))
-cv(ti, last = 100, idxs = collect(1:1:length(get_parameters(ti).network.species)))
-biomass(ti, last = 10, idxs = collect(1:1:length(get_parameters(ti).network.species)))
-
-
-
-# fw = FoodWeb([0 0 0; 1 0 0; 0 1 0], Z = 100)
-fw = FoodWeb([0 0 0; 0 0 0; 0 0 0], Z = 100)
-fw = FoodWeb([0 0; 0 0], Z = 100)
-p = ModelParameters(fw,
-                    functional_response = BioenergeticResponse(fw, h = 2, c = 1),
-                    producer_competition = ProducerCompetition(fw; αij = .5),
-                    env_stoch = EnvStoch(.5),
-                    biorates = BioRates(fw; d = 0.05)
-                   )
-S = size(fw.A, 1)
-
-stoch_starting_val = repeat([0], S)
-u0 = [0.0, 1]
-m = simulate(p, u0;
-         rho = 1,
-         dt = .5,
-         tmax = 50,
-         extinction_threshold = 1e-5,
-         verbose = false
-        );
-
-get_stab_fw(m; last = 10)
-cv(m, last = 100, idxs = collect(1:1:S))
-EcologicalNetworksDynamics.synchrony(transpose(m[S+1:1:2*S, end-(100-1):end]))
-
-biomass(m, last = 100, idxs = collect(1:1:S))
-plot(m, idxs = collect(1:1:S))
-plot(m, idxs = collect(S+1:1:2 * S))
-
-sim_int_mat([0 0 0; 0 0 0; 1 1 0];
+warmup = sim_int_mat(pm.A;
             ρ = 1.0, alpha_ij = 0,
-            d = 0.1,
-            σₑ = .5, Z = 100, h = 2.0, c = 1.0, K = 1.0,
-            fun = stoch_d_dBdt!,
-            max = 500, last = 100, dt = 0.1, return_sol = false)
+            d = 0.0,
+            σₑ = .5, Z = 1000, h = 2.0, c = 0.0, K = 1.0,
+            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+            max = 50, last = 10, dt = 0.1, return_sol = false)
+println("$(warmup)")
+
+
+
+using ProgressMeter
+sim = @showprogress pmap(p ->
+                         merge(
+                               (fw_id = p.fw_id, productivity = p.K, h = p.h),
+                               sim_int_mat(p.A;
+                                           ρ = p.rho,
+                                           alpha_ij = 0.5,
+                                           d = 0.0,
+                                           σₑ = p.sigma, Z = p.Z,
+                                           h = p.h, c = 0.0, K = p.K,
+                                           dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+                                           max = 5000, last = 1000,
+                                           K_alpha_corrected = true,
+                                           dt = 0.1, gc_thre = .2,
+                                           return_sol = false
+                                          )
+                              ),
+                         param[collect(1:4:100)],
+                         batch_size = 2
+                        )
+df_res = DataFrame(sim)
+
+failed_sim = @showprogress pmap(p ->
+                         merge(
+                               (fw_id = p.fw_id, productivity = p.K, h = p.h),
+                               sim_int_mat(p.A;
+                                           ρ = p.rho,
+                                           alpha_ij = 0.5,
+                                           d = 0.0,
+                                           σₑ = p.sigma, Z = p.Z,
+                                           h = p.h, c = 0.0, K = p.K,
+                                           dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+                                           max = 5000, last = 1000,
+                                           K_alpha_corrected = true,
+                                           dt = 0.5, gc_thre = .2,
+                                           return_sol = false
+                                          )
+                              ),
+                         param[collect(1:4:10)],
+                         batch_size = 2
+                        )
+
+df_failed = DataFrame(failed_sim)
+
 
 #############
 #  testing  #
 #############
 
-fw = FoodWeb([0 0; 0 0])
-p = ModelParameters(fw)
-# Default
-sim = simulate(p, [1, 1], tmax = 2000, callback = CallbackSet(
-          TerminateSteadyState(1e-6, 1e-4),
-          ExtinctionCallback(10e-6, true),
-      ),)
-out_inv = simulate(p, b0_Inv, tmax = 2000, callback = DifferentialEquations.CallbackSet(
-          ExtinctionCallback(10^-4, true),
-      ))
-maximum(sim.t)
-
-sim2 = simulate(p, [1, 1], tmax = 2000, callback = ExtinctionCallback())
-
+sim_int_mat([0 0 0; 0 0 0; 1 1 0];
+            ρ = 1.0, alpha_ij = 0,
+            d = 0.0,
+            σₑ = .5, Z = 1000, h = 2.0, c = 0.0, K = 1.0,
+            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+            max = 1000, last = 500, dt = 0.1, return_sol = false)
 
 ###########
 #  Motif  #
 ###########
 
-fw = FoodWeb(nichemodel, 20, C = .05)
+fw = FoodWeb(nichemodel, 20, C = .2, Z = 10)
+p = ModelParameters(fw)
+p.biorates.x
+trophic_levels(fw)
 fw = FoodWeb(nichemodel, 80, C = .05)
 EcologicalNetworks.find_motif(fw.A, unipartitemotifs().S1)
 mot = find_motif(UnipartiteNetwork(fw.A), unipartitemotifs().S1) |> length
