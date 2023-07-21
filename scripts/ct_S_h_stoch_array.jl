@@ -11,8 +11,11 @@ println("Running parameters combination from $(ARGS[1]) to $(ARGS[2])")
 #ncpu = maximum([length(Sys.cpu_info()), 15])
 ncpu = 15
 
+#Dir
+proj_dir = expanduser("~/xStressorsStabBEFW")
+
 #Flag enables all the workers to start on the project of the current dir
-flag = "--project=~/xStressorsStabBEFW/"
+flag = "--project=" * proj_dir
 println("Workers run with flag: $(flag)")
 addprocs(ncpu - 1, exeflags=flag)
 #addprocs(5, exeflags=flag)
@@ -29,7 +32,7 @@ println("Using $(ncpu -1) cores")
 @everywhere include("../src/interaction_strength.jl")
 
 
-param = DataFrame(Arrow.Table("/home/bi1ahd/xStressorsStabBEFW/scripts/param_comb_ct_S_h.arrow"))
+param = DataFrame(Arrow.Table(joinpath(proj_dir, "scripts/param_comb_ct_S_h.arrow")))
 
 # Reshape interaction matrix
 reshape_array(vec) = reshape(vec, (
@@ -46,12 +49,12 @@ param = NamedTuple.(eachrow(param))
 pm = sample(param)
 println("Running warmup:K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
 
-warmup = sim_int_mat(pm.A;
+warmup = sim_int_mat([0 0; 0 0];
             ρ = pm.rho, alpha_ij = 0,
             d = 0.0,
             σₑ = pm.sigma, Z = pm.Z, h = pm.h, c = 0.0, K = pm.K,
             dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
-            max = 5000, last = 100, dt = 0.1, return_sol = false)
+            max = 50, last = 10, dt = 0.1, return_sol = false)
 println("$(warmup)")
 
 
