@@ -65,7 +65,7 @@ println("Running param sim from lines $first_sim to $last_sim")
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
-                               (rep = p.rep, productivity = p.K, h = p.h, fw_id = p.fw_id),
+                               (fw_id = p.fw_id, productivity = p.K, h = p.h),
                                sim_int_mat(p.A;
                                            ρ = p.rho,
                                            alpha_ij = 0.5,
@@ -75,7 +75,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
                                            max = 5000, last = 100,
                                            K_alpha_corrected = true,
-                                           dt = 0.1, gc_thre = .01,
+                                           dt = 0.1, gc_thre = .1,
                                            return_sol = false
                                           )
                               ),

@@ -3,11 +3,11 @@
 #SBATCH --comment=CSZhK
 #SBATCH --job-name=CSZhK
 # Set number of iteration
-#SBATCH --array=1-54%10
+#SBATCH --array=1-54%20
 # Amount of RAM requested per job
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 # Nb of threads requested per job (smp = shared memory)
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=15
 #SBATCH --ntasks=1
 
 # Replace by the path to the folder where your script lives if necessary
