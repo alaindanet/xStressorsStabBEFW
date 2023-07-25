@@ -102,7 +102,8 @@ function sim_int_mat(A;
         K_alpha_corrected = true,
         dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
         gc_thre = .02,
-        return_sol = false)
+        return_sol = false,
+        digits = nothing)
 
     if rand(Distributions.Uniform(0, 1)) < gc_thre
         println("")
@@ -137,6 +138,7 @@ function sim_int_mat(A;
                        )
 
     ω = p.functional_response.ω
+    met = p.biorates.x
     B0 = rand(S)
     # Simulate
     timing = @elapsed m = try
@@ -157,36 +159,52 @@ function sim_int_mat(A;
         return m
     end
 
-    out = get_stab_fw(m; last = last)
-    # Collect timeseries
-    time_series = get_time_series(m; last = last)
+    out = get_stab_fw(m; last = last, digits = digits)
+    # Collect timeseries, only alive species
+    time_series = get_time_series(m; last = last,
+                                  idxs = out.alive_species,
+                                  digits = 5)
+    if !isnothing(digits)
+        ω = round.(ω, digits = digits)
+        met = round.(met, digits = digits)
+    end
+
 
     out = merge(
-                (S = S, ct = C, omega = ω, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
+                (S = S, ct = C, rho = ρ, env_stoch = σₑ,
+                 Z = Z, omega = ω, met_loss = met, timing = timing),
                 out,
                 time_series
                )
+
     out
 end
 
-function get_time_series(m; last = 10)
+function get_time_series(m; last = 10, idxs = nothing, digits = 5)
     names_output = (
                     :species,
                     :stoch
                    )
     if length(m.t) >= last
         S = richness(get_parameters(m).network)
+        if isnothing(idxs)
+            idxs = 1:S
+        end
         values = (
-                  transpose(round.(m[1:S, end-(last-1):end], digits = 5)),
-                  transpose(round.(m[S+1:2*S, end-(last-1):end], digits = 5))
+                  transpose(m[1:S, end-(last-1):end]),
+                  transpose(m[S+1:2*S, end-(last-1):end])
                  )
+        values = map(x -> x[:, idxs], values)
+        if !isnothing(digits)
+            values = map(x -> round.(x, digits = digits), values)
+        end
     else
         values = repeat([missing], length(names_output))
     end
     (; zip(names_output, values)...)
 end
 
-function get_stab_fw(m; last = 10, kwargs...)
+function get_stab_fw(m; last = 10, digits = nothing, kwargs...)
     names_output = (
                     :richness          ,
                     :stab_com          ,
@@ -226,14 +244,14 @@ function get_stab_fw(m; last = 10, kwargs...)
         alive_species = troph_struc.alive_species
         omnivory_alive = omnivory(emp_int_strength.mean[troph_struc.alive_species, troph_struc.alive_species])
 
-        values = (
+        values = [
                   richness(m, last = last),
                   1 / bm_cv.community,
                   bm_cv.average_species,
                   bm_cv.synchrony,
                   bm.total,
-                  bm.species,
-                  bm_cv.species,
+                  bm.species[alive_species],
+                  bm_cv.species[alive_species],
                   alive_species,
                   troph_struc.alive_trophic_level,
                   troph_struc.weighted_average,
@@ -250,7 +268,12 @@ function get_stab_fw(m; last = 10, kwargs...)
                   gini(non_zero_max_int),
                   omnivory_alive,
                   mean(omnivory_alive)
-                 )
+                 ]
+        if !isnothing(digits)
+            alive_species_mask = [names_output[i] == :alive_species for i in 1:length(names_output)]
+            values = map(x -> round.(x, digits = digits), values)
+            values[findall(alive_species_mask)[1]] = round.(Int, values[findall(alive_species_mask)[1]])
+        end
     else
         values = repeat([missing], length(names_output))
     end

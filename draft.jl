@@ -1,6 +1,5 @@
 using Revise
 using EcologicalNetworksDynamics
-using EcologicalNetworksDynamics: richness
 using SparseArrays
 using LinearAlgebra
 using DifferentialEquations
@@ -17,32 +16,6 @@ include("src/interaction_strength.jl")
 include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
-
-raw_files = readdir("res/simCSZenrich3")
-all_files = raw_files[.!occursin.("simCSZenrich3", raw_files)]
-mask_ts_files = occursin.("ts", all_files)
-files = all_files[.!mask_ts_files]
-
-df = DataFrame(Arrow.Table(join(["res/simCSZenrich3/", files[1]])))
-df[1, :cv_sp]
-
-select(df, [:species, :stoch])
-for i in files[isfile.([join(["res/simCSZenrich3/", i]) for i in files])]
-    df = DataFrame(Arrow.Table(join(["res/simCSZenrich3/", i])))
-    select!(df, Not([:cv_sp]))
-    Arrow.write(join(["res/simCSZenrich3/simCSZenrich3/", i]), df, ntasks = 2)
-end
-
-
-arrow = Arrow.Table("res/simCSZenrich2/simCSZ_4001_8000.arrow")
-df = DataFrame(arrow)
-filter(:rho => x -> x == 1.0, df)[3, [:cv_sp, :bm_sp]]
-filter(:cv_sp => x -> ismissing(x), df)
-filter(:cv_sp => x -> !ismissing(x) , df)
-df.cv_sp
-
-toy = select(df, [:rep, :productivity, :richness, :ct, :Z, :rho, :env_stoch, :species, :stoch])
-Arrow.write("res/simCSZenrich2/simCSZenrich2/sim_toy_compensatory_dyn.arrow", toy)
 
 #########
 #  Sim  #
@@ -64,14 +37,48 @@ println("Running warmup: K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
 warmup = sim_int_mat(pm.A;
             ρ = 1.0, alpha_ij = 0,
             d = 0.0,
-            σₑ = .5, Z = 1000, h = 2.0, c = 0.0, K = 1.0,
+            σₑ = .1, Z = 1000, h = 2.0, c = 0.0, K = 1.0,
             dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
-            max = 50, last = 10, dt = 0.1, return_sol = false)
+            max = 50, last = 10, dt = 0.1, return_sol = false, digits = 5)
 println("$(warmup)")
 
+include("src/sim.jl")
+w = sim_int_mat(pm.A;
+            ρ = 0.0, alpha_ij = 0,
+            d = 0.0,
+            K = 1.0,
+            σₑ = .1,
+            Z = 1000, h = 2.0, c = 0.0,
+            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+            max = 1000, last = 100, dt = 0.1, return_sol = true)
+tu = get_stab_fw(w, digits = 5)
+tu.alive_species
+varinfo(r"tu")
+[3,2,1][findall([false,true,false])[1]]
 
+[3,2,1][]
+[3,2,1][[false,true,false]]
 
-using ProgressMeter
+tui = get_stab_fw(w)
+varinfo(r"tui")
+
+w = sim_int_mat(pm.A;
+            ρ = 1.0, alpha_ij = 0,
+            d = 0.0,
+            K = 5.0,
+            σₑ = .5,
+            Z = 100, h = 2.0, c = 0.0,
+            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+            max = 1000, last = 100, dt = 0.1, return_sol = false, digits = 5)
+# Check timesteps
+
+w.tlvl
+w.alive_species
+w.bm_sp
+w.cv_sp
+w.met_loss
+
+using ProgressMeter, Distributed
 sim = @showprogress pmap(p ->
                          merge(
                                (fw_id = p.fw_id, productivity = p.K, h = p.h),
@@ -88,7 +95,7 @@ sim = @showprogress pmap(p ->
                                            return_sol = false
                                           )
                               ),
-                         param[collect(1:4:100)],
+                         param[collect(1:5:100)],
                          batch_size = 2
                         )
 df_res = DataFrame(sim)

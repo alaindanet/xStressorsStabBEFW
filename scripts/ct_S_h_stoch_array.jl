@@ -76,7 +76,8 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            max = 5000, last = 100,
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
-                                           return_sol = false
+                                           return_sol = false,
+                                           digits = 5
                                           )
                               ),
                          param[first_sim:last_sim],
