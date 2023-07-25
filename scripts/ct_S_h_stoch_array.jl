@@ -89,4 +89,4 @@ println("$(length(sim)) simulations took $(round(timing /60, digits = 2)) minute
 file_ts = string("simCSh_", first_sim, "_", last_sim, "_ts.arrow")
 Arrow.write(file_ts, select(df, [:species, :stoch]))
 file = string("simCSh_", first_sim, "_", last_sim, ".arrow")
-Arrow.write(file, select(df, Not([:species, :stoch])))
+Arrow.write(file, select(df, Not([:species, :stoch, :cv_sp])))
