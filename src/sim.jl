@@ -251,7 +251,7 @@ function get_stab_fw(m; last = 10, digits = nothing, kwargs...)
                   bm_cv.synchrony,
                   bm.total,
                   bm.species[alive_species],
-                  bm_cv.species[alive_species],
+                  bm_cv.species,
                   alive_species,
                   troph_struc.alive_trophic_level,
                   troph_struc.weighted_average,

@@ -42,7 +42,6 @@ warmup = sim_int_mat(pm.A;
             max = 50, last = 10, dt = 0.1, return_sol = false, digits = 5)
 println("$(warmup)")
 
-include("src/sim.jl")
 w = sim_int_mat(pm.A;
             ρ = 0.0, alpha_ij = 0,
             d = 0.0,
