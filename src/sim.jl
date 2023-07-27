@@ -146,7 +146,6 @@ function sim_int_mat(A;
                        )
 
     ω = p.functional_response.ω
-    met = p.biorates.x
     B0 = rand(S)
     # Simulate
     timing = @elapsed m = try
@@ -211,7 +210,7 @@ function sim_int_mat(A;
 
     out = merge(
                 (S = S, ct = C, rho = ρ, env_stoch = σₑ,
-                 Z = Z, omega = ω, met_loss = met, timing = timing),
+                 Z = Z, omega = ω, d = d, timing = timing),
                 out,
                 time_series
                )
