@@ -25,7 +25,7 @@ p = ModelParameters(fw, biorates = BioRates(fw; d = allometric_rate(fw, DefaultM
 #  Sim  #
 #########
 
-df = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h.arrow"))
+df = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d_allometric.arrow"))
 reshape_array(vec) = reshape(vec, (
                                    round(Int, sqrt(length(vec))),
                                    round(Int, sqrt(length(vec)))
@@ -59,13 +59,84 @@ w = sim_int_mat(pm.A;
 w = sim_int_mat(pm.A;
             ρ = 0.0, alpha_ij = 0.5,
             d = nothing,
-            da = (ap = .3, ai = .3, ae = .3),
+            da = (ap = .4, ai = .4, ae = .4),
             K = 5.0,
             σₑ = 1,
             Z = 2, h = 2.0, c = 0.0,
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
             max = 2000, last = 1000, dt = 0.1, return_sol = false, digits = 5)
 
+using Distributed, ProgressMeter
+timing = @elapsed sim = @showprogress pmap(p ->
+                         merge(
+                               (sim_id = p.sim_id, fw_id = p.fw_id,
+                                productivity = p.K, h = p.h),
+                               sim_int_mat(p.A;
+                                           ρ = p.rho,
+                                           alpha_ij = 0.5,
+                                           d = nothing,
+                                           da = (ap = .4, ai = .4, ae = .4),
+                                           σₑ = p.sigma, Z = p.Z,
+                                           h = p.h, c = 0.0, K = p.K,
+                                           dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+                                           max = 10000, last = 1000,
+                                           K_alpha_corrected = true,
+                                           dt = 0.1, gc_thre = .1,
+                                           return_sol = false,
+                                           digits = 5
+                                          )
+                              ),
+                         param[repeat([1], 10)],
+                         batch_size = 1
+                        )
+lala = DataFrame(sim);
+lala[!, [:richness, :stab_com, :avg_cv_sp, :sync, :max_tlvl, :w_avg_tlvl, :avg_omnivory, :avg_int_strength]]
+
+
+timing = @elapsed sim = @showprogress pmap(p ->
+                         merge(
+                               (sim_id = p.sim_id, fw_id = p.fw_id,
+                                productivity = p.K, h = p.h),
+                               begin
+                                   fw = FoodWeb(p.A, Z = p.Z)
+                                   S = richness(fw)
+                                   funcrep = BioenergeticResponse(fw; h = p.h, c = 0)
+                                   nprod = length(producers(fw))
+                                   K = p.K * (1 + (.5 * (nprod - 1))) / nprod
+                                   # Carrying capacity
+                                   env = Environment(fw, K = K)
+                                   d = allometric_rate(fw, AllometricParams(.4, .4, .4,-.25, -0.25, -.25))
+                                   # generate the model parameters
+                                   myp = ModelParameters(fw;
+                                                         biorates = BioRates(fw; r = 1.0, d = d),
+                                                         functional_response = funcrep,
+                                                         environment = env,
+                                                         producer_competition = ProducerCompetition(fw, αii = 1.0, αij = .5)
+                                                        )
+
+                                   B0 = rand(S)
+                                   # Simulate
+                                   m = simulate(myp, B0;
+                                                alg = :adaptive,
+                                                tmax = 10000,
+                                                extinction_threshold = 1e-5,
+                                                verbose = false
+                                               );
+                                   bm_cv = coefficient_of_variation(m; last = 1000)
+                                   (
+                                    richness = richness(m),
+                                    max_tlvl = trophic_structure(m).max,
+                                    stab_com = 1/bm_cv.community,
+                                    avg_cv_sp = bm_cv.average_species,
+                                    sync = bm_cv.synchrony
+                                   )
+                               end
+
+                              ),
+                         param[repeat([5], 10)],
+                         batch_size = 1
+                        )
+DataFrame(sim)
 fw = FoodWeb(nichemodel, 20, C = .22, check_cycle = true)
 max_trophic_level(fw.A)
 A= fw.A

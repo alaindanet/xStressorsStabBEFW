@@ -204,7 +204,7 @@ function sim_int_mat(A;
                                   digits = 5)
     if !isnothing(digits)
         ω = round.(ω, digits = digits)
-        met = round.(met, digits = digits)
+        d = round.(d, digits = digits)
     end
 
 
