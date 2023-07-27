@@ -17,6 +17,10 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
+fw = FoodWeb(nichemodel,10, C = .3, Z = 100)
+p = ModelParameters(fw, biorates = BioRates(fw; d = allometric_rate(fw, DefaultMortalityParams())))
+
+
 #########
 #  Sim  #
 #########
@@ -47,29 +51,70 @@ w = sim_int_mat(pm.A;
             d = 0.0,
             K = 1.0,
             σₑ = .1,
-            Z = 1000, h = 2.0, c = 0.0,
+            Z = 10, h = 2.0, c = 0.0,
             dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
             max = 1000, last = 100, dt = 0.1, return_sol = true)
-tu = get_stab_fw(w, digits = 5)
-tu.alive_species
-varinfo(r"tu")
-[3,2,1][findall([false,true,false])[1]]
 
-[3,2,1][]
-[3,2,1][[false,true,false]]
-
-tui = get_stab_fw(w)
-varinfo(r"tui")
-
+# test d
 w = sim_int_mat(pm.A;
-            ρ = 1.0, alpha_ij = 0,
-            d = 0.0,
+            ρ = 0.0, alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .3, ai = .3, ae = .3),
+            K = 5.0,
+            σₑ = 1,
+            Z = 2, h = 2.0, c = 0.0,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 2000, last = 1000, dt = 0.1, return_sol = false, digits = 5)
+
+fw = FoodWeb(nichemodel, 20, C = .22, check_cycle = true)
+max_trophic_level(fw.A)
+A= fw.A
+
+w = sim_int_mat(A;
+            ρ = 0.0, alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            K = 15.0,
+            σₑ = 1.0,
+            Z = 100, h = 2.0, c = 0.0,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 1000, last = 500, dt = .1, return_sol = false, digits = 5);
+w
+plot(w.species, tspan = (0, 500))
+w = sim_int_mat(A;
+            ρ = 0.0, alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            K = 20.0,
+            σₑ = 1.5,
+            Z = 1000, h = 2.0, c = 0.0,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 200, last = 100, dt = .1, return_sol = true, digits = 5);
+EcologicalNetworksDynamics.check_last_extinction(w, idxs = 1:size(A,1), last = 100)
+plot(w, idxs = 1:size(A, 1), tspan = (500, 1500))
+plot(w, idxs = 1:size(A, 1))
+w.t
+tu = get_stab_fw(w; last = 1000)
+tu.tlvl
+connectance(A[tu.alive_species, tu.alive_species])
+
+f = FoodWeb(nichemodel, 20, C = .22, check_cycle = true, Z = 100)
+
+allometric_rate(f, AllometricParams(da.ap, da.ai, da.ae,-.25, -0.25, -.25))
+
+
+# Check timesteps
+w.tlvl
+#
+
+w = sim_int_mat(zeros(Int, 5, 5);
+            ρ = 0.0, alpha_ij = 0.5,
+            d = nothing,
             K = 5.0,
             σₑ = .5,
             Z = 100, h = 2.0, c = 0.0,
-            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
             max = 1000, last = 100, dt = 0.1, return_sol = false, digits = 5)
-# Check timesteps
 
 w.tlvl
 w.alive_species

@@ -98,6 +98,7 @@ function sim_int_mat(A;
         alpha_ij = 0, Z = 100,
         h = 2.0, c = 1.0, K = 1.0,
         r = 1.0,
+        da = nothing,
         max = 5000, last = 1000,dt = 0.1,
         K_alpha_corrected = true,
         dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
@@ -128,6 +129,13 @@ function sim_int_mat(A;
                           K
                       end
                      )
+    if isnothing(d)
+        if !isnothing(da)
+            d = allometric_rate(fw, AllometricParams(da.ap, da.ai, da.ae,-.25, -0.25, -.25))
+        else
+            d = allometric_rate(fw, DefaultMortalityParams())
+        end
+    end
     # generate the model parameters
     p = ModelParameters(fw;
                         biorates = BioRates(fw; r = r, d = d),
@@ -157,6 +165,37 @@ function sim_int_mat(A;
 
     if return_sol
         return m
+    end
+
+    # Re-run simulations until no more extinction
+    if length(m.t) >= last
+        ti = EcologicalNetworksDynamics.check_last_extinction(m;
+                                                              idxs = 1:S,
+                                                              last = last)
+        i = 1
+        while ti != true
+            B0 = m[1:S,end]
+            println("Re-run until no more extinctions \
+                    over the last $(last) timesteps. Iteration = $i.")
+
+            #u0 = m[S+1:S*2,end]
+            p = get_parameters(m)
+            m = simulate(p, B0;
+                         rho = ρ,
+                         dt = dt,
+                         tmax = round(Int, last + 500),
+                         extinction_threshold = 1e-5,
+                         diff_code_data = (dbdt, p),
+                         verbose = false
+                        );
+            ti = EcologicalNetworksDynamics.check_last_extinction(m;
+                                                                  idxs = 1:S,
+                                                                  last = last)
+            if ti == true
+                break
+            end
+            i = i + 1
+        end
     end
 
     out = get_stab_fw(m; last = last, digits = digits)
