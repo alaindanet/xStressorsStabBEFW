@@ -9,7 +9,7 @@ last_sim = parse(Int, ARGS[2])
 println("Running parameters combination from $(ARGS[1]) to $(ARGS[2])")
 
 #ncpu = maximum([length(Sys.cpu_info()), 15])
-ncpu = 15
+ncpu = 20 
 
 #Dir
 proj_dir = expanduser("~/xStressorsStabBEFW")
@@ -22,7 +22,7 @@ addprocs(ncpu - 1, exeflags=flag)
 println("Using $(ncpu -1) cores")
 
 # Prepare saving
-dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_allo_d/"
+dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_allo_d3/"
 
 if !isdir(dest_dir)
     mkdir(dest_dir)
@@ -41,7 +41,7 @@ end
 @everywhere include("../src/interaction_strength.jl")
 
 
-param = DataFrame(Arrow.Table(joinpath(proj_dir, "scripts/param_comb_ct_S_h_d_allometric.arrow")))
+param = DataFrame(Arrow.Table(joinpath(proj_dir, "scripts/param_comb_ct_S_h_d2.arrow")))
 
 # Reshape interaction matrix
 reshape_array(vec) = reshape(vec, (
@@ -60,9 +60,10 @@ println("Running warmup:K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
 
 warmup = sim_int_mat([0 0; 0 0];
             ρ = pm.rho, alpha_ij = 0,
-            d = 0.0,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
             σₑ = pm.sigma, Z = pm.Z, h = pm.h, c = 0.0, K = pm.K,
-            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
             max = 50, last = 10, dt = 0.1, return_sol = false)
 println("$(warmup)")
 
@@ -83,8 +84,8 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            da = (ap = .4, ai = .4, ae = .4),
                                            σₑ = p.sigma, Z = p.Z,
                                            h = p.h, c = 0.0, K = p.K,
-                                           dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
-                                           max = 10000, last = 1000,
+                                           dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                                           max = 5000, last = 500,
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
                                            return_sol = false,
