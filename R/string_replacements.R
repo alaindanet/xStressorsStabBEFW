@@ -30,8 +30,8 @@ var_replacement <- function() {
     rho = "Env Corr",
     productivityenrichment = "Enrichment",
     env_stoch = "Env variance",
-    Z = "PPMR"
-
+    Z = "PPMR",
+    h = "FR type"
   )
 }
 rho_replacement <- function() {

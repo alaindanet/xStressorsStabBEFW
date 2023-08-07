@@ -18,7 +18,9 @@ include("src/plot.jl")
 include("src/get_modules.jl")
 
 fw = FoodWeb(nichemodel,10, C = .3, Z = 100)
-p = ModelParameters(fw, biorates = BioRates(fw; d = allometric_rate(fw, DefaultMortalityParams())))
+p = ModelParameters(fw)
+B0 = rand(richness(fw))
+simulate(p, B0,tmax = 100, callback = EcologicalNetworksDynamics.CallbackSet(ExtinctionCallback(10^-6, true)))
 
 
 #########
@@ -137,7 +139,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                          batch_size = 1
                         )
 DataFrame(sim)
-fw = FoodWeb(nichemodel, 20, C = .22, check_cycle = true)
+fw = FoodWeb(nichemodel, 10, C = .33, check_cycle = true, check_disconnected = true)
 max_trophic_level(fw.A)
 A= fw.A
 
@@ -145,9 +147,9 @@ w = sim_int_mat(A;
             ρ = 0.0, alpha_ij = 0.5,
             d = nothing,
             da = (ap = .4, ai = .4, ae = .4),
-            K = 15.0,
-            σₑ = 1.0,
-            Z = 100, h = 2.0, c = 0.0,
+            K = 10.0,
+            σₑ = .6,
+            Z = 10, h = 2.0, c = 0.0,
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
             max = 1000, last = 500, dt = .1, return_sol = false, digits = 5);
 w
