@@ -7,6 +7,8 @@ param.sigma = replace(param.sigma, 0.1 => 0.5)
 param.sigma = replace(param.sigma, 0.3 => 1)
 param.sigma = replace(param.sigma, 0.6 => 1.5)
 
+param = filter(:K => k -> k == 5, param)
+
 unique(param.sigma)
 
 param.sim_id = 1:nrow(param)
