@@ -1,7 +1,7 @@
 using CSV, StatsBase, DataFrames, Arrow, EcologicalNetworksDynamics
 
 nrep = 50
-sigma = [0.0, 0.1, 0.3, 0.6]#.1:.2:0.6
+sigma = [0.1, 0.3, 0.6]#.1:.2:0.6
 Z = [1, 25, 50, 100]
 ρ = 0:.25:1
 K = [10]
@@ -66,7 +66,7 @@ fw_test2 = map(p -> try
               param[.! ismissing.(fw_test)]
              )
 
-param2 = param[.! ismissing.(fw_test2)]
+param2 = param[.! ismissing.(fw_test)][.! ismissing.(fw_test2)]
 
 
 # Try to get same number of sampling per richness
@@ -98,6 +98,11 @@ function try_foodweb(S; C = .1, tol_C = .05, n = 5, kwargs...)
     fw
 end
 
+fw = try_foodweb(10; C = 0.5,
+            tol_C = .05,
+            check_cycle = true,
+            check_disconnected = true).A
+
 
 df4 = repeat(df3, nrep)
 df4[!, :rep] = reduce(vcat, [repeat([i], nrow(df3)) for i in 1:nrep])
@@ -111,7 +116,7 @@ foodweb = map(p -> (rep = p.rep, S = p.richness, C = p.connectance,
              NamedTuple.(eachrow(df4))
             )
 df_fw = DataFrame(foodweb)
-df_fw = df_fw[.! ismissing.(df_fw.A)]
+df_fw = df_fw[.! ismissing.(df_fw.fw),:]
 # Create a foodweb_id
 df_fw[!, :fw_id] = 1:nrow(df_fw)
 Arrow.write("../fw_comb_ct_S_h_d2.arrow", df_fw)
