@@ -583,7 +583,7 @@ ggcorrplot(cor_var, type = "lower", lab = TRUE)
 tar_read(sem_eff_tab) %>%
   filter(effect_type == "total") %>%
   filter(response %in% c("async", "pop_stab", "stab_com")) %>%
-  filter(!predictor %in% c("evenness_sae", "sae_even", "cpe_int", "cpe_env", "pop_stab", "async")) %>%
+  filter(!predictor %in% c("evenness_sae", "sae_even", "cpe_int", "cpe_env", "pop_stab", "async", "S", "ct")) %>%
   mutate(across(c(response, predictor), ~var_replacement()[.x])) %>%
   ggplot(aes(
       x = predictor,
@@ -866,6 +866,54 @@ mod_tot <- lm(stab_com ~
   richness * env_stoch * w_avg_tlvl,
   mutate(sim_fw, across(c(stab_com, richness), log)) #, richness
   )
+mod_tot_async <- lm(async ~
+  richness  + rho + env_stoch +
+  ct_alive + w_avg_tlvl + Z +
+  avg_int_strength +
+  h +
+  richness * rho +
+  richness * env_stoch +
+  richness * ct_alive +
+  richness * avg_int_strength +
+  richness * h +
+  richness * w_avg_tlvl +
+  richness * Z +
+  richness * rho * ct_alive +
+  richness * rho * w_avg_tlvl +
+  richness * rho * avg_int_strength +
+  richness * rho * h +
+  richness * rho * Z +
+  richness * env_stoch * ct_alive +
+  richness * env_stoch * Z +
+  richness * env_stoch * avg_int_strength+
+  richness * env_stoch * h +
+  richness * env_stoch * w_avg_tlvl,
+  mutate(sim_fw, across(c(async, richness), log)) #, richness
+  )
+mod_tot_pop_stab <- lm(pop_stab ~
+  richness  + rho + env_stoch +
+  ct_alive + w_avg_tlvl + Z +
+  avg_int_strength +
+  h +
+  richness * rho +
+  richness * env_stoch +
+  richness * ct_alive +
+  richness * avg_int_strength +
+  richness * h +
+  richness * w_avg_tlvl +
+  richness * Z +
+  richness * rho * ct_alive +
+  richness * rho * w_avg_tlvl +
+  richness * rho * avg_int_strength +
+  richness * rho * h +
+  richness * rho * Z +
+  richness * env_stoch * ct_alive +
+  richness * env_stoch * Z +
+  richness * env_stoch * avg_int_strength+
+  richness * env_stoch * h +
+  richness * env_stoch * w_avg_tlvl,
+  mutate(sim_fw, across(c(pop_stab, richness), log)) #, richness
+  )
 check_collinearity(lm(stab_com ~ richness + rho +
     env_stoch + avg_int_strength +
   ct_alive + w_avg_tlvl + Z + h, sim_fw))
@@ -876,12 +924,15 @@ pred_data <- list(
   ct_alive = c(.05, .10, .30),
   rho = c(0, .75, 1),
   avg_int_strength = c(.01, .02, .05, .1),
-  env_stoch = c(.1, .3),
+  env_stoch = c(.1, .6),
   w_avg_tlvl = c(1.5, 2, 3),
   Z = c(10, 100),
   h = c(2, 3)
   ) %>% expand.grid()
 pred_data$stab_com <- predict(mod_tot, newdata = pred_data)
+pred_data$async <- predict(mod_tot_async, newdata = pred_data)
+pred_data$pop_stab <- predict(mod_tot_pop_stab, newdata = pred_data)
+pred_data$resp_div <- rho_replacement()[as.character(pred_data$rho)]
 ```
 
 ```{r}
@@ -889,55 +940,215 @@ p_pred_sr_int <- pred_data %>%
   filter(
     ct_alive %in% c(.1),
     rho %in% c(0, .75),
+    richness >= 1,
     Z == 10,
     h %in% c(3),
-    avg_int_strength %in% c(.01, .05),
+    avg_int_strength %in% c(.01, .1),
     w_avg_tlvl == 1.5
     ) %>%
   ggplot(aes(
       x = richness, y = stab_com,
-      color = as.factor(rho),
+      color = as.factor(resp_div),
       linetype = as.factor(avg_int_strength),
+      alpha = as.factor(avg_int_strength)
       )) +
-  geom_line(linewidth = 2) +
+  ylim(2, 8) +
+  geom_line(linewidth = 1) +
+   scale_alpha_manual(values=c(1, 0), guide = "none") +
   facet_grid(cols = vars(env_stoch), labeller = label_both) +
   labs(
     x = "Species richness (Log)", y = "Community stability (Log)",
+    linetype = "Avg. Interaction strength",
+    color = "Response diversity"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+p_pred_sr_int1 <- pred_data %>%
+  filter(
+    ct_alive %in% c(.1),
+    rho %in% c(0, .75),
+    Z == 10,
+    h %in% c(3),
+    avg_int_strength %in% c(.01, .1),
+    w_avg_tlvl == 1.5
+    ) %>%
+  ggplot(aes(
+      x = richness, y = stab_com,
+      color = as.factor(resp_div),
+      linetype = as.factor(avg_int_strength),
+      alpha = as.factor(avg_int_strength)
+      )) +
+  geom_line(linewidth = 1) +
+   scale_alpha_manual(values=c(1, 0), guide = "none") +
+  facet_grid(cols = vars(env_stoch), labeller = label_both) +
+  labs(
+    x = "Species richness (Log)", y = "Community stability (Log)",
+    linetype = "Avg. Interaction strength",
+    color = "Response diversity"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+p_pred_sr_int2 <- p_pred_sr_int1 +
+   scale_alpha_manual(values=c(1, 1), guide = "none")
+ggsave(
+  here("report", "figures", "p_pred_sr_int1.png"),
+  plot = p_pred_sr_int1,
+  scale = 2.4,
+  width = 88,
+  height = 88 * .5,
+  units = "mm"
+)
+ggsave(
+  here("report", "figures", "p_pred_sr_int2.png"),
+  plot = p_pred_sr_int2,
+  scale = 2.4,
+  width = 88,
+  height = 88 * .5,
+  units = "mm"
+)
+```
+
+```{r}
+pred_data_show <- pred_data %>%
+  filter(
+    ct_alive %in% c(.3),
+    rho %in% c(0, .75),
+    Z == 100,
+    h %in% c(3),
+    avg_int_strength %in% c(.01, .1),
+    w_avg_tlvl == 1.5
+    )
+
+sim_fw %>%
+  filter(env_stoch %in% c(.1, .6), rho %in% c(0, .75), h == 3, Z == 100) %>%
+  ggplot(aes(x = log(richness), y = log(stab_com), color = as.factor(rho))) +
+  geom_point(alpha = .3) +
+  geom_line(data = pred_data_show,
+    aes(x = richness, y = stab_com,
+      color = as.factor(rho),
+      linetype = as.factor(avg_int_strength),
+      alpha = as.factor(avg_int_strength))
+    ) +
+  scale_alpha_manual(values=c(1, 0), guide = "none") +
+  facet_grid(cols = vars(env_stoch), labeller = label_both) +
+  labs(
+    x = "Species richness (Log)", y = "Community stability (Log)",
+    color = "Environmental correlation"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+leg_pred <- get_legend(p_pred_sr_int)
+p_sim_pred <- plot_grid(
+  plot_grid(
+    tar_read(p_stab_rich_env_rho) + theme(legend.position = "none"),
+    p_pred_sr_int + theme(legend.position = "none"),
+  labels = "auto"
+  ),
+  leg_pred,
+  nrow = 2,
+  rel_heights = c(1, .1)
+)
+ggsave(
+  here("report", "figures", "p_sim_pred.pdf"),
+  plot = p_sim_pred,
+  scale = 2.4,
+  width = 88,
+  height = 88 * .4,
+  units = "mm"
+)
+```
+
+```{r}
+p_pred_sr_int_async <- pred_data %>%
+  filter(
+    ct_alive %in% c(.1),
+    rho %in% c(0, .75),
+    Z == 10,
+    h %in% c(3),
+    avg_int_strength %in% c(.01, .1),
+    w_avg_tlvl == 1.5
+    ) %>%
+  ggplot(aes(
+      x = richness, y = async,
+      color = as.factor(rho),
+      linetype = as.factor(avg_int_strength),
+      )) +
+  geom_line(linewidth = 1) +
+  facet_grid(cols = vars(env_stoch), labeller = label_both) +
+  labs(
+    x = "Species richness (Log)", y = "Asynchrony (Log)",
     linetype = "Avg. Interaction strength",
     color = "Environmental correlation"
   ) +
   theme_bw() +
   theme(legend.position = "bottom")
 ggsave(
-  here("report", "figures", "p_pred_sr_int.png"),
-  plot = p_pred_sr_int,
+  here("report", "figures", "p_pred_sr_int_async.png"),
+  plot = p_pred_sr_int_async,
   scale = 2.4,
   width = 88,
-  height = 88 * 1,
+  height = 88 * .5,
   units = "mm"
 )
 ```
 
 ```{r}
-plot_grid(
-  tar_read(p_stab_rich_env_rho) + theme(legend.position = "none"),
-  p_pred_sr_int)
+p_pred_sr_int_pop_stab <- pred_data %>%
+  filter(
+    ct_alive %in% c(.1),
+    rho %in% c(0, .75),
+    Z == 10,
+    h %in% c(3),
+    avg_int_strength %in% c(.01, .1),
+    w_avg_tlvl == 1.5
+    ) %>%
+  ggplot(aes(
+      x = richness, y = pop_stab,
+      color = as.factor(rho),
+      linetype = as.factor(avg_int_strength),
+      )) +
+  geom_line(linewidth = 1) +
+  facet_grid(cols = vars(env_stoch), labeller = label_both) +
+  labs(
+    x = "Species richness (Log)", y = "Population stability (Log)",
+    linetype = "Avg. Interaction strength",
+    color = "Environmental correlation"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+ggsave(
+  here("report", "figures", "p_pred_sr_int_pop_stab.png"),
+  plot = p_pred_sr_int_pop_stab,
+  scale = 2.4,
+  width = 88,
+  height = 88 * .5,
+  units = "mm"
+)
 ```
 
 
-```{r}
 
+```{r}
 p_pred_sr_avg_tlvl_h <- pred_data %>%
   filter(
-    ct_alive %in% c(.3),
-    h %in% c(2,3),
-    rho %in% c(0, 1),
+    ct_alive %in% c(.1),
+    h == c(3),
+    rho %in% c(0, .75),
     Z == 10,
     avg_int_strength %in% c(.1),
     w_avg_tlvl == c(1.5, 3)) %>%
-  ggplot(aes(x = richness, y = stab_com, linewidth = as.factor(w_avg_tlvl), color = as.factor(h))) +
+  ggplot(aes(x = richness, y = stab_com,
+      linetype = as.factor(w_avg_tlvl), color = as.factor(rho))) +
   geom_line() +
-  facet_grid(cols = vars(env_stoch), rows = vars(rho), labeller = label_both) +
+  facet_grid(cols = vars(env_stoch), labeller = label_both) +
   theme_bw()
 ggsave(
   here("report", "figures", "p_pred_sr_avg_tlvl_h.png"),

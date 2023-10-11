@@ -6,6 +6,10 @@ output:
 always_allow_html: true
 toc: false
 bibliography: references.bib
+header-includes:
+  - \usepackage[left]{lineno}
+  - \linenumbers
+  - \usepackage{setspace}\doublespacing
 ---
 
 ```{r, echo = FALSE}
@@ -36,6 +40,34 @@ theme_set(mytheme)
 sapply(list.files(here("R"), full.names = TRUE), source)
 ```
 
+# IDEA, meeting with Sonia
+
+- Simplifying SEM in main text, move details to appendix
+- State diagram for stability - richness relationships along two food-web
+  metrics and panels varying response diversity.
+- Look at the french data for portefolio and compensatory dynamics effects.
+- Mid-October
+
+# Abstract
+
+Current biotic homogenization and increasing frequency of extreme events are
+projected to dramatically destabilize ecological communities. Understanding how
+complex communities such as food-webs respond to such threats is crucial to take
+adequate conservation measures. We then investigated how response diversity,
+environmental stochasticity, and food-web structure drive temporal stability of
+biomass in complex food-webs, using a stochastic bioenergetic food-web model. We
+found that higher average trophic level, omnivory degree and generalism
+increased  average population stability while species richness had little
+effects. At the opposite higher average trophic level, omnivory degree and
+generalism decreased asynchrony and compensatory dynamics raising trophic
+interactions. We further found that that high interaction strength drive
+negative stability-species richness when response diversity is low but that high
+response diversity always drive positive stability-richness relationship. Our
+study reveals that response diversity and food-web structure drive temporal
+stability and further improve our understanding of biodiversity-stability
+relationships in complex trophic communities.
+
+
 # Introduction
 
 Global change and its simultaneous increasing stressors constitute a major
@@ -57,7 +89,7 @@ homogenization reported in various ecosystems [@buisson_toward_2013;
 @muthukrishnan_invasive_2020; @saladin_rapid_2020] is another threat, which
 might in turn affect dampens the effects of species richness on ecosystem
 stability. However, the joint effects of external stressors such as
-environmental variabilityand internal stressors such as the
+environmental variability and internal stressors such as the
 loss response diversity has been rarely assessed in temporal stability areas.
 
 The question of stressors can even become complex in multitrophic communities,
@@ -123,7 +155,7 @@ averaging effects and compensatory dynamics."
 ```
 
 
-```{r, fig.cap=concept_cap}
+```{r, eval = FALSE, fig.cap=concept_cap}
 knitr::include_graphics(here("report", "figures", "conceptual_figures.pdf"))
 ```
 

@@ -36,8 +36,9 @@ var_replacement <- function() {
 }
 rho_replacement <- function() {
   c(
-    `0` = "Maximum",
+    `0` = "High",
     `0.5` = "Medium",
+    `0.75` = "Low",
     `1` = "No"
   )
 }
