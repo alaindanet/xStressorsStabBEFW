@@ -389,7 +389,14 @@ list(
     sem_simplified_rsquared %>%
       kable(caption = "Rsquared for the Structural Equation Model.") %>%
       kable_styling()
-  )
+  ),
+  tar_target(sem_simplified_eff_file, here::here("data", "sem_simplified_eff"), format = "file"),
+  tar_target(sem_simplified_eff, {
+    readRDS(sem_simplified_eff_file)
+    #semEff(sem_simplified, ci.type = "perc", R = 10, seed = 13, parallel = "no", data = sim_fw_sem)
+    }
+    ),
+  tar_target(sem_simplified_eff_tab, from_semEff_to_table(sem_simplified_eff))
 )
 ```
 
@@ -613,6 +620,20 @@ list(
         )
     ) %>%
     select(-fix_effect, -values)
+  ),
+  tar_target(pred_stab_comp_rho_tbl,
+  pred_stab_comp_rho %>%
+  select(-variable) %>%
+  mutate(slope = map(slope,
+      ~pivot_longer(.x,
+        -c(rho, slope),
+        names_to = "variable",
+        values_to = "variable_values"
+      )
+    )
+  ) %>%
+  unnest(cols = slope)
+
   )
 )
 ```
@@ -905,8 +926,114 @@ lapply(list.files(here::here("R"), full.names = TRUE), source)
 ```{r}
 tar_load(fix_fw_stab)
 tar_load(fix_fw_stab_comp)
-
+tar_load(pred_stab_comp_rho)
 ```
+
+```{r}
+tar_read(sem_simplified_eff_tab) %>%
+  filter(effect_type == "total") %>%
+  filter(response %in% c("async", "pop_stab", "stab_com")) %>%
+  filter(!predictor %in% c("rho", "env_stoch","cpe", "sae_total", "evenness_sae", "sae_even", "cpe_int", "cpe_env", "pop_stab", "async", "S", "ct")) %>%
+  mutate(across(c(response, predictor), ~var_replacement()[.x])) %>%
+  ggplot(aes(
+      x = predictor,
+      y = effect,
+      ymin = lower_ci,
+      ymax = upper_ci)
+    ) +
+  geom_pointrange() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  facet_grid(cols = vars(response)) +
+  labs(x = "Predictor", y = "Total effect") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+```
+
+```{r}
+cols <- c("Community stability" = "black", "Asynchrony" = "blue", "Population stability" = "darkgreen")
+alpha <- c("Community stability" = 1, "Asynchrony" = .3, "Population stability" = .3)
+
+p_sem_tot_stab <- tar_read(sem_simplified_eff_tab) %>%
+  filter(effect_type == "total") %>%
+  filter(response %in% c("async", "pop_stab", "stab_com")) %>%
+  filter(!predictor %in% c("rho", "env_stoch","cpe", "sae_total", "evenness_sae", "sae_even", "cpe_int", "cpe_env", "pop_stab", "async", "S", "ct")) %>%
+  mutate(across(c(response, predictor), ~var_replacement()[.x])) %>%
+  ggplot(aes(
+      y = predictor,
+      x = effect,
+      color = response,
+      alpha = response,
+      ymin = lower_ci,
+      ymax = upper_ci)
+    ) +
+  geom_pointrange() +
+  scale_colour_manual(values = cols) +
+  scale_alpha_manual(values = alpha) +
+  #geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  #facet_grid(cols = vars(response)) +
+  labs(
+    x = "Total standardised effect",
+    color = "Stability component",
+    alpha = "Stability component"
+    ) +
+  theme_bw() +
+  theme(
+    axis.title.y = element_blank(),
+    legend.position = "bottom",
+    legend.justification = "right"
+  )
+ggsave_multiple(
+  paste0("p_sem_tot_stab", c(".png", ".pdf")),
+  plot = p_sem_tot_stab,
+  path = here::here("report", "figures"),
+  scale = 1.8,
+  dpi = 400,
+  width = 80,
+  height = 80 * 1.1,
+  units = "mm")
+```
+
+
+```{r}
+tar_load(pred_stab_comp_rho_tbl)
+p_pred_stab_comp_rho <-
+  pred_stab_comp_rho_tbl %>%
+  mutate(
+    response = var_replacement()[response],
+    variable = var_replacement()[variable],
+    ) %>%
+  ggplot(aes(x = rho, y = variable_values, fill = slope)) +
+  geom_raster() +
+  facet_grid(cols = vars(response), rows = vars(variable), scales = "free") +
+  coord_cartesian(expand = FALSE) +
+  scale_fill_gradient2(
+    low = "red",
+    mid = "white",
+    high = "blue",
+    midpoint = 0,
+    space = "Lab",
+    na.value = "grey50",
+    guide = "colourbar",
+    aesthetics = "fill") +
+  labs(
+    x = "Environmental correlation",
+    y = "Food-web structure",
+    fill = "Slope Stability-Richness"
+    ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+ggsave_multiple(
+  paste0("p_pred_stab_comp_rho", c(".png", ".pdf")),
+  plot = p_pred_stab_comp_rho,
+  path = here::here("report", "figures"),
+  scale = 2.0,
+  dpi = 400,
+  width = 80,
+  height = 80 * 1.1,
+  units = "mm")
+```
+
 
 
 ```{r}
