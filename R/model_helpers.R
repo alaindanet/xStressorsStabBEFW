@@ -121,3 +121,40 @@ plot_effect_type <- function(x) {
   p
 }
 
+encaps_get_slope_change <- function(
+  param_list = list(
+    rho = seq(0, 1, length.out = 50),
+    avg_int_strength = seq(0.01, 0.2, length.out = 50)
+    ),
+  coeff_data = fix_fw_stab,
+  slope_term = "richness",
+  default_variable_values = c(
+    "rho" = 0,
+    "env_stoch" = .1,
+    "ct_alive" = .2,
+    "avg_int_strength" = .01,
+    "h" = 2,
+    "w_avg_tlvl" = 1.5,
+    "Z" = 100)
+
+  ) {
+
+  param_df <- param_list %>%
+    expand.grid()
+  param_list_name <- names(param_list)
+  param_df$slope <- map2_dbl(
+    param_df[[param_list_name[1]]],
+    param_df[[param_list_name[2]]],
+    function(x, y) {
+      mask <- names(default_variable_values) %in% param_list_name
+      default_variable_values[mask] <- c(x, y)
+
+      get_slope_change(
+        coeff = coeff_data,
+        gen_term = slope_term,
+        coeff_values = default_variable_values
+      )
+    }
+  )
+  param_df
+}

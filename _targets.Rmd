@@ -560,8 +560,59 @@ list(
   tar_target(pred_sr_rho,
     map_dfr(list(pred_sr_rho_int, pred_sr_rho_ct, pred_sr_rho_tlvl),
       ~.x %>%
-         pivot_longer(2, names_to = "variable", values_to = "values")
-   )
+        pivot_longer(2, names_to = "variable", values_to = "values")
+    )
+    ),
+  tar_target(pred_stab_comp_rho,
+    fix_fw_stab_comp %>%
+      left_join(
+        list(
+          response = fix_fw_stab_comp$response,
+          variable = c("avg_int_strength", "w_avg_tlvl", "ct_alive")
+          ) %>%
+        expand.grid() %>%
+        left_join(
+          tibble(
+            variable = c("avg_int_strength", "w_avg_tlvl", "ct_alive"),
+            values = list(
+              seq(0.01, 0.2, length.out = 50),
+              seq(1.5, 3.5, length.out = 50),
+              seq(.02, .3, length.out = 50)
+            )
+          )
+        )
+        ) %>%
+    mutate(slope = pmap(
+        list(
+          param_name = variable,
+          param_values = values,
+          coeff = fix_effect
+          ),
+        function(param_name, param_values, coeff) {
+          param <- list(
+            seq(0, 1, length.out = length(param_values)),
+            param_values
+          )
+          names(param) <- c("rho", param_name)
+
+          encaps_get_slope_change(
+            param_list = param,
+            coeff_data = coeff,
+            slope_term = "richness",
+            default_variable_values = c(
+              "rho" = 0,
+              "env_stoch" = .1,
+              "ct_alive" = .2,
+              "avg_int_strength" = .01,
+              "h" = 2,
+              "w_avg_tlvl" = 1.5,
+              "Z" = 100
+            )
+          )
+        }
+        )
+    ) %>%
+    select(-fix_effect, -values)
   )
 )
 ```
@@ -852,14 +903,22 @@ lapply(list.files(here::here("R"), full.names = TRUE), source)
 ```
 
 ```{r}
-tar_load(model_fw_stab_scaled_coeff)
+tar_load(fix_fw_stab)
+tar_load(fix_fw_stab_comp)
+
+```
+
+
+```{r}
+tar_load(model_fw_stab_comp_scaled_coeff)
 
 pattern <- c(var_replacement(), get_term_replacement())
 names(pattern) <- paste0("\\b", names(pattern), "\\b")
 ```
 
 ```{r}
-model_fw_stab_scaled_coeff %>%
+model_fw_stab_comp_scaled_coeff %>%
+  unnest(cols = c(coeff)) %>%
   rename(lower_ci = `2.5 %`, upper_ci = `97.5 %`) %>%
   rename_with(tolower) %>%
   filter(!str_detect(term, "(Intercept)")) %>%
@@ -868,13 +927,49 @@ model_fw_stab_scaled_coeff %>%
     term = str_replace_all(term, pattern)
     ) %>%
   filter(type == "interaction") %>%
-  ggplot(aes(x = estimate, y = term, xmin = lower_ci, xmax = upper_ci)) +
+  ggplot(aes(
+      y = term, x = estimate,
+      xmin = lower_ci, xmax = upper_ci,
+      color = response)) +
   geom_vline(xintercept = 0, linetype = "dashed") +
   geom_pointrange() +
   labs(x = "Standardised coefficients") +
   theme_bw() +
   theme(axis.title.y = element_blank())
 ```
+
+```{r}
+p_model_fw_stab_com <- model_fw_stab_comp_scaled_coeff %>%
+  filter(response == "stab_com") %>%
+  unnest(cols = c(coeff)) %>%
+  rename(lower_ci = `2.5 %`, upper_ci = `97.5 %`) %>%
+  rename_with(tolower) %>%
+  filter(!str_detect(term, "(Intercept)")) %>%
+  mutate(
+    type = ifelse(str_detect(term, ":"), "interaction", "single"),
+    term = str_replace_all(term, pattern)
+    ) %>%
+  filter(type == "interaction") %>%
+  ggplot(aes(
+      y = term, x = estimate,
+      xmin = lower_ci, xmax = upper_ci
+      )) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_pointrange() +
+  labs(x = "Standardised coefficients") +
+  theme_bw() +
+  theme(axis.title.y = element_blank())
+ggsave_multiple(
+  paste0("p_model_fw_stab_com", c(".png", ".pdf")),
+  plot = p_model_fw_stab_com,
+  path = here::here("report", "figures"),
+  scale = 1.8,
+  dpi = 400,
+  width = 80,
+  height = 80 * 1.3,
+  units = "mm")
+```
+
 
 ```{r}
 tar_load(fix_fw_stab)
