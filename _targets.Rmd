@@ -950,13 +950,13 @@ tar_read(sem_simplified_eff_tab) %>%
 ```
 
 ```{r}
+library(ggbreak)
 cols <- c("Community stability" = "black", "Asynchrony" = "blue", "Population stability" = "darkgreen")
 alpha <- c("Community stability" = 1, "Asynchrony" = .3, "Population stability" = .3)
-
 p_sem_tot_stab <- tar_read(sem_simplified_eff_tab) %>%
   filter(effect_type == "total") %>%
   filter(response %in% c("async", "pop_stab", "stab_com")) %>%
-  filter(!predictor %in% c("rho", "env_stoch","cpe", "sae_total", "evenness_sae", "sae_even", "cpe_int", "cpe_env", "pop_stab", "async", "S", "ct")) %>%
+  filter(!predictor %in% c("cpe", "sae_total", "evenness_sae", "sae_even", "cpe_int", "cpe_env", "pop_stab", "async", "S", "ct")) %>%
   mutate(across(c(response, predictor), ~var_replacement()[.x])) %>%
   ggplot(aes(
       y = predictor,
@@ -980,17 +980,24 @@ p_sem_tot_stab <- tar_read(sem_simplified_eff_tab) %>%
   theme_bw() +
   theme(
     axis.title.y = element_blank(),
-    legend.position = "bottom",
-    legend.justification = "right"
-  )
+    #legend.justification = "right",
+    legend.position = "bottom"
+  ) +
+  scale_x_break(c(-0.3, -0.6))
+p_sem_tot_stab_leg <- plot_grid(
+  print(p_sem_tot_stab + theme(legend.position = "none")),
+  get_legend(p_sem_tot_stab),
+  nrow = 2,
+  rel_heights = c(1, .05)
+)
 ggsave_multiple(
   paste0("p_sem_tot_stab", c(".png", ".pdf")),
-  plot = p_sem_tot_stab,
+  plot = print(p_sem_tot_stab_leg),
   path = here::here("report", "figures"),
   scale = 1.8,
   dpi = 400,
   width = 80,
-  height = 80 * 1.1,
+  height = 80 * .7,
   units = "mm")
 ```
 
@@ -1032,6 +1039,9 @@ ggsave_multiple(
   width = 80,
   height = 80 * 1.1,
   units = "mm")
+```
+
+```{r}
 ```
 
 

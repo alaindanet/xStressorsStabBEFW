@@ -30,7 +30,6 @@ knitr::opts_chunk$set(
 ```
 
 ```{r, results = FALSE}
-
 sapply(c("targets", "tidyverse", "magrittr", "cowplot", "here", "piecewiseSEM", "semEff", "ggcorrplot", "kableExtra"), require, character.only = TRUE)
 
 mytheme <- theme_cowplot(font_size = 8) +
@@ -411,21 +410,31 @@ multicollinearity.
 ## Drivers of stability
 
 ```{r}
-sem_cap <- paste0("Structural equation model. Only standardized coefficients
-  whose absolute values are superior to 0.1 are displayed. [To complete with the links from initial structure]")
+sem_cap <- paste0(
+  "Structural Equation Model linking initial model parameters to resulting
+  temporal stability of biomass. Arrows display positive (continuous) and
+  negative (dashed) standardised effects. Initial parameters were initial
+  species richness, initial connectance, Prey-Predator Mass Ration (PPMR), hill
+  exponent, variance of stochastic mortality rates (Env. stochasticity), and
+  cross-correlation among species mortality rates (Env. correlation). We only
+  displayed standardised coefficients whose absolute values are superior to 0.1
+  are displayed. SEM containing containing further partition of Statistical
+  Averaging Effect and Compensatory effects is displayed in Fig. SXX.")
 ```
 
 ```{r sem, fig.cap=sem_cap}
-knitr::include_graphics(here("report", "figures", "sem_stab2.pdf"))
+knitr::include_graphics(here("report", "figures", "sem_stab_simplified.pdf"))
 ```
 
-```{r}
-tar_load(sem_eff_tab)
 
-get_eff <- function(y = "pop_stab", x = "richness", d = 2, effect_type = "direct") {
-  mask <- sem_eff_tab$response == y & sem_eff_tab$predictor == x &
-    sem_eff_tab$effect_type == effect_type
-  round(sem_eff_tab[mask, ]$effect, d)
+```{r}
+#TODO: change most of it for simplified SEM
+tar_load(c(sem_eff_tab, sem_simplified_eff_tab))
+
+get_eff <- function(y = "pop_stab", x = "richness", d = 2, effect_type = "direct", tab = sem_eff_tab) {
+  mask <- tab$response == y & tab$predictor == x &
+    tab$effect_type == effect_type
+  round(tab[mask, ]$effect, d)
 }
 
 rpt <- get_eff(y = "pop_stab", x = "w_avg_tlvl")
@@ -502,14 +511,14 @@ raising from environmental stochasticity (resp. $r_\delta$= `r rae` and `r rav`,
 $r_\delta$= `r rass` and `r rasi`).
 
 ```{r}
-semtot_cap <- "Total effect of food-web structure and stressors on community
-stability, asynchony, and population stability. The total effects were derived
-from the structural equation model."
+semtot_cap <- "Total effect of food-web structure on community stability,
+asynchony, and population stability. The total effects were derived from the
+structural equation model."
 ```
 
 
 ```{r semtot, fig.cap = semtot_cap}
-tar_read(p_sem_tot_stab)
+knitr::include_graphics(here::here("report", "figures", "p_sem_tot_stab.png"))
 ```
 
 Deriving the sum of direct and indirect effects from the structural equation
