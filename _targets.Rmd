@@ -558,11 +558,11 @@ list(
           gen_term = "richness",
           coeff_values = c(
             "rho" = .x,
-            "env_stoch" = .1,
+            "env_stoch" = .3,
             "ct_alive" = .y,
             "avg_int_strength" = .01,
             "h" = 2,
-            "w_avg_tlvl" = 1.5,
+            "w_avg_tlvl" = 2.0,
             "Z" = 100))))),
   tar_target(pred_sr_rho,
     map_dfr(list(pred_sr_rho_int, pred_sr_rho_ct, pred_sr_rho_tlvl),
@@ -570,6 +570,17 @@ list(
         pivot_longer(2, names_to = "variable", values_to = "values")
     )
     ),
+  tar_target(default_variable_values_pred,
+    c(
+      "rho" = 0,
+      "env_stoch" = .3,
+      "ct_alive" = .2,
+      "avg_int_strength" = .01,
+      "h" = 2,
+      "w_avg_tlvl" = 2,
+      "Z" = 100
+    )
+  ),
   tar_target(pred_stab_comp_rho,
     fix_fw_stab_comp %>%
       left_join(
@@ -606,25 +617,14 @@ list(
             param_list = param,
             coeff_data = coeff,
             slope_term = "richness",
-            default_variable_values = c(
-              "rho" = 0,
-              "env_stoch" = .1,
-              "ct_alive" = .2,
-              "avg_int_strength" = .01,
-              "h" = 2,
-              "w_avg_tlvl" = 1.5,
-              "Z" = 100
-            )
+            default_variable_values = default_variable_values_pred
           )
         }
         )
     ) %>%
-    select(-fix_effect, -values)
-  ),
-  tar_target(pred_stab_comp_rho_tbl,
-  pred_stab_comp_rho %>%
-  select(-variable) %>%
-  mutate(slope = map(slope,
+    select(-fix_effect, -values) %>%
+    select(-variable) %>%
+    mutate(slope = map(slope,
       ~pivot_longer(.x,
         -c(rho, slope),
         names_to = "variable",
@@ -633,7 +633,6 @@ list(
     )
   ) %>%
   unnest(cols = slope)
-
   )
 )
 ```
@@ -1003,9 +1002,9 @@ ggsave_multiple(
 
 
 ```{r}
-tar_load(pred_stab_comp_rho_tbl)
+tar_load(pred_stab_comp_rho)
 p_pred_stab_comp_rho <-
-  pred_stab_comp_rho_tbl %>%
+  pred_stab_comp_rho %>%
   mutate(
     response = var_replacement()[response],
     variable = var_replacement()[variable],
@@ -1076,7 +1075,7 @@ model_fw_stab_comp_scaled_coeff %>%
 ```
 
 ```{r}
-p_model_fw_stab_com <- model_fw_stab_comp_scaled_coeff %>%
+p_model_fw_stab_com_int <- model_fw_stab_comp_scaled_coeff %>%
   filter(response == "stab_com") %>%
   unnest(cols = c(coeff)) %>%
   rename(lower_ci = `2.5 %`, upper_ci = `97.5 %`) %>%
@@ -1097,8 +1096,8 @@ p_model_fw_stab_com <- model_fw_stab_comp_scaled_coeff %>%
   theme_bw() +
   theme(axis.title.y = element_blank())
 ggsave_multiple(
-  paste0("p_model_fw_stab_com", c(".png", ".pdf")),
-  plot = p_model_fw_stab_com,
+  paste0("p_model_fw_stab_com_int", c(".png", ".pdf")),
+  plot = p_model_fw_stab_com_int,
   path = here::here("report", "figures"),
   scale = 1.8,
   dpi = 400,
@@ -1107,16 +1106,56 @@ ggsave_multiple(
   units = "mm")
 ```
 
+```{r}
+p_model_fw_stab_com_single <- model_fw_stab_comp_scaled_coeff %>%
+  filter(response == "stab_com") %>%
+  unnest(cols = c(coeff)) %>%
+  rename(lower_ci = `2.5 %`, upper_ci = `97.5 %`) %>%
+  rename_with(tolower) %>%
+  filter(!str_detect(term, "(Intercept)")) %>%
+  mutate(
+    type = ifelse(str_detect(term, ":"), "interaction", "single"),
+    term = str_replace_all(term, pattern)
+    ) %>%
+  filter(type == "single") %>%
+  ggplot(aes(
+      y = term, x = estimate,
+      xmin = lower_ci, xmax = upper_ci
+      )) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_pointrange() +
+  labs(x = "Standardised coefficients") +
+  theme_bw() +
+  theme(axis.title.y = element_blank())
+p_model_fw_stab_com <- plot_grid(
+  p_model_fw_stab_com_int,
+  plot_grid(p_model_fw_stab_com_single, NULL, nrow = 2),
+  ncol = 2,
+  labels = "auto"
+)
+ggsave_multiple(
+  paste0("p_model_fw_stab_com", c(".png", ".pdf")),
+  plot = p_model_fw_stab_com,
+  path = here::here("report", "figures"),
+  scale = 2.4,
+  dpi = 400,
+  width = 80,
+  height = 80 * 1,
+  units = "mm")
+```
+
+
 
 ```{r}
 tar_load(fix_fw_stab)
 ```
 
 ```{r}
-tar_load(pred_sr_rho)
-p_pred_sr_rho <- pred_sr_rho %>%
+tar_load(pred_stab_comp_rho)
+p_pred_sr_rho <- pred_stab_comp_rho %>%
+  filter(response == "stab_com") %>%
   mutate(variable = var_replacement()[variable]) %>%
-  ggplot(aes(x = rho, y = values, fill = slope_richness)) +
+  ggplot(aes(x = rho, y = variable_values, fill = slope)) +
   geom_raster() +
   facet_wrap(~variable, scales = "free_y") +
   coord_cartesian(expand = FALSE) +
@@ -1134,51 +1173,78 @@ p_pred_sr_rho <- pred_sr_rho %>%
     y = "Food-web structure",
     fill = "Slope Stability-Richness"
     ) +
-  theme(legend.position = "bottom")
+  theme(
+    legend.position = "bottom",
+    legend.key.width = unit(2.5, "cm"),
+    plot.margin = margin(l = 10, r = 10, unit = "pt")
+  )
 ggsave_multiple(
   paste0("p_pred_sr_rho", c(".png", ".pdf")),
   plot = p_pred_sr_rho,
   path = here::here("report", "figures"),
   scale = 2.2,
   dpi = 400,
-  width = 88,
-  height = 88 * .45,
+  width = 120,
+  height = 120 * .45,
   units = "mm")
 ```
 
 ```{r}
 tar_load(pred_data)
-pred_data %>%
+p_pred_sr_rho_int_env <- pred_data %>%
   filter(
     ct_alive %in% c(.1),
     rho %in% c(0, .75),
     richness >= 1,
-    Z == 10,
-    h %in% c(3),
+    Z == 100,
+    h %in% c(2),
     avg_int_strength %in% c(.01, .1),
-    w_avg_tlvl == 1.5
+    w_avg_tlvl == 2.0
     ) %>%
   ggplot(aes(
       x = richness, y = stab_com,
-      color = as.factor(resp_div),
+      color = as.factor(rho),
+      fill = as.factor(rho),
       linetype = as.factor(avg_int_strength),
       alpha = as.factor(avg_int_strength)
       )) +
   ylim(2, 8) +
-  geom_line(linewidth = 1) +
+  geom_line(linewidth = .8) +
+  geom_ribbon(aes(ymin = stab_com - stab_com_se, ymax = stab_com + stab_com_se), alpha = .3, color = NA) +
   scale_alpha_manual(values = c(1, 1), guide = "none") +
-  facet_grid(cols = vars(env_stoch), labeller = label_both) +
+  facet_grid(
+    cols = vars(env_stoch),
+    labeller = as_labeller(function(x) paste0("Environmental stochasticity: ", x))) +
   labs(
     x = "Species richness (Log)", y = "Community stability (Log)",
     linetype = "Avg. Interaction strength",
-    color = "Response diversity"
+    color = "Environmental correlation", fill = "Environmental correlation"
   ) +
   theme_bw() +
   theme(legend.position = "bottom")
 
 #pred_data$async <- predict(mod_tot_async, newdata = pred_data)
 #pred_data$pop_stab <- predict(mod_tot_pop_stab, newdata = pred_data)
+
 ```
+```{r}
+p_pred_sr <- plot_grid(
+  p_pred_sr_rho_int_env + theme(legend.position = "right"),
+  p_pred_sr_rho,
+  nrow = 2,
+  labels = "auto"
+)
+ggsave_multiple(
+  paste0("p_pred_sr", c(".png", ".pdf")),
+  plot = p_pred_sr,
+  path = here::here("report", "figures"),
+  scale = 2.0,
+  dpi = 400,
+  width = 120,
+  height = 120 * .8,
+  units = "mm")
+```
+
 
 ## Simplified SEM
 

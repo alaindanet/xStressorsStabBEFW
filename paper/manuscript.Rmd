@@ -414,7 +414,7 @@ sem_cap <- paste0(
   "Structural Equation Model linking initial model parameters to resulting
   temporal stability of biomass. Arrows display positive (continuous) and
   negative (dashed) standardised effects. Initial parameters were initial
-  species richness, initial connectance, Prey-Predator Mass Ration (PPMR), hill
+  species richness, initial connectance, Prey-Predator Mass Ratio (PPMR), hill
   exponent, variance of stochastic mortality rates (Env. stochasticity), and
   cross-correlation among species mortality rates (Env. correlation). We only
   displayed standardised coefficients whose absolute values are superior to 0.1
@@ -431,7 +431,10 @@ knitr::include_graphics(here("report", "figures", "sem_stab_simplified.pdf"))
 #TODO: change most of it for simplified SEM
 tar_load(c(sem_eff_tab, sem_simplified_eff_tab))
 
-get_eff <- function(y = "pop_stab", x = "richness", d = 2, effect_type = "direct", tab = sem_eff_tab) {
+get_eff <- function(
+  y = "pop_stab", x = "richness",
+  d = 2, effect_type = "direct",
+  tab = sem_simplified_eff_tab) {
   mask <- tab$response == y & tab$predictor == x &
     tab$effect_type == effect_type
   round(tab[mask, ]$effect, d)
@@ -440,29 +443,40 @@ get_eff <- function(y = "pop_stab", x = "richness", d = 2, effect_type = "direct
 rpt <- get_eff(y = "pop_stab", x = "w_avg_tlvl")
 rph <- get_eff(y = "pop_stab", x = "h")
 rpe <- get_eff(y = "pop_stab", x = "env_stoch")
-rsr <- get_eff(y = "sae_even", x = "richness")
-ret <- get_eff(y = "evenness_sae", x = "w_avg_tlvl")
-rer <- get_eff(y = "evenness_sae", x = "richness")
-rea <- get_eff(y = "evenness_sae", x = "avg_int_strength")
-rec <- get_eff(y = "evenness_sae", x = "ct_alive")
-reh <- get_eff(y = "evenness_sae", x = "h")
 
-ria <- get_eff(y = "cpe_int", x = "avg_int_strength")
-ric <- get_eff(y = "cpe_int", x = "ct_alive")
-rih <- get_eff(y = "cpe_int", x = "h")
-rir <- get_eff(y = "cpe_int", x = "richness")
+rsr <- get_eff(y = "sae_total", x = "richness")
+rst <- get_eff(y = "sae_total", x = "w_avg_tlvl")
+rsi <- get_eff(y = "sae_total", x = "avg_int_strength")
+rsc <- get_eff(y = "sae_total", x = "ct_alive")
 
-rvr <- get_eff(y = "cpe_env", x = "richness")
-rvo <- get_eff(y = "cpe_env", x = "rho")
+rcr <- get_eff(y = "cpe", x = "richness")
+rci <- get_eff(y = "cpe", x = "avg_int_strength")
+rco <- get_eff(y = "cpe", x = "rho")
+
+# Detailled SEM coefficients
+rsr <- get_eff(y = "sae_even", x = "richness", tab = sem_eff_tab)
+ret <- get_eff(y = "evenness_sae", x = "w_avg_tlvl", tab = sem_eff_tab)
+rer <- get_eff(y = "evenness_sae", x = "richness", tab = sem_eff_tab)
+rea <- get_eff(y = "evenness_sae", x = "avg_int_strength", tab = sem_eff_tab)
+rec <- get_eff(y = "evenness_sae", x = "ct_alive", tab = sem_eff_tab)
+reh <- get_eff(y = "evenness_sae", x = "h", tab = sem_eff_tab)
+
+ria <- get_eff(y = "cpe_int", x = "avg_int_strength", tab = sem_eff_tab)
+ric <- get_eff(y = "cpe_int", x = "ct_alive", tab = sem_eff_tab)
+rih <- get_eff(y = "cpe_int", x = "h", tab = sem_eff_tab)
+rir <- get_eff(y = "cpe_int", x = "richness", tab = sem_eff_tab)
+
+rvr <- get_eff(y = "cpe_env", x = "richness", tab = sem_eff_tab)
+rvo <- get_eff(y = "cpe_env", x = "rho", tab = sem_eff_tab)
 ```
 ```{r, eval = FALSE}
-sem_eff_tab %>%
+sem_simplified_eff_tab %>%
   filter(abs(effect) > .1, effect_type == "direct")
 ```
 
 
 We found that food-web structure had significant effect on temporal population
-stability such as average trophic level and type III functional response (i.e. h = 3)
+stability such as average trophic level and type III functional response (i.e. hill exponent = 3)
 increase population stability (resp. $r_\delta$= `r rpt` and `r rph`, $r_\delta$
 being the standardized coefficient, Fig. \@ref(fig:sem)). However the strength
 of environmental stochasticity had a strong negative effect on population
@@ -470,45 +484,42 @@ stability ($r_\delta$= `r rpe`).
 
 We further found that food-web structure had a strong impact on statistical
 averaging effects, which raises from independant species fluctuations weigthed
-the evenness of their biomass. As expected the mathematical relationship (eq. XX),
-species richness was the only driver of even statistical averaging effect
-($r_\delta$= `r rsr`, Fig. \@ref(fig:sem)). Average trophic level had a strong negative effect on
-evenness ($r_\delta$= `r ret`), meaning that biomass are more inequally
-distributed among species, thereby downplaying the portefolio effect raised from
-species richness. But richness had also a small negative effect on evenness
-($r_\delta$= `r rer`). Constrastingly, connectance, average interaction
-strength, and type III functional response all increased biomass evenness
-(resp. $r_\delta$= `r rec`, `r rea`, and `r reh`).
+the evenness of their biomass. As expected the mathematical relationship (eq.
+XX), species richness was a main positive driver of statistical averaging effect
+($r_\delta$= `r rsr`, Fig. \@ref(fig:sem)), thereby increasing asynchrony.
+Average trophic level and average interaction strength had strong negative
+effects on statistical averaging effects (resp. $r_\delta$= `r rst` and
+`r rsi`), thereby downplaying the portefolio effect raised from species
+richness. In turn, we found that average interaction strength had a small
+positive effect on compensatory dynamics ($r_\delta$= `r rci`, Fig.
+\@ref(fig:sem)). Cross-correlation among species mortality rates had a
+strong negative effect on compensatory dynamics ($r_\delta$= `r rco`), meaning
+that the loss of response diversity result in a strong decrease in compensatory
+dynamics.
 
-Food-web structure and cross-correlation among species mortality rates had
-strong effects on compensatory dynamics. Average trophic level, connectance and
-type III functional response had a negative effect on compensatory effect
-raising from species interaction (resp. $r_\delta$= `r ria`, `r ric`, `r rih`,
-Fig. \@ref(fig:sem)) there decreasing asynchony, while richness had a positive
-effect ($r_\delta$= `r rir`), there increasingasynchrony. In turn, richness and
-cross-correlation among species mortality rates had a negative effect on
-compensatory dynamic raising from environmental stochasticity
-($r_\delta$= `r rvr` and `r rvo`).
 
 ```{r}
-rscp <- get_eff(y = "stab_com", x = "pop_stab")
-rsca <- get_eff(y = "stab_com", x = "async")
 
-rav <- get_eff(y = "async", x = "cpe_env")
-rae <- get_eff(y = "async", x = "evenness_sae")
+rscp <- get_eff(y = "stab_com", x = "pop_stab", tab = sem_eff_tab)
+rsca <- get_eff(y = "stab_com", x = "async", tab = sem_eff_tab)
 
-rass <- get_eff(y = "async", x = "sae_even")
-rasi <- get_eff(y = "async", x = "cpe_int")
+rac <- get_eff(y = "async", x = "cpe")
+ras <- get_eff(y = "async", x = "sae_total")
+
+#
+rav <- get_eff(y = "async", x = "cpe_env", tab = sem_eff_tab)
+rae <- get_eff(y = "async", x = "evenness_sae", tab = sem_eff_tab)
+
+rass <- get_eff(y = "async", x = "sae_even", tab = sem_eff_tab)
+rasi <- get_eff(y = "async", x = "cpe_int", tab = sem_eff_tab)
 ```
 
 
 Population stability had a positive effect twice higher than asynchrony on the
-temporal stability of community (resp. $r_\delta$= `r rscp` and `r rsca`). In turn, asynchrony
-was mostly driven by evenness of biomass distribution and compensatory dynamics
-raising from environmental stochasticity (resp. $r_\delta$= `r rae` and `r rav`, Fig.
-\@ref(fig:sem)) than from statistical averaging emerging from species richness
-(i.e. even) and compensatory dynamics emerging from species interaction (resp.
-$r_\delta$= `r rass` and `r rasi`).
+temporal stability of community (resp. $r_\delta$= `r rscp` and `r rsca`). In
+turn, asynchrony was equally driven by statistical averaging effects and
+compensatory dynamics (resp.
+$r_\delta$= `r rac` and `r ras`, Fig. \@ref(fig:sem)).
 
 ```{r}
 semtot_cap <- "Total effect of food-web structure on community stability,
@@ -535,24 +546,37 @@ on population stability (resp. XXX) but a negative one on asynchrony (resp. XXX)
 ## Stability-richness relationship
 
 ```{r}
-pred_cap <- "Relationship between community stability and species richness
-according to environmental stochasticity and response diversity. (a) Simulation [add parameters selected], (b) Prediction from the linear model. "
+tar_load(default_variable_values_pred)
+pv <- default_variable_values_pred
+pv_cap <- paste0(
+  "connectance = ", pv["ct_alive"],
+  ", average interaction strength = ", pv["avg_int_strength"],
+  ", average trophic level = ", pv["w_avg_tlvl"],
+  ", hill exponent = ", pv["h"],
+  ", Predator-Prey Mass Ration = ", pv["Z"],
+  ", environmental correlation = ", pv["rho"],
+  ", and environmental stochasticity = ", pv["env_stoch"]
+
+)
+pred_cap <- paste0("Prediction of the statistical model linking the temporal stability
+  of community biomass and species richness. Default parameter values: ", pv_cap, ".") %>%
+  str_replace_all("\\s+", " ")
 ```
 
 
 ```{r pred, fig.cap = pred_cap}
-knitr::include_graphics(here("report", "figures", "p_sim_pred.pdf"))
+knitr::include_graphics(here("report", "figures", "p_pred_sr.pdf"))
 ```
 
-Using a more complex linear model (i.e. containing interaction), we investigated more
+Using a more complex linear model (i.e. including interactions), we investigated more
 in detail the relationship between community stability and species richness and
 how this relation is affected by environmental stochasticity and cross
 correlation among species mortality rates. We found that environmental
-stochasticity decrease overall community stability but does not change the shape
-of the community stability-species richness relationship (put some numbers, Fig.
-\@ref(fig:pred)a and b). In contrasts, cross correlation among species mortality rates
-both decreases overall community stability and nullifies the community
-stability-species richness relationship. Surpringly, we found that
+stochasticity decrease overall community stability but has only little effect on
+the shape of the community stability-species richness relationship (put some
+numbers, Fig. \@ref(fig:pred)a and b). In contrasts, cross correlation among
+species mortality rates both decreases overall community stability and nullifies
+the community stability-species richness relationship. Surpringly, we found that
 despite average interaction strength has a small overall effect on
 community stability, high average interaction strength change the shape of the
 community stability-species richness relationship from positive to negative when
