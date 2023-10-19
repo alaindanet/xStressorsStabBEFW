@@ -39,13 +39,14 @@ theme_set(mytheme)
 sapply(list.files(here("R"), full.names = TRUE), source)
 ```
 
-# IDEA, meeting with Sonia
-
-- Simplifying SEM in main text, move details to appendix
-- State diagram for stability - richness relationships along two food-web
-  metrics and panels varying response diversity.
-- Look at the french data for portefolio and compensatory dynamics effects.
-- Mid-October
+---
+## IDEA, meeting with Sonia
+#- Simplifying SEM in main text, move details to appendix
+#- State diagram for stability - richness relationships along two food-web
+#  metrics and panels varying response diversity.
+#- Look at the french data for portefolio and compensatory dynamics effects.
+#- Mid-October
+---
 
 # Abstract
 
@@ -69,108 +70,83 @@ relationships in complex trophic communities.
 
 # Introduction
 
-Global change and its simultaneous increasing stressors constitute a major
-threat to biodiversity and ecosystem functioning [@pachauri_climate_2015;
-@simmons_refocusing_2021]. Among them, climate change is predicted to lead
-dramatically more variable environments [@pachauri_climate_2015]. Understanding
-how environmental variability will affect ecosystem
-stability is then a timely question.
+Global environmental change including climate, land use and invasive species
+constitutes a suite of major threats to biodiversity and ecosystem functioning
+[@pachauri_climate_2015; @simmons_refocusing_2021]. A central feature of these
+threats is that they are predicted to dramatically increase variability in the
+environment that species face [@pachauri_climate_2015] with potential impacts on
+the stability of communities and associated impacts on biodiversity and
+functioning in these communities. Assessing the impacts of this variability on
+communities is challenging for several reasons.
 
-Biodiversity, in terms of species richness, has been repeatedly shown to drive
-higher temporal stability of ecological communities, across various taxa and
-ecosystems. Species richness can dampen the effects of perturbations on the
-temporal variability of community biomass because more diverse communities
-contain species with more diversity of responses to perturbations, which
-generates asynchrony in population fluctuations, thereby stabilizing community
-biomass fluctuations [@loreau_species_2008; @thibaut_understanding_2013;
-@zhao_biodiversity_2022]. In turn, the effects of human pressures on biotic
-homogenization reported in various ecosystems [@buisson_toward_2013;
-@muthukrishnan_invasive_2020; @saladin_rapid_2020] is another threat, which
-might in turn affect dampens the effects of species richness on ecosystem
-stability. However, the joint effects of external stressors such as
-environmental variability and internal stressors such as the
-loss response diversity has been rarely assessed in temporal stability areas.
+First, there are numerous definitions of community stability depending of the
+stressors considered. For example, resistance and resilience are typically used
+when a pulse perturbation is considered [@kefi_advancing_2019]. While in natural
+settings where press and pulse perturbations are simultaneously present,
+community variability measured as the coefficient of variation is typically used
+[@thibaut_understanding_2013]. Defined at the community scale, community
+variability can be partioned into population stability and asynchrony
+[@thibaut_understanding_2013]. Synchronous population fluctuations will amplify
+the negative effects of environmental fluctuations on temporal community
+stability while compensatory dynamics and portefolio effects (i.e. asynchrony)
+will stabilise temporal fluctuations of community biomass [@shoemaker_long_2022;
+@zhao_biodiversity_2022]. Environmental forcing (such as food availability and
+warming) and land-use intensity was reported to synchronise population
+fluctuations [@benton_population_2001; @bluthgen_land_2016; @song_reduced_2015;
+@liu_aridity_2023] while habitat degradation tends to decrease population
+stability [@olivier_urbanization_2020]. Understanding the effects of global
+change on community temporal stability therefore require to account for their
+simultaneous effects on community and population scales [@kefi_advancing_2019;
+@simmons_refocusing_2021].
 
-The question of stressors can even become complex in multitrophic communities,
-where species richness corresponds both to horizontal and vertical diversity.
-Food-web structure has been shown to have tremendous effect on community
-stability. The degree of generalism of predator was shown to modulate
-stability-richness relationships [@thebault_trophic_2005]. The strength and
-distribution of interaction strength was also shown to be strong driver of
-community stability [@mccann_weak_1998]. Omnivory was also shown to drive higher
-stability [@mccann_reevaluating_1997]. The effects of food-web structure on
-ecosystem stability has been mostly assessed with small modules [but see
-@eschenbrenner_diversity_nodate], and we know very little how food-web structure
-affects the relationships between species richness and temporal stability in
-complex food-webs.
+Second, the relation between community stability and biodiversity in variable
+environment is contingent on species richness per se, on the effects of species
+richness on population stability and asynchrony, and ultimately
+on the diversity of species responses to enviromental fluctuations [response
+diversity, @ives_stability_1999; @elmqvist_response_2003]. Increasing
+species richness has been reported to decrease population stability in
+experimental grasslands [@tilman_biodiversity_2006; @rosher_identifying_2011],
+while increasing population stability in natural settings
+[@houlahan_negative_2018] [add mechanisms?]. In turn, higher species richness
+often results in higher asynchrony, through portfolio effects (i.e. statistical
+averaging effects due to independant species fluctuations) and compensatory
+dynamics (due to species interactions and response
+diversity of species due to the environment) [@loreau_species_2008;
+@thibaut_understanding_2013]. Systematic increase in asynchrony with species
+richness is the mechanism that drives reported positive relationships between
+community stability and species richness [ref]. Anthropogenic pressures, such as
+eutrophication, has been reported to weakens the relationship between species
+richness and asynchony in grasslands [@hautier_eutrophication_2014] but such
+empiricial evidence remains scarced. However, stressors such as biotic
+homogenization [@buisson_toward_2013; @muthukrishnan_invasive_2020;
+@saladin_rapid_2020] and environmental forcing that decrease species response
+diversity should dampens the relationships between asynchrony and species
+richness [@ives_stability_2000; @thibaut_understanding_2013] due to a decrease
+in portefolio effects and compensatory effects. [Talk about the effects of
+evenness in temporal variability and evenness in abundance? e.g.,
+@zhao_biodiversity_2022; @thibaut_understanding_2013]. Because stressors can
+affect both community stability per se and how community stability scales with
+species richness, improving our understanding require to study both
+[@ives_stability_2007; @hautier_anthropogenic_2015].
 
-Both stressors and food-web structure are expected to have different effects on
-temporal stability. Stability of community biomass can itself be partitioned in
-several components, i.e. population stability and population asynchrony
-[@thibaut_understanding_2013; @zhao_biodiversity_2022]. Population stability can
-be itself partioned in total biomass and population variability effect.
-Population asynchrony can further be partioned in statistical averaging effect
-and compensatory dynamics effects [@zhao_biodiversity_2022]. Partitioning
-stability allows to better understand how food-web structure and external
-factors affect stability. We expect that environmental variability will
-primarily affect. For exemple, environmental stochasticity is expected to
-primarily affect population variance. Response diversity is expected to act
-primarily on compensatory dynamics in the food-webs, as low response diversity
-will decrease the effects. Higher connectance and interaction strength are
-expected to dampens population variability but to lead to higher synchrony at
-the same time.
+Third, the structure of species trophic interactions, that determines the
+distribution of biomass fluxes through communities, can also control stability.
+including levels of generalism, the distribution of interaction strengths and
+the prevalence of omnivory, can also influence stability. The degree of
+generalism of predator was shown to modulate stability-richness relationships
+[@thebault_trophic_2005]. The strength and distribution of interaction strength
+was also shown to be strong driver of community stability, such as stronger
+interaction strengths can be destabilizing [@may_will_1972; @mccann_weak_1998]. Omnivory was also
+shown to drive higher population stability [@mccann_reevaluating_1997].
+The effects of food-web structure on ecosystem stability has been mostly
+assessed with small modules [but see @eschenbrenner_diversity_nodate], and we
+know very little how food-web structure affects the relationships between
+species richness and temporal stability in complex food-webs.
 
----
-#Understanding the mechanisms that determine temporal
-#stability of ecosystem functioning is a long standing
-#question in Ecology [@may_will_1972; @angelis_stability_1975;
-#@mccann_diversitystability_2000; @tilman_biodiversity_2006;
-#@donohue_navigating_2016; @kefi_advancing_2019].
----
-
-In this study, we investigated both the effects of stressors ( environnmental
-variability and response diversity) and of food-web structure (connectance,
-average interaction strength, average trophic level) on species
-richness-stability relationships. To do, we used a bioenergetic food-web model
-[@yodzis_body_1992; @brose_allometric_2006; @delmas_simulations_2017] added to
-environmental stochasticity.
-
-
-```{r}
-concept_cap <- "Food-web structure, response diversity and enviromental gradient
-can modulate stability-richness relationships. (a & b) Food-web structure may
-modulate stability-richness relationships additively (a) or interactively (b).
-(c) Decrease in response diversity and increase in environmental variability
-should dampen stability-richness relationships. While the loss of response
-diversity should dampen the effect of species richness on asynchrony, the
-increase in environmental variability should decrease primarily population
-stability. (d) Increase in productivity should increase species richness
-(trophic energy hypothesis) but also dampens the relationship between stability
-and species richness (paradox of enrichment). (e) Summary of the framework, how
-food-web structure and external perturbations modulate the effects of species
-richness on community stability. More precisely, how they affect the different
-components of stability: total biomass, population variability, statistical
-averaging effects and compensatory dynamics."
-```
-
-
-```{r, eval = FALSE, fig.cap=concept_cap}
-knitr::include_graphics(here("report", "figures", "conceptual_figures.pdf"))
-```
-
-```{r, eval = FALSE}
-tribble(
-  ~Type, ~`Food-web structure`, ~`Effect on stability-richness`,
-  "Food-web structure", "Connectance", "Strengthen (Miele et al., 2016) / No effect (Thébault & Loreau, 2005)",
-  "Food-web structure", "Omnivory", "Strengthen (Mccann et al., 1997)",
-  "Food-web structure", "Interaction strength", "Destabilising (Mccann et al., 1998) / Stabilising in
-  productive (Binzer et al., 2012; Binzer et al., 2016; Tabi et al., 2019)",
-  "Response diversity", "", "Dampens",
-  "Productivity", "", "Dampens (Binzer et al., 2012; Binzer et al., 2016; Tabi et al., 2019)",
-  "Environmental variability", "", "Dampens",) %>%
-kbl(caption = "Predictions of stability-richness relationship from the literature.") %>%
-kable_styling()
-```
+Here we deliver inference from modelling of complex biodiverse communities on
+how food-web structure (connectance, average interaction strength, average
+trophic level), response diversity, and environmental stochasticity combine to
+shape species richness-stability relationships.
 
 \pagebreak
 
