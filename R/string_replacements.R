@@ -6,35 +6,35 @@ var_replacement <- function() {
     pop_stab = "Population stability",
     log_stab_pop = "Population stability",
     log_avg_cv_sp = "Population variability",
+    async = "Asynchrony",
+    log_async = "Asynchrony",
     sync = "Synchrony",
     log_sync = "Synchrony",
-    log_async = "Asynchrony",
-    async = "Asynchrony",
     cpe = "Compensatory effect",
     cpe_int = "Comp effect (Interaction)",
     cpe_env = "Comp effect (Environment)",
     sae_total = "Stat Avg effect",
     sae_even = "Stat Avg effect (Even)",
     evenness_sae = "Stat Avg effect (Evenness)",
-    log1_avg_max_int_alive = "Avg interaction strength",
-    avg_max_int_alive = "Avg interaction strength",
+    richness = "Richness",
+    log_richness = "Richness",
     avg_int_strength = "Avg interaction strength",
+    avg_max_int_alive = "Avg interaction strength",
+    log1_avg_max_int_alive = "Avg interaction strength",
     sd_max_int_alive = "SD interaction strength",
+    w_avg_tlvl = "Avg trophic level",
     w_avg_tlvl_alive = "Avg trophic level",
     ct_alive = "Connectance",
     max_tlvl = "Max trophic level",
-    w_avg_tlvl = "Avg trophic level",
     avg_omnivory = "Avg omnivory",
-    log_richness = "Richness",
-    richness = "Richness",
-    rho = "Env Corr",
     productivityenrichment = "Enrichment",
+    resp_div = "Response diversity",
+    rho = "Env Corr",
     env_stoch = "Env variance",
     Z = "PPMR",
     h = "Hill exponent",
     S = "Initial species richness",
-    ct = "Initial connectance",
-    resp_div = "Response diversity"
+    ct = "Initial connectance"
   )
 }
 
@@ -48,6 +48,15 @@ rho_replacement <- function() {
     `0.5` = "Medium",
     `0.75` = "Low",
     `1` = "No"
+  )
+}
+
+resp_div_replacement <- function() {
+  c(
+    `1` = "High",
+    `0.5` = "Medium",
+    `0.25` = "Low",
+    `0` = "No"
   )
 }
 

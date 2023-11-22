@@ -1,25 +1,25 @@
 formula_stab_fw_model <- function(
   resp = "stab_com",
   rand_effect = TRUE,
-  term_to_del = "richness : rho : Z +"
+  term_to_del = "richness : resp_div : Z +"
   ) {
 
-  fixed_part <- "richness + rho + env_stoch +
+  fixed_part <- "richness + resp_div + env_stoch +
   ct_alive + w_avg_tlvl + Z +
   avg_int_strength +
   h +
-  richness : rho +
+  richness : resp_div +
   richness : env_stoch +
   richness : ct_alive +
   richness : avg_int_strength +
   richness : h +
   richness : w_avg_tlvl +
   richness : Z +
-  richness : rho : ct_alive +
-  richness : rho : w_avg_tlvl +
-  richness : rho : avg_int_strength +
-  richness : rho : h +
-  richness : rho : Z +
+  richness : resp_div : ct_alive +
+  richness : resp_div : w_avg_tlvl +
+  richness : resp_div : avg_int_strength +
+  richness : resp_div : h +
+  richness : resp_div : Z +
   richness : env_stoch : ct_alive +
   richness : env_stoch : Z +
   richness : env_stoch : avg_int_strength +

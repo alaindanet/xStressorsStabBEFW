@@ -8,3 +8,7 @@ rho_cat_colors <- function() {
     "High" = "#02A5E0"
   )
 }
+
+resp_div_cat_colors <- function() {
+  rho_cat_colors()
+}
