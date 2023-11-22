@@ -1,6 +1,7 @@
 ---
 title: Food-web structure, stochasticity and response diversity drive temporal community stability in complex communities
-author: Alain Danet, (Sonia Kéfi, Thomas F Johnson), Andrew P. Beckerman
+author: "Alain Danet, (Sonia Kéfi, Thomas F Johnson), Andrew P. Beckerman"
+date: ""
 output:
   officedown::rdocx_document:
     base_format: "bookdown::word_document2"
@@ -41,10 +42,9 @@ knitr::opts_chunk$set(
 
 ```{r, results = FALSE}
 sapply(c("targets", "tidyverse", "magrittr", "cowplot", "here", "piecewiseSEM",
-    "semEff", "ggcorrplot", "kableExtra", "officedown"),
+    "semEff", "ggcorrplot", "kableExtra", "rmarkdown", "officedown"),
   require,
   character.only = TRUE)
-
 mytheme <- theme_cowplot(font_size = 8) +
 background_grid() +
 theme(legend.position = "bottom")
@@ -416,11 +416,11 @@ sem_cap <- paste0(
   exponent, variance of stochastic mortality rates (Env. stochasticity), and
   cross-correlation among species mortality rates (Env. correlation). We only
   displayed standardised coefficients whose absolute values are superior to 0.1
-  are displayed. SEM containing containing further partition of Statistical
+  are displayed. A more complete SEM containing further partition of Statistical
   Averaging Effect and Compensatory effects is displayed in Fig. SXX.")
 ```
 
-```{r sem, fig.cap=sem_cap}
+```{r sem, fig.cap=sem_cap, fig.id = "sem"}
 knitr::include_graphics(here("report", "figures", "sem_stab_simplified.pdf"))
 ```
 
@@ -529,7 +529,7 @@ structural equation model."
 ```
 
 
-```{r semtot, fig.cap = semtot_cap}
+```{r semtot, fig.cap = semtot_cap, fig.id = "semtot"}
 knitr::include_graphics(here::here("report", "figures", "p_sem_tot_stab.png"))
 ```
 
@@ -600,7 +600,7 @@ pred_cap <- paste0("Prediction of the statistical model linking the temporal sta
 ```
 
 
-```{r pred, fig.cap = pred_cap}
+```{r pred, fig.cap = pred_cap, fig.id = "pred"}
 knitr::include_graphics(here("report", "figures", "p_pred_sr.pdf"))
 ```
 

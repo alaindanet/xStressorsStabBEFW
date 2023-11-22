@@ -639,6 +639,173 @@ list(
 
 # plot
 
+```{targets r}
+list(
+  tar_target(p_pop_stab_w_avg_tlvl,
+    sim_fw %>%
+      filter(env_stoch == .3) %>%
+      ggplot(aes(x = w_avg_tlvl, y = log(pop_stab))) +
+      geom_point(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["w_avg_tlvl"],
+        y = var_replacement()["pop_stab"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_pop_stab_h,
+    sim_fw %>%
+      filter(env_stoch == .3) %>%
+      ggplot(aes(x = as.factor(h), y = log(pop_stab))) +
+      geom_boxplot(alpha = .2) +
+      labs(
+        x = var_replacement()["h"],
+        y = var_replacement()["pop_stab"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_pop_stab_env_stoch,
+    sim_fw %>%
+      ggplot(aes(x = as.factor(env_stoch), y = log(pop_stab))) +
+      geom_boxplot(alpha = .2) +
+      labs(
+        x = var_replacement()["env_stoch"],
+        y = var_replacement()["pop_stab"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_even_sae_richness,
+    sim_fw %>%
+      filter(rho == 0) %>%
+      ggplot(aes(x = as.factor(richness), y = log(evenness_sae))) +
+      geom_boxplot(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["richness"],
+        y = var_replacement()["evenness_sae"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_sae_total_richness,
+    sim_fw %>%
+      filter(rho == 0) %>%
+      ggplot(aes(x = as.factor(richness), y = log(sae_total))) +
+      geom_boxplot(alpha = .2) +
+      geom_smooth(method = "lm") +
+      scale_x_discrete(breaks = seq(0, 35, 5)) +
+      labs(
+        x = var_replacement()["richness"],
+        y = var_replacement()["sae_total"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_even_sae_w_avg_tlvl,
+    sim_fw %>%
+      filter(rho == 0) %>%
+      ggplot(aes(x = w_avg_tlvl, y = log(evenness_sae))) +
+      geom_point(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["w_avg_tlvl"],
+        y = var_replacement()["evenness_sae"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_sae_total_w_avg_tlvl,
+    sim_fw %>%
+      filter(rho == 0) %>%
+      ggplot(aes(x = w_avg_tlvl, y = log(sae_total))) +
+      geom_point(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["w_avg_tlvl"],
+        y = var_replacement()["sae_total"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_even_sae_avg_int,
+    sim_fw %>%
+      filter(rho == 0) %>%
+      ggplot(aes(x = avg_int_strength, y = log(evenness_sae))) +
+      geom_point(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["avg_int_strength"],
+        y = var_replacement()["evenness_sae"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_sae_total_avg_int,
+    sim_fw %>%
+      filter(rho == 0) %>%
+      ggplot(aes(x = avg_int_strength, y = log(sae_total))) +
+      geom_point(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["avg_int_strength"],
+        y = var_replacement()["sae_total"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_sae_total_ct_alive,
+    sim_fw %>%
+      filter(rho == 0) %>%
+      ggplot(aes(x = ct_alive, y = log(sae_total))) +
+      geom_point(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["ct_alive"],
+        y = var_replacement()["sae_total"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_cpe_int_avg_int,
+    sim_fw %>%
+      ggplot(aes(x = avg_int_strength, y = log(cpe_int))) +
+      geom_point(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["avg_int_strength"],
+        y = var_replacement()["cpe_int"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_cpe_avg_int,
+    sim_fw %>%
+      ggplot(aes(x = avg_int_strength, y = log(cpe))) +
+      geom_point(alpha = .2) +
+      geom_smooth(method = "lm") +
+      labs(
+        x = var_replacement()["avg_int_strength"],
+        y = var_replacement()["cpe"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_cpe_rho,
+    sim_fw %>%
+      ggplot(aes(x = rho, y = log(cpe), group = rho)) +
+      geom_boxplot() +
+      labs(
+        x = var_replacement()["rho"],
+        y = var_replacement()["cpe"]
+        ) +
+      theme_bw()
+    ),
+  tar_target(p_sem_bivariate_relations,
+    plot_grid(
+      p_pop_stab_w_avg_tlvl, p_pop_stab_h, p_pop_stab_env_stoch,
+      p_sae_total_richness, p_sae_total_ct_alive, p_sae_total_w_avg_tlvl,
+      p_sae_total_avg_int, p_cpe_avg_int, p_cpe_rho
+    )
+    )
+)
+```
+
+```{r}
+
+```
+
+
 ```{targets p-stab}
 list(
   tar_target(p_cpe_env_rho, sim_fw %>%
@@ -679,7 +846,6 @@ list(
       )
 
     )
-
 )
 ```
 
@@ -949,6 +1115,19 @@ tar_read(sem_simplified_eff_tab) %>%
 ```
 
 ```{r}
+ggsave_multiple(
+  paste0("p_sem_bivariate_relations", c(".png", ".pdf")),
+  plot = tar_read(p_sem_bivariate_relations),
+  path = here::here("report", "figures"),
+  scale = 3,
+  dpi = 400,
+  width = 80,
+  height = 80 * .9,
+  units = "mm")
+```
+
+
+```{r}
 library(ggbreak)
 cols <- c("Community stability" = "black", "Asynchrony" = "blue", "Population stability" = "darkgreen")
 alpha <- c("Community stability" = 1, "Asynchrony" = .3, "Population stability" = .3)
@@ -1154,24 +1333,27 @@ tar_load(fix_fw_stab)
 tar_load(pred_stab_comp_rho)
 p_pred_sr_rho <- pred_stab_comp_rho %>%
   filter(response == "stab_com") %>%
-  mutate(variable = var_replacement()[variable]) %>%
-  ggplot(aes(x = rho, y = variable_values, fill = slope)) +
+  mutate(
+    variable = var_replacement()[variable],
+    resp_div = 1 - rho
+    ) %>%
+  ggplot(aes(x = resp_div, y = variable_values, fill = slope)) +
   geom_raster() +
   facet_wrap(~variable, scales = "free_y") +
   coord_cartesian(expand = FALSE) +
   scale_fill_gradient2(
-    low = "red",
+    low = rho_cat_colors()["Low"],
     mid = "white",
-    high = "blue",
+    high = rho_cat_colors()["High"],
     midpoint = 0,
     space = "Lab",
     na.value = "grey50",
     guide = "colourbar",
     aesthetics = "fill") +
   labs(
-    x = "Environmental correlation",
+    x = var_replacement()["resp_div"],
     y = "Food-web structure",
-    fill = "Slope Stability-Richness"
+    fill = "Slope community stability - Richness"
     ) +
   theme(
     legend.position = "bottom",
@@ -1227,11 +1409,86 @@ p_pred_sr_rho_int_env <- pred_data %>%
 #pred_data$pop_stab <- predict(mod_tot_pop_stab, newdata = pred_data)
 
 ```
+
+```{r}
+pred_data_sr_fw <- pred_data %>%
+  filter(
+    ct_alive %in% c(.1, .3),
+    rho %in% c(0, .75),
+    richness >= 1,
+    Z == 100,
+    h %in% c(2),
+    avg_int_strength %in% c(.01, .1),
+    env_stoch == .1,
+    w_avg_tlvl %in% c(2.0, 3.0)
+    ) %>%
+mutate(
+  group_ct_alive = case_when(
+    ct_alive == .3 & avg_int_strength == .01 & w_avg_tlvl == 2.0 ~ "High",
+    ct_alive == .1 & avg_int_strength == .01 & w_avg_tlvl == 2.0 ~ "Low"
+    ),
+  group_avg_int_strength = case_when(
+    ct_alive == .1 & avg_int_strength == .1 & w_avg_tlvl == 2.0 ~ "High",
+    ct_alive == .1 & avg_int_strength == .01 & w_avg_tlvl == 2.0 ~ "Low"
+    ),
+  group_w_avg_tlvl = case_when(
+    ct_alive == .1 & avg_int_strength == .01 & w_avg_tlvl == 3.0 ~ "High",
+    ct_alive == .1 & avg_int_strength == .01 & w_avg_tlvl == 2.0 ~ "Low"
+    )) %>%
+pivot_longer(starts_with("group_")) %>%
+filter(!is.na(value)) %>%
+mutate(name = str_remove(name, "group_"))
+p_pred_data_sr_fw <- pred_data_sr_fw %>%
+  mutate(name = var_replacement()[name]) %>%
+  ggplot(aes(
+      x = richness, y = stab_com,
+      color = resp_div,
+      fill = resp_div,
+      linetype = value,
+      #alpha = as.factor(avg_int_strength)
+      )) +
+  geom_line(linewidth = .8) +
+  geom_ribbon(
+    aes(ymin = stab_com - stab_com_se, ymax = stab_com + stab_com_se),
+    alpha = .3, color = NA) +
+  scale_color_manual(values = rho_cat_colors()) +
+  scale_fill_manual(values = rho_cat_colors()) +
+  facet_grid(cols = vars(name)) +
+  labs(
+    x = var_replacement()["richness"],
+    y = var_replacement()["stab_com"],
+    fill = var_replacement()["resp_div"],
+    color = var_replacement()["resp_div"],
+    linetype = "Food-web structure value"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  guides(
+    linetype = guide_legend(keywidth = 2,
+      override.aes = list(fill = NA, alpha = 1)
+      ),
+    fill = guide_legend(override.aes = list(linetype = 0, alpha = 1))
+  )
+
+ggsave_multiple(
+  paste0("p_pred_data_sr_fw", c(".png", ".pdf")),
+  plot = p_pred_data_sr_fw,
+  path = here::here("report", "figures"),
+  scale = 3,
+  dpi = 400,
+  width = 80,
+  height = 80 * .4,
+  units = "mm")
+```
+
+## Figure SR
+
 ```{r}
 p_pred_sr <- plot_grid(
-  p_pred_sr_rho_int_env + theme(legend.position = "right"),
+  p_pred_data_sr_fw + theme(legend.position = "right"),
   p_pred_sr_rho,
   nrow = 2,
+  rel_heights = c(.7, 1),
   labels = "auto"
 )
 ggsave_multiple(
@@ -1241,9 +1498,10 @@ ggsave_multiple(
   scale = 2.0,
   dpi = 400,
   width = 120,
-  height = 120 * .8,
+  height = 120 * .7,
   units = "mm")
 ```
+
 
 
 ## Simplified SEM

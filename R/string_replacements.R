@@ -31,7 +31,10 @@ var_replacement <- function() {
     productivityenrichment = "Enrichment",
     env_stoch = "Env variance",
     Z = "PPMR",
-    h = "Hill exponent"
+    h = "Hill exponent",
+    S = "Initial species richness",
+    ct = "Initial connectance",
+    resp_div = "Response diversity"
   )
 }
 
