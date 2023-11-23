@@ -1097,6 +1097,175 @@ tar_load(fix_fw_stab_comp)
 tar_load(pred_stab_comp_rho)
 ```
 
+```{r plot-sim}
+load(here("data","sim_for_plot"))
+sim_for_plot %<>%
+  select(-c(avg_cv_sp, sync)) %>%
+  left_join(
+    tar_read(sim_fw) %>%
+      select(sim_id, ct_alive)
+  )
+```
+```{r}
+sim_for_plot %>%
+  filter(env_stoch == .6, h == 2, Z == 1, S == 10, rho == 0) %>%
+  arrange(desc(async))
+low_z_low_rich <- sim_for_plot %>%
+  filter(env_stoch == .6, Z == 1, S == 10, rho == 0) %>%
+  arrange(desc(async))
+
+tu <- timespecies_mat_to_long_tibble(low_z_low_rich$species[[1]])
+plot_timeseries_lg_tbl(tu)
+```
+
+
+```{r}
+sim_for_plot %>%
+  filter(env_stoch == .6, h == 2, Z == 100, S == 10, rho == 0) %>%
+  arrange(desc(async))
+high_z_low_rich <- sim_for_plot %>%
+  filter(env_stoch == .6, h == 2, Z == 100, S == 10, rho == 0) %>%
+  arrange(desc(async))
+
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_low_rich$species[[1]]))
+```
+
+```{r}
+sim_for_plot %>%
+  filter(env_stoch == .6, h == 2, Z == 100, S == 40, rho == 0) %>%
+  arrange(desc(async))
+high_z_high_rich <- sim_for_plot %>%
+  filter(env_stoch == .6, h == 2, Z == 100, S == 40, rho == 0) %>%
+  arrange(desc(async))
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_high_rich))
+```
+
+```{r}
+low_z_high_rich <- sim_for_plot %>%
+  filter(env_stoch == .6, h == 2, Z == 1, S == 40, rho == 0) %>%
+  arrange(desc(async))
+
+low_z_high_rich_mat <- get_mat_list(low_z_high_rich)
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(low_z_high_rich_mat[[1]]))
+```
+
+```{r}
+p_low_z_low_rich <- plot_sim(x = sim_for_plot,
+  id = low_z_low_rich$sim_id[[1]],
+  col_palette = NULL,
+  node_size_scale = .3
+)
+p_low_z_high_rich <- plot_sim(x = sim_for_plot,
+  id = low_z_high_rich$sim_id[[2]],
+  col_palette = NULL,
+  node_size_scale = .5
+)
+p_high_z_low_rich <- plot_sim(
+  x = sim_for_plot,
+  id = high_z_low_rich$sim_id[[1]],
+  col_palette = NULL,
+  node_size_scale = .3)
+p_high_z_high_rich <- plot_sim(
+  x = sim_for_plot,
+  id = high_z_high_rich$sim_id[[1]],
+  col_palette = NULL,
+  node_size_scale = .4
+)
+
+p_sim_example <- plot_grid(
+  p_low_z_low_rich, p_low_z_high_rich,
+  p_high_z_low_rich, p_high_z_high_rich,
+  labels = c("b", "", "", ""),
+  align = "hv"
+)
+
+ggsave_multiple(
+  paste0("p_sim_example", c(".png", ".pdf")),
+  plot = p_sim_example,
+  path = here::here("report", "figures"),
+  scale = 2.6,
+  dpi = 400,
+  width = 80,
+  height = 80 * .5,
+  units = "mm")
+```
+
+```{r}
+sim_for_plot %>%
+  filter(Z == 100, env_stoch == 0.6, rho %in% c(0, 1), S == 10, h == 2) %>%
+  group_by(fw_id) %>%
+  summarise(n = n()) %>%
+  filter(n > 1)
+sim_for_plot %>%
+  filter(env_stoch == 0.6, rho %in% c(0, .75), S == 10, h == 3) %>%
+  group_by(fw_id) %>%
+  summarise(n = n()) %>%
+  filter(n > 1)
+fwid <- 549
+z <- 25
+sim_for_plot %>%
+  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho %in% c(0, 1), S == 10, h == 2)
+
+high_resp_div_low_rich <- sim_for_plot %>%
+  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho == 0)
+  #filter(env_stoch == .6, Z == 1, S == 10, rho == 0) %>%
+  #arrange(desc(async))
+p_high_resp_div_low_rich <- plot_sim(
+  x = sim_for_plot,
+  id = high_resp_div_low_rich$sim_id[[1]],
+  col_palette = NULL,
+  node_size_scale = .2
+)
+
+low_resp_div_low_rich <- sim_for_plot %>%
+  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho == 1) %>%
+  arrange(desc(async))
+p_low_resp_div_low_rich <- plot_sim(
+  x = sim_for_plot,
+  id = low_resp_div_low_rich$sim_id[[1]],
+  col_palette = NULL,
+  node_size_scale = .2
+)
+
+p_sim_rho_example <- plot_grid(
+  p_low_resp_div_low_rich, p_high_resp_div_low_rich,
+  labels = c("a", ""),
+  align = "hv"
+)
+ggsave_multiple(
+  paste0("p_sim_rho_example", c(".png", ".pdf")),
+  plot = p_sim_rho_example,
+  path = here::here("report", "figures"),
+  scale = 2.6,
+  dpi = 400,
+  width = 80,
+  height = 80 * .3,
+  units = "mm")
+```
+
+```{r}
+p_methods <- plot_grid(p_sim_rho_example, p_sim_example, nrow = 2, rel_heights = c(1, 2))
+ggsave_multiple(
+  paste0("p_methods", c(".png", ".pdf")),
+  plot = p_methods,
+  path = here::here("report", "figures"),
+  scale = 2.6,
+  dpi = 400,
+  width = 80,
+  height = 80 * .6,
+  units = "mm")
+```
+
+
+```{r}
+tar_read(sim_fw) %>%
+  filter(env_stoch == .6, S == 10, Z == 100) %>%
+  ggplot(aes(y = pop_stab, x = as.factor(resp_div), color = as.factor(h))) +
+  geom_boxplot()
+```
+
+
+
 ```{r}
 tar_read(sem_simplified_eff_tab) %>%
   filter(effect_type == "direct") %>%
