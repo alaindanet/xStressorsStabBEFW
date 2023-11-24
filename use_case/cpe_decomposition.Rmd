@@ -123,8 +123,9 @@ compensatory_effect(mat_stoch)
 ```
 
 ```{r}
-data_raw <- open_dataset(here::here("res", "simCSZenrich2", "sim_toy_compensatory_dyn.arrow"),
-          format = "arrow") %>%
+data_raw <- open_dataset(
+  here::here("use_case", "sim_toy_compensatory_dyn.arrow"),
+  format = "arrow") %>%
 collect() %>%
 filter(!is.na(richness)) %>%
 mutate(
@@ -161,4 +162,88 @@ data_raw %>%
   geom_hline(yintercept = 2, linetype = "dashed")
 ```
 
+```{r}
+source(here::here("R", "plotting_methods.R"))
+```
+
+```{r}
+ti <- data_raw %>%
+  filter(rho == 0, Z == 10, env_stoch == .6)
+nice_ts <- ti$species[[2]] %>%
+  .[, colSums(.) > 0] %>%
+  as_tibble() %>%
+  mutate(time = 1:n()) %>%
+  pivot_longer(-time, names_to = "species", values_to = "biomass")
+p_nice_ts_sp <- nice_ts %>%
+  ggplot(aes(y = biomass, x = time, color = species)) +
+  geom_line() +
+  labs(y = "Biomass", x = "Time") +
+  theme_half_open() +
+  theme(
+    legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.text = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+ggsave_multiple(
+  c("p_nice_ts_sp.png", "p_nice_ts_sp.pdf"),
+  plot = p_nice_ts_sp,
+  path = here::here("use_case", "figures"),
+  scale = 1.5,
+  dpi = 600,
+  width = 88,
+  height = 88 * .5,
+  units = "mm"
+)
+
+sum_nice_ts <- nice_ts %>%
+  group_by(time) %>%
+  summarise(biomass = sum(biomass))
+
+p_sum_nice_ts <- sum_nice_ts %>%
+  ggplot(aes(y = biomass, x = time)) +
+  geom_line(color = "black") +
+  labs(y = "Biomass", x = "Time") +
+  theme_half_open() +
+  theme(
+    axis.ticks = element_blank(),
+    axis.text = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+ggsave_multiple(
+  c("p_sum_nice_ts.png", "p_sum_nice_ts.pdf"),
+  plot = p_sum_nice_ts,
+  path = here::here("use_case", "figures"),
+  scale = 1.5,
+  dpi = 600,
+  width = 88,
+  height = 88 * .5,
+  units = "mm"
+)
+
+p_hist_biomass <- sum_nice_ts %>%
+  ggplot(aes(x = biomass)) +
+  geom_histogram(bins = 50, fill = "black") +
+  labs(x = "Biomass", y = "") +
+  theme_void() +
+  theme(
+    axis.ticks = element_blank(),
+    axis.text = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+ggsave_multiple(
+  c("p_hist_biomass.png", "p_hist_biomass.pdf"),
+  plot = p_hist_biomass,
+  path = here::here("use_case", "figures"),
+  scale = 1,
+  dpi = 600,
+  width = 88,
+  height = 88 * 1,
+  units = "mm"
+)
+```
 
