@@ -22,6 +22,229 @@ p = ModelParameters(fw)
 B0 = rand(richness(fw))
 simulate(p, B0,tmax = 100, callback = EcologicalNetworksDynamics.CallbackSet(ExtinctionCallback(10^-6, true)))
 
+timing = @elapsed sim = @showprogress pmap(p ->
+                         merge(
+                               (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
+                               sim_int_mat(p.A;
+                                           ρ = p.rho,
+                                           alpha_ij = 0.5,
+                                           d = nothing,
+                                           da = (ap = .4, ai = .4, ae = .4),
+                                           σₑ = p.sigma, Z = p.Z,
+                                           h = p.h, c = 0.0, K = 10,
+                                           dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                                           max = 5000, last = 500,
+                                           K_alpha_corrected = true,
+                                           dt = 0.1, gc_thre = .1,
+                                           return_sol = false,
+                                           re_run = false,
+                                           digits = 5
+                                          )
+                              ),
+                         sample(param, 2),
+                         batch_size = 100
+                        )
+
+test_param = sample(param)
+ti = sim_int_mat(test_param.A;
+            ρ = test_param.rho,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = test_param.sigma, Z = test_param.Z,
+            h = test_param.h, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 5000, last = 500,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            return_sol = true,
+            re_run = false,
+            digits = 5
+           )
+
+te = get_time_series(ti; last = 5000, idxs = nothing, digits = 10)
+plot(1:5000, std.(eachrow(te.stoch)))
+
+tmax = 20000
+S = 2
+A = zeros(Int64, S, S)
+ti = sim_int_mat(A;
+            ρ = 0.0,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .6, Z = 10,
+            h = 2.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = tmax, last = 500,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            return_sol = true,
+            re_run = false,
+            digits = 5
+           )
+
+te = get_time_series(ti; last = tmax, idxs = nothing, digits = 10)
+plot(1:tmax, te.stoch)
+plot(1:tmax, transpose(ti[S+1:2*S,1:tmax]))
+
+function f(du, u, p, t)
+    for i in 1:S
+        du[i] = r * u[i] * (1 - u[i] / K) - d * u[i] * exp(u[S+i])
+    end
+    for i in S+1:2*S
+        du[i] = θ * (0 - u[i])
+    end
+end
+function g(du, u, p, t)
+    du .= 0.0
+    du[S+1:2*S] .= σ
+end
+S = 2
+r = 1.0
+K = 10.0 / S
+d = .4
+θ = 1
+σ = .6
+ρ = 0.0
+stoch_starting_val = repeat([0], S)
+u0 = [rand(S); stoch_starting_val]
+# Make the stochastic matrix
+corr_mat = zeros(S * 2, S * 2)
+corr_mat .= ρ
+corr_mat[diagind(corr_mat)] .= 1.0
+tmax = 50000
+tspan = (0.0, tmax)
+heston_noise = CorrelatedWienerProcess!(corr_mat,
+                                        tspan[1],
+                                        zeros(size(corr_mat, 1)),
+                                        zeros(size(corr_mat, 1))
+                                       )
+pb = SDEProblem(f, g, u0, tspan, noise = heston_noise)
+m = solve(pb,
+      saveat = collect(0:1:tmax),
+      dt = .1,
+      adaptive = false)
+plot(1:tmax, transpose(m[S+1:2*S,1:tmax]))
+plot(1:tmax, transpose(m[1:S,1:tmax]))
+
+
+Z = 10
+alpha_ij = .5
+K_alpha_corrected = true
+σₑ = .6
+dt = .1
+
+fw = FoodWeb(A, Z = Z, quiet = true)
+S = richness(fw)
+C = connectance(fw)
+
+# Parameters of the functional response
+funcrep = BioenergeticResponse(fw; h = 2.0, c = 0.0)
+# Carrying capacity
+env = Environment(fw,
+                  K = if K_alpha_corrected
+                      nprod = length(producers(fw))
+                      # Loreau & de Mazancourt (2008), Ives et al. (1999)
+                      K * (1 + (alpha_ij * (nprod - 1))) / nprod
+                  else
+                      K
+                  end
+                 )
+if isnothing(d)
+    if !isnothing(da)
+        d = allometric_rate(fw, AllometricParams(da.ap, da.ai, da.ae,-.25, -0.25, -.25))
+    else
+        d = allometric_rate(fw, DefaultMortalityParams())
+    end
+end
+# generate the model parameters
+p = ModelParameters(fw;
+                    biorates = BioRates(fw; r = r, d = d),
+                    functional_response = funcrep,
+                    environment = env,
+                    producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
+                    env_stoch = EnvStoch(σₑ)
+                   )
+
+ω = p.functional_response.ω
+B0 = rand(S)
+# Simulate
+m = simulate(p, B0;
+             rho = ρ,
+             dt = dt,
+             tmax = tmax,
+             diff_code_data = (EcologicalNetworksDynamics.stoch_d_dBdt!, p),
+             verbose = false
+            );
+plot(1:tmax, transpose(m[S+1:2*S,1:tmax]))
+plot(1:tmax, transpose(m[1:S,1:tmax]))
+
+
+# Define ODE problem and solve
+t0 = 0.0
+diff_code_data = (EcologicalNetworksDynamics.stoch_d_dBdt!, p)
+
+timespan = (t0, tmax)
+timesteps = collect(t0:dt:tmax)
+code, data = diff_code_data
+
+# Work around julia's world count:
+# `generate_dbdt` only produces anonymous code,
+# so the generated functions cannot be overriden.
+# As such, and in principle, the 'latest' function is unambiguous.
+if !isa(code, Function)
+    message = "The given specialized code is not a `Function` but `$(typeof(code))`."
+    if isa(code, Expr)
+        message *= " Did you forget to `eval()`uate it before passing it to `simulate()`?"
+    end
+    throw(ArgumentError(message))
+end
+fun = (args...) -> Base.invokelatest(code, args...)
+extinct_sp = Dict(i => 0.0 for (i, b) in enumerate(B0) if b == 0.0)
+myp = (params = data, extinct_sp = extinct_sp)
+
+stoch_starting_val = repeat([0], S)
+u0 = [rand(S); stoch_starting_val]
+# Make the stochastic matrix
+corr_mat = zeros(S * 2, S * 2)
+corr_mat .= rho
+corr_mat[diagind(corr_mat)] .= 1.0
+wiener = CorrelatedWienerProcess(corr_mat, t0, zeros(size(corr_mat, 1)))
+
+problem = SDEProblem(
+                     code,#stoch_d_dBdt!,
+                     EcologicalNetworksDynamics.gen_stochastic_process,
+                     u0,
+                     timespan,
+                     myp,
+                     noise = wiener
+                    )
+# Try to simulate
+m = solve(problem;
+      saveat = collect(t0:1:tmax),
+      dt = dt,
+      adaptive = false,
+      # callback = callback,
+      isoutofdomain = (u, p, t) -> any(x -> x < 0, u)
+     )
+# Works 
+plot(1:tmax, transpose(m[S+1:2*S,1:tmax]))
+plot(1:tmax, transpose(m[1:S,1:tmax]))
+
+# Does not work:
+m = solve(problem;
+      saveat = collect(t0:1:tmax),
+      dt = dt,
+      adaptive = false,
+      callback = CallbackSet(
+        #TerminateSteadyState(1e-6, 1e-4),
+        ExtinctionCallback(1e-5, p, true),
+       ),
+      isoutofdomain = (u, p, t) -> any(x -> x < 0, u[1:S])
+     )
+plot(1:tmax, transpose(m[S+1:2*S,1:tmax]))
+plot(1:tmax, transpose(m[1:S,1:tmax]))
 
 #########
 #  Sim  #
@@ -151,7 +374,7 @@ w = sim_int_mat(A;
             σₑ = .6,
             Z = 10, h = 2.0, c = 0.0,
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-            max = 1000, last = 500, dt = .1, return_sol = false, digits = 5);
+            max = 5000, last = 500, dt = .1, return_sol = false, digits = 5);
 w
 plot(w.species, tspan = (0, 500))
 w = sim_int_mat(A;
