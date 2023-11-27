@@ -88,46 +88,27 @@ te = get_time_series(ti; last = tmax, idxs = nothing, digits = 10)
 plot(1:tmax, te.stoch)
 plot(1:tmax, transpose(ti[S+1:2*S,1:tmax]))
 
-function f(du, u, p, t)
-    for i in 1:S
-        du[i] = r * u[i] * (1 - u[i] / K) - d * u[i] * exp(u[S+i])
-    end
-    for i in S+1:2*S
-        du[i] = θ * (0 - u[i])
-    end
-end
-function g(du, u, p, t)
-    du .= 0.0
-    du[S+1:2*S] .= σ
-end
-S = 2
-r = 1.0
-K = 10.0 / S
-d = .4
-θ = 1
-σ = .6
-ρ = 0.0
-stoch_starting_val = repeat([0], S)
-u0 = [rand(S); stoch_starting_val]
-# Make the stochastic matrix
-corr_mat = zeros(S * 2, S * 2)
-corr_mat .= ρ
-corr_mat[diagind(corr_mat)] .= 1.0
-tmax = 50000
-tspan = (0.0, tmax)
-heston_noise = CorrelatedWienerProcess!(corr_mat,
-                                        tspan[1],
-                                        zeros(size(corr_mat, 1)),
-                                        zeros(size(corr_mat, 1))
-                                       )
-pb = SDEProblem(f, g, u0, tspan, noise = heston_noise)
-m = solve(pb,
-      saveat = collect(0:1:tmax),
-      dt = .1,
-      adaptive = false)
-plot(1:tmax, transpose(m[S+1:2*S,1:tmax]))
-plot(1:tmax, transpose(m[1:S,1:tmax]))
 
+tmax = 5000
+S = 10; Z = 10
+A = FoodWeb(nichemodel, 10; C = .3, Z = Z, quiet = true).A
+ti = sim_int_mat(A;
+            ρ = 0.0,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .6, Z = 10,
+            h = 2.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = tmax, last = 500,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            return_sol = false,
+            re_run = true,
+            digits = 5
+           )
+plot(ti.species)
+plot(ti.stoch)
 
 Z = 10
 alpha_ij = .5
