@@ -104,6 +104,7 @@ function sim_int_mat(A;
         dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
         gc_thre = .02,
         return_sol = false,
+        re_run = false,
         digits = nothing)
 
     if rand(Distributions.Uniform(0, 1)) < gc_thre
@@ -167,33 +168,35 @@ function sim_int_mat(A;
     end
 
     # Re-run simulations until no more extinction
-    if length(m.t) >= last
-        ti = EcologicalNetworksDynamics.check_last_extinction(m;
-                                                              idxs = 1:S,
-                                                              last = last)
-        i = 1
-        while ti != true
-            B0 = m[1:S,end]
-            println("Re-run until no more extinctions \
-                    over the last $(last) timesteps. Iteration = $i.")
-
-            #u0 = m[S+1:S*2,end]
-            p = get_parameters(m)
-            m = simulate(p, B0;
-                         rho = ρ,
-                         dt = dt,
-                         tmax = round(Int, last + 500),
-                         extinction_threshold = 1e-5,
-                         diff_code_data = (dbdt, p),
-                         verbose = false
-                        );
+    if re_run
+        if length(m.t) >= last
             ti = EcologicalNetworksDynamics.check_last_extinction(m;
                                                                   idxs = 1:S,
                                                                   last = last)
-            if ti == true
-                break
+            i = 1
+            while ti != true
+                B0 = m[1:S,end]
+                println("Re-run until no more extinctions \
+                        over the last $(last) timesteps. Iteration = $i.")
+
+                #u0 = m[S+1:S*2,end]
+                p = get_parameters(m)
+                m = simulate(p, B0;
+                             rho = ρ,
+                             dt = dt,
+                             tmax = round(Int, last + 500),
+                             extinction_threshold = 1e-5,
+                             diff_code_data = (dbdt, p),
+                             verbose = false
+                            );
+                ti = EcologicalNetworksDynamics.check_last_extinction(m;
+                                                                      idxs = 1:S,
+                                                                      last = last)
+                if ti == true
+                    break
+                end
+                i = i + 1
             end
-            i = i + 1
         end
     end
 

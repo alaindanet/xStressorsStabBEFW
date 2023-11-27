@@ -136,9 +136,7 @@ function gen_stochastic_process(dW, B, params, t)
     S = length(params.network.species)
 
     # Biomass dynamics have no stochasticity
-    for i in 1:2*S
-        dW[i] = 0.0
-    end
+    dW .= 0.0
 
     # Stochastic mortality variable for consumer is... Stochastic!!!
     dW[S+1:2*S] .= params.env_stoch.σₑ

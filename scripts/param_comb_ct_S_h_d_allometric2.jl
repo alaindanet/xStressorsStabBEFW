@@ -1,13 +1,18 @@
 using CSV, StatsBase, DataFrames, Arrow, EcologicalNetworksDynamics
 
-nrep = 50
-sigma = [0.1, 0.3, 0.6]#.1:.2:0.6
-Z = [1, 25, 50, 100]
+nrep = 5
+sigma = .1:.1:0.6#[0.1, 0.3, 0.6]#.1:.2:0.6
+Z = [1, 5, 10, 25, 50, 100]
 ρ = 0:.25:1
-K = [10]
-h = [2.0, 3.0]
+h = 2.0:.25:3.0#[2.0, 3.0]
 S = [10, 20, 40, 60]
 C = 0.02:.02:.32
+
+# 
+names = (:rep, :S, :C, :Z, :sigma, :rho, :h)
+param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...),
+            Iterators.product(1:nrep, S, C, Z, sigma, ρ, h)
+           )[:]
 
 ########################
 #  Generate Food-webs  #
@@ -68,7 +73,6 @@ fw_test2 = map(p -> try
 
 param2 = param[.! ismissing.(fw_test)][.! ismissing.(fw_test2)]
 
-
 # Try to get same number of sampling per richness
 df = groupby(DataFrame(param2), :richness)
 rounded_mean(data_col) = round(mean(data_col), digits = 2)
@@ -119,15 +123,15 @@ df_fw = DataFrame(foodweb)
 df_fw = df_fw[.! ismissing.(df_fw.fw),:]
 # Create a foodweb_id
 df_fw[!, :fw_id] = 1:nrow(df_fw)
-Arrow.write("../fw_comb_ct_S_h_d2.arrow", df_fw)
+Arrow.write("../fw_comb_ct_S_h_d3.arrow", df_fw)
 
 ################################
 #  Other parameter combination #
 ################################
 
-names = (:fw_id, :Z, :sigma, :rho, :K, :h)
+names = (:fw_id, :Z, :sigma, :rho, :h)
 param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...),
-            Iterators.product(df_fw[:, :fw_id], Z, sigma, ρ, K, h)
+            Iterators.product(df_fw[:, :fw_id], Z, sigma, ρ, h)
            )[:]
 
 param_complete = innerjoin(DataFrame(param), df_fw, on = :fw_id)
@@ -139,6 +143,6 @@ select!(param_complete, Not([:C,:rep, :fw]))
 param_complete[!, :sim_id] = 1:nrow(param_complete)
 
 
-Arrow.write("../param_comb_ct_S_h_d2.arrow", param_complete)
-ti = DataFrame(Arrow.Table("../param_comb_ct_S_h_d2.arrow"))
+Arrow.write("../param_comb_ct_S_h_d3.arrow", param_complete)
+ti = DataFrame(Arrow.Table("../param_comb_ct_S_h_d3.arrow"))
 
