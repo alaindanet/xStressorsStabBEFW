@@ -10,12 +10,30 @@ using Plots
 using Debugger
 using CSV
 using Arrow
+using Distributed, ProgressMeter
 include("src/minmax.jl")
 include("src/interaction_strength.jl")
 #include("src/stochastic_mortality_model.jl")
 include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
+
+param = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
+
+filter([:S, :sigma, :h] => (rich, s, h) -> rich == 40 && s == .6 && h == 2, param)
+
+toy_param = param[[2, 30, 58, 362, 390, 742, 750, 766, 1082, 1098],:]
+
+# Reshape interaction matrix
+reshape_array(vec) = reshape(vec, (
+                                   round(Int, sqrt(length(vec))),
+                                   round(Int, sqrt(length(vec)))
+                                  )
+                            )
+toy_param[!, :A] = map(x -> reshape_array(x), toy_param[!, :A])
+
+# Make a tuple vector
+toy_param = NamedTuple.(eachrow(toy_param))
 
 fw = FoodWeb(nichemodel,10, C = .3, Z = 100)
 p = ModelParameters(fw)
@@ -36,16 +54,19 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            max = 5000, last = 500,
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
+                                           dt_rescue = .05,
                                            return_sol = false,
-                                           re_run = false,
+                                           re_run = true,
                                            digits = 5
                                           )
                               ),
-                         sample(param, 2),
+                         toy_param,
                          batch_size = 100
                         )
-
-test_param = sample(param)
+sim_df = DataFrame(sim)
+names(sim_df)
+select(sim_df, [:richness, :w_avg_tlvl, :max_tlvl])
+test_param = toy_param[6]
 ti = sim_int_mat(test_param.A;
             ρ = test_param.rho,
             alpha_ij = 0.5,
@@ -56,14 +77,19 @@ ti = sim_int_mat(test_param.A;
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
             max = 5000, last = 500,
             K_alpha_corrected = true,
+            extinction_threshold = 1e-5,
             dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
             return_sol = true,
-            re_run = false,
+            re_run = true,
             digits = 5
            )
 
+ti.retcode == DifferentialEquations.ReturnCode.Success
 te = get_time_series(ti; last = 5000, idxs = nothing, digits = 10)
 plot(1:5000, std.(eachrow(te.stoch)))
+plot(0:5000, minimum.(eachrow(te.species)))
+minimum.(eachcol(te.species))
 
 tmax = 20000
 S = 2
@@ -78,12 +104,32 @@ ti = sim_int_mat(A;
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
             max = tmax, last = 500,
             K_alpha_corrected = true,
+            dt = 0.5, gc_thre = .1,
+            return_sol = true,
+            re_run = false,
+            dt_rescue = nothing,
+            digits = 5
+           )
+ti.retcode == DifferentialEquations.ReturnCode.Unstable
+ti = sim_int_mat(A;
+            ρ = 0.0,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .6, Z = 10,
+            h = 2.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 1000, last = 500,
+            K_alpha_corrected = true,
             dt = 0.1, gc_thre = .1,
             return_sol = true,
             re_run = false,
             digits = 5
            )
-
+ti.retcode === [:Success]
+ti.retcode == 1
+ti.retcode.Success
+names(ti.retcode)
 te = get_time_series(ti; last = tmax, idxs = nothing, digits = 10)
 plot(1:tmax, te.stoch)
 plot(1:tmax, transpose(ti[S+1:2*S,1:tmax]))
@@ -110,11 +156,18 @@ ti = sim_int_mat(A;
 plot(ti.species)
 plot(ti.stoch)
 
-Z = 10
+A = toy_param[1].A
+Z = toy_param[1].Z
 alpha_ij = .5
+K = 10
 K_alpha_corrected = true
+da = (ap = .4, ai = .4, ae = .4)
+d = nothing
 σₑ = .6
+ρ = 0
 dt = .1
+r = 1
+tmax = 500
 
 fw = FoodWeb(A, Z = Z, quiet = true)
 S = richness(fw)
@@ -155,8 +208,9 @@ m = simulate(p, B0;
              rho = ρ,
              dt = dt,
              tmax = tmax,
+             extinction_threshold = .1,
              diff_code_data = (EcologicalNetworksDynamics.stoch_d_dBdt!, p),
-             verbose = false
+             verbose = true
             );
 plot(1:tmax, transpose(m[S+1:2*S,1:tmax]))
 plot(1:tmax, transpose(m[1:S,1:tmax]))

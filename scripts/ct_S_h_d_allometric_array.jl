@@ -87,6 +87,8 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            max = 5000, last = 500,
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
+                                           dt_rescue = 0.05,
+                                           extinction_threshold = 1e-5,
                                            return_sol = false,
                                            re_run = true,
                                            digits = 5

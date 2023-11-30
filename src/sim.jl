@@ -99,12 +99,15 @@ function sim_int_mat(A;
         h = 2.0, c = 1.0, K = 1.0,
         r = 1.0,
         da = nothing,
-        max = 5000, last = 1000,dt = 0.1,
+        max = 5000, last = 1000,
+        dt = 0.1,
         K_alpha_corrected = true,
         dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+        extinction_threshold = 1e-5,
         gc_thre = .02,
         return_sol = false,
         re_run = false,
+        dt_rescue = 0.05,
         digits = nothing)
 
     if rand(Distributions.Uniform(0, 1)) < gc_thre
@@ -154,13 +157,33 @@ function sim_int_mat(A;
                  rho = ρ,
                  dt = dt,
                  tmax = max,
-                 extinction_threshold = 1e-5,
+                 extinction_threshold = extinction_threshold,
                  diff_code_data = (dbdt, p),
                  verbose = false
                 );
 
     catch
         (t = 0, x = missing)
+    end
+
+    # If unstable, it means that dt was too big
+    if m.retcode == DifferentialEquations.ReturnCode.Unstable && !isnothing(dt_rescue)
+        dt = dt_rescue
+        println("rerun with dt = $dt_rescue.")
+        # Simulate
+        timing = @elapsed m = try
+            simulate(p, B0;
+                     rho = ρ,
+                     dt = dt,
+                     tmax = max,
+                     extinction_threshold = extinction_threshold,
+                     diff_code_data = (dbdt, p),
+                     verbose = false
+                    );
+
+        catch
+            (t = 0, x = missing)
+        end
     end
 
     if return_sol
@@ -185,7 +208,7 @@ function sim_int_mat(A;
                              rho = ρ,
                              dt = dt,
                              tmax = round(Int, last + 500),
-                             extinction_threshold = 1e-5,
+                             extinction_threshold = extinction_threshold,
                              diff_code_data = (dbdt, p),
                              verbose = false
                             );
