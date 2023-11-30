@@ -56,7 +56,7 @@ param = NamedTuple.(eachrow(param))
 
 # Warm-up
 pm = sample(param)
-println("Running warmup:K = $(pm.K), σₑ = $(pm.sigma), ρ = $(pm.rho)")
+println("Running warmup:σₑ = $(pm.sigma), ρ = $(pm.rho)")
 
 warmup = sim_int_mat([0 0; 0 0];
             ρ = pm.rho, alpha_ij = 0,

@@ -2,7 +2,7 @@
 #
 #SBATCH --job-name=allo_d_completion
 # Set number of iteration
-#SBATCH --array=1-36%20
+#SBATCH --array=1-27%20
 # Amount of RAM requested per job
 #SBATCH --mem=64G
 # Nb of threads requested per job (smp = shared memory)
