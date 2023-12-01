@@ -88,9 +88,9 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
                                            dt_rescue = 0.05,
-                                           extinction_threshold = 1e-5,
+                                           extinction_threshold = 1e-6,
                                            return_sol = false,
-                                           re_run = true,
+                                           re_run = false, # works only if you get rid of disconnected species
                                            digits = 5
                                           )
                               ),

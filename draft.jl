@@ -22,7 +22,8 @@ param = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
 
 filter([:S, :sigma, :h] => (rich, s, h) -> rich == 40 && s == .6 && h == 2, param)
 
-toy_param = param[[2, 30, 58, 362, 390, 742, 750, 766, 1082, 1098],:]
+#toy_param = param[[2, 30, 58, 362, 390, 742, 750, 766, 1082, 1098],:]
+toy_param = param[[1, 3, 4, 6, 7, 10, 11, 13, 14],:]
 
 # Reshape interaction matrix
 reshape_array(vec) = reshape(vec, (
@@ -34,11 +35,6 @@ toy_param[!, :A] = map(x -> reshape_array(x), toy_param[!, :A])
 
 # Make a tuple vector
 toy_param = NamedTuple.(eachrow(toy_param))
-
-fw = FoodWeb(nichemodel,10, C = .3, Z = 100)
-p = ModelParameters(fw)
-B0 = rand(richness(fw))
-simulate(p, B0,tmax = 100, callback = EcologicalNetworksDynamics.CallbackSet(ExtinctionCallback(10^-6, true)))
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
@@ -65,6 +61,40 @@ timing = @elapsed sim = @showprogress pmap(p ->
                         )
 sim_df = DataFrame(sim)
 names(sim_df)
+
+function remove_disconnected_prod(A)
+    A = A .> 0
+    prod = sum.(eachrow(A)) .== 0
+    sp_with_no_pred = sum.(eachcol(A)) .== 0
+    disconnected_prod = prod .&& sp_with_no_pred
+
+    println("Remove $(sum(disconnected_prod)) disconnected producers")
+    # Remove disconnected_prod
+    A[.!(disconnected_prod), .!(disconnected_prod)]
+
+    # Remove disconnected pred
+    prod = sum.(eachrow(A)) .== 0
+    sp_with_no_pred = sum.(eachcol(A)) .== 0
+    disconnected_prod = prod .&& sp_with_no_pred
+
+    println("Remove $(sum(disconnected_prod)) disconnected producers")
+    # Remove disconnected_prod
+    A[.!(disconnected_prod), .!(disconnected_prod)]
+
+end
+tmp_A = sim[4].int_strength .> 0
+sim[2].alive_species
+ti = map(x -> remove_disconnected_prod(x.omega[x.alive_species, x.alive_species]),sim)
+FoodWeb(remove_disconnected_prod(tmp_A))
+FoodWeb(ti[4]).A
+remove_disconnected_prod(ti[4])
+prod = sum.(eachrow(tmp_A)) .== 0
+sp_with_no_pred = sum.(eachcol(tmp_A)) .== 0
+prod .&& sp_with_no_pred
+.!( prod .&& sp_with_no_pred)
+
+FoodWeb(tmp_A)
+FoodWeb(tmp_A[.!( prod .&& sp_with_no_pred), .!( prod .&& sp_with_no_pred)])
 select(sim_df, [:richness, :w_avg_tlvl, :max_tlvl])
 test_param = toy_param[6]
 ti = sim_int_mat(test_param.A;
