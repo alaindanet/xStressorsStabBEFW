@@ -5,7 +5,7 @@ sigma = .1:.1:0.6#[0.1, 0.3, 0.6]#.1:.2:0.6
 Z = [1, 5, 10, 25, 50, 100]
 ρ = 0:.25:1
 h = 2.0:.25:3.0#[2.0, 3.0]
-S = [10, 20, 40, 60]
+S = [10, 20, 30, 40, 50]
 C = 0.02:.02:.32
 
 # 
@@ -23,26 +23,6 @@ names = (:rep, :richness, :connectance)
 param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...),
             Iterators.product(rep, S, C)
            )[:]
-
-# # Filter impossible combination of C/S
-# limitCS = (
-           # S = S,
-           # Cmin = round.([(i - 1)/ i^2 + .01 for i in S], digits = 2),
-           # Cmax = [.32, .31, .24, .15, .09, .07]
-          # )
-# # Select good combinations
-# goodCSparam_v = [
-                 # findall(x ->
-                         # (
-                          # x.connectance >= limitCS.Cmin[i] &&
-                          # x.connectance <= limitCS.Cmax[i]) &&
-                         # x.richness == limitCS.S[i],
-                         # param
-                        # )
-                 # for i in 1:length(limitCS.S)
-                # ]
-# goodCSparam_idxs = reduce(vcat, goodCSparam_v)
-# param = param[goodCSparam_idxs]
 
 fw_test = map(p -> try
                   FoodWeb(nichemodel, p.richness, C = p.connectance,

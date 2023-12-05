@@ -22,7 +22,7 @@ addprocs(ncpu - 1, exeflags=flag)
 println("Using $(ncpu -1) cores")
 
 # Prepare saving
-dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_allo_d4/"
+dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_allo_d5/"
 
 if !isdir(dest_dir)
     mkdir(dest_dir)
@@ -76,7 +76,7 @@ println("Running param sim from lines $first_sim to $last_sim")
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
                                (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
-                               sim_int_mat(p.A;
+                               sim_int_mat_check_disconnected(p.A;
                                            ρ = p.rho,
                                            alpha_ij = 0.5,
                                            d = nothing,
@@ -90,7 +90,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            dt_rescue = 0.05,
                                            extinction_threshold = 1e-6,
                                            return_sol = false,
-                                           re_run = false, # works only if you get rid of disconnected species
+                                           re_run = true, # works only if you get rid of disconnected species
                                            digits = 5
                                           )
                               ),

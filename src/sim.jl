@@ -93,6 +93,73 @@ function simCS(C, S;
     out
 end
 
+function sim_int_mat_check_disconnected(A;
+        d = nothing,
+        da = (ap = .4, ai = .4, ae = .4),
+        ρ = 0.0, σₑ = .5,
+        alpha_ij = 0.5, Z = 100,
+        h = 2.0, c = 0.0, K = 10.0,
+        r = 1.0,
+        max = 5000, last = 1000,
+        dt = 0.1,
+        K_alpha_corrected = true,
+        dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+        extinction_threshold = 1e-5,
+        gc_thre = .02,
+        return_sol = false,
+        re_run = true,
+        dt_rescue = 0.05,
+        digits = nothing
+    )
+
+    ti = false
+    i = 1
+    while ti != true
+        println("Re-run until no more disconnected species \
+                over the last $(last) timesteps. Iteration = $i.")
+        if i == 1
+            max = max
+        else
+            max = 500 + last
+        end
+        m = sim_int_mat(A;
+                        B0 = nothing,
+                        d = d,
+                        da = da,
+                        ρ = ρ, σₑ = σₑ,
+                        alpha_ij = alpha_ij, Z = Z,
+                        h = h, c = c, K = K,
+                        r = r,
+                        max = max, last = last,
+                        dt = dt,
+                        K_alpha_corrected = K_alpha_corrected,
+                        dbdt = dbdt,
+                        extinction_threshold = extinction_threshold,
+                        gc_thre = gc_thre,
+                        return_sol = false,
+                        re_run = re_run,
+                        dt_rescue = dt_rescue,
+                        digits = digits)
+        if ismissing(m.omega) || ismissing(m.alive_species)
+            println("No more species.")
+            return m
+            break
+        end
+        old_A = m.omega .> 0
+        alive_species = m.alive_species
+        A = remove_disconnected_species(old_A, alive_species)
+        ti = dim(A) == dim(old_A)
+
+        if ti == true
+            println("all species connected: $ti, nb species: $(dim(A))")
+            return m
+            break
+        end
+        i = i + 1
+    end
+    m
+end
+
 function sim_int_mat(A;
         d = 0, ρ = 0.0, σₑ = .5,
         alpha_ij = 0, Z = 100,
@@ -102,6 +169,7 @@ function sim_int_mat(A;
         max = 5000, last = 1000,
         dt = 0.1,
         K_alpha_corrected = true,
+        B0 = nothing,
         dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
         extinction_threshold = 1e-5,
         gc_thre = .02,
@@ -117,59 +185,44 @@ function sim_int_mat(A;
         GC.safepoint()
     end
 
-    fw = FoodWeb(A, Z = Z, quiet = true)
-    S = richness(fw)
-    C = connectance(fw)
+    if dim(A) != 0
 
-    # Parameters of the functional response
-    funcrep = BioenergeticResponse(fw; h = h, c = c)
-    # Carrying capacity
-    env = Environment(fw,
-                      K = if K_alpha_corrected
-                          nprod = length(producers(fw))
-                          # Loreau & de Mazancourt (2008), Ives et al. (1999)
-                          K * (1 + (alpha_ij * (nprod - 1))) / nprod
-                      else
-                          K
-                      end
-                     )
-    if isnothing(d)
-        if !isnothing(da)
-            d = allometric_rate(fw, AllometricParams(da.ap, da.ai, da.ae,-.25, -0.25, -.25))
-        else
-            d = allometric_rate(fw, DefaultMortalityParams())
+        fw = FoodWeb(A, Z = Z, quiet = true)
+        S = richness(fw)
+        C = connectance(fw)
+
+        # Parameters of the functional response
+        funcrep = BioenergeticResponse(fw; h = h, c = c)
+        # Carrying capacity
+        env = Environment(fw,
+                          K = if K_alpha_corrected
+                              nprod = length(producers(fw))
+                              # Loreau & de Mazancourt (2008), Ives et al. (1999)
+                              K * (1 + (alpha_ij * (nprod - 1))) / nprod
+                          else
+                              K
+                          end
+                         )
+        if isnothing(d)
+            if !isnothing(da)
+                d = allometric_rate(fw, AllometricParams(da.ap, da.ai, da.ae,-.25, -0.25, -.25))
+            else
+                d = allometric_rate(fw, DefaultMortalityParams())
+            end
         end
-    end
-    # generate the model parameters
-    p = ModelParameters(fw;
-                        biorates = BioRates(fw; r = r, d = d),
-                        functional_response = funcrep,
-                        environment = env,
-                        producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
-                        env_stoch = EnvStoch(σₑ)
-                       )
+        # generate the model parameters
+        p = ModelParameters(fw;
+                            biorates = BioRates(fw; r = r, d = d),
+                            functional_response = funcrep,
+                            environment = env,
+                            producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
+                            env_stoch = EnvStoch(σₑ)
+                           )
 
-    ω = p.functional_response.ω
-    B0 = rand(S)
-    # Simulate
-    timing = @elapsed m = try
-        simulate(p, B0;
-                 rho = ρ,
-                 dt = dt,
-                 tmax = max,
-                 extinction_threshold = extinction_threshold,
-                 diff_code_data = (dbdt, p),
-                 verbose = false
-                );
-
-    catch
-        (t = 0, x = missing)
-    end
-
-    # If unstable, it means that dt was too big
-    if m.retcode == DifferentialEquations.ReturnCode.Unstable && !isnothing(dt_rescue)
-        dt = dt_rescue
-        println("rerun with dt = $dt_rescue.")
+        ω = p.functional_response.ω
+        if isnothing(B0)
+            B0 = rand(S)
+        end
         # Simulate
         timing = @elapsed m = try
             simulate(p, B0;
@@ -184,43 +237,71 @@ function sim_int_mat(A;
         catch
             (t = 0, x = missing)
         end
-    end
 
-    if return_sol
-        return m
-    end
+        # If unstable, it means that dt was too big
+        if m.retcode == DifferentialEquations.ReturnCode.Unstable && !isnothing(dt_rescue)
+            dt = dt_rescue
+            println("rerun with dt = $dt_rescue.")
+            # Simulate
+            timing = @elapsed m = try
+                simulate(p, B0;
+                         rho = ρ,
+                         dt = dt,
+                         tmax = max,
+                         extinction_threshold = extinction_threshold,
+                         diff_code_data = (dbdt, p),
+                         verbose = false
+                        );
 
-    # Re-run simulations until no more extinction
-    if re_run
-        if length(m.t) >= last
-            ti = EcologicalNetworksDynamics.check_last_extinction(m;
-                                                                  idxs = 1:S,
-                                                                  last = last)
-            i = 1
-            while ti != true
-                B0 = m[1:S,end]
-                println("Re-run until no more extinctions \
-                        over the last $(last) timesteps. Iteration = $i.")
+            catch
+                (t = 0, x = missing)
+            end
+        end
 
-                #u0 = m[S+1:S*2,end]
-                p = get_parameters(m)
-                m = simulate(p, B0;
-                             rho = ρ,
-                             dt = dt,
-                             tmax = round(Int, last + 500),
-                             extinction_threshold = extinction_threshold,
-                             diff_code_data = (dbdt, p),
-                             verbose = false
-                            );
+
+        # Re-run simulations until no more extinction
+        if re_run
+            if length(m.t) >= last
                 ti = EcologicalNetworksDynamics.check_last_extinction(m;
                                                                       idxs = 1:S,
                                                                       last = last)
-                if ti == true
-                    break
+                i = 1
+                while ti != true
+                    B0 = m[1:S,end]
+                    println("Re-run until no more extinctions \
+                            over the last $(last) timesteps. Iteration = $i.")
+
+                    #u0 = m[S+1:S*2,end]
+                    p = get_parameters(m)
+                    m = simulate(p, B0;
+                                 rho = ρ,
+                                 dt = dt,
+                                 tmax = round(Int, last + 500),
+                                 extinction_threshold = extinction_threshold,
+                                 diff_code_data = (dbdt, p),
+                                 verbose = false
+                                );
+                    ti = EcologicalNetworksDynamics.check_last_extinction(m;
+                                                                          idxs = 1:S,
+                                                                          last = last)
+                    if ti == true
+                        break
+                    end
+                    i = i + 1
                 end
-                i = i + 1
             end
         end
+
+        if return_sol
+            return m
+        end
+    else
+        m = (t = 0, x = missing)
+        ω = missing
+        d = missing
+        S = 0
+        C = 0
+        timing = missing
     end
 
     out = get_stab_fw(m; last = last, digits = digits)
@@ -229,10 +310,13 @@ function sim_int_mat(A;
                                   idxs = out.alive_species,
                                   digits = 5)
     if !isnothing(digits)
-        ω = round.(ω, digits = digits)
-        d = round.(d, digits = digits)
+        if !isnothing(ω)
+            ω = round.(ω, digits = digits)
+        end
+        if !isnothing(d)
+            d = round.(d, digits = digits)
+        end
     end
-
 
     out = merge(
                 (S = S, ct = C, rho = ρ, env_stoch = σₑ,
@@ -437,3 +521,27 @@ function mysim(A, n, Z, f, ρ, σₑ; max = 50000, last = 25000, dt = 0.1, corr_
     out
 end
 
+function remove_disconnected_species(A, alive_species)
+    # Get binary matrix
+    A = A .> 0
+    cons = sum.(eachrow(A)) .!= 0
+    prod = sum.(eachrow(A)) .== 0
+
+    living_A = A[alive_species, alive_species]
+    alive_cons = cons[alive_species]
+    alive_prod = prod[alive_species]
+
+    species_with_no_pred = sum.(eachcol(living_A)) .== 0
+    species_with_no_prey = sum.(eachrow(living_A)) .== 0
+
+    disconnected_prod = alive_prod .&& species_with_no_pred
+    disconnected_cons = alive_cons .&& species_with_no_prey
+
+    to_keep = .!(disconnected_prod .|| disconnected_cons)
+
+    println("Remove $(sum(disconnected_prod)) disconnected producers
+            and $(sum(disconnected_cons)) consumers.")
+
+    living_A[to_keep, to_keep]
+
+end

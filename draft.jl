@@ -36,10 +36,11 @@ toy_param[!, :A] = map(x -> reshape_array(x), toy_param[!, :A])
 # Make a tuple vector
 toy_param = NamedTuple.(eachrow(toy_param))
 
+include("src/sim.jl")
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
                                (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
-                               sim_int_mat(p.A;
+                               sim_int_mat_check_disconnected(p.A;
                                            ρ = p.rho,
                                            alpha_ij = 0.5,
                                            d = nothing,
@@ -60,38 +61,69 @@ timing = @elapsed sim = @showprogress pmap(p ->
                          batch_size = 100
                         )
 sim_df = DataFrame(sim)
+select(sim_df, [:max_tlvl, :richness])
 names(sim_df)
 
-function remove_disconnected_prod(A)
-    A = A .> 0
-    prod = sum.(eachrow(A)) .== 0
-    sp_with_no_pred = sum.(eachcol(A)) .== 0
-    disconnected_prod = prod .&& sp_with_no_pred
+ti = map(x -> remove_disconnected_species(x.omega, x.alive_species),sim)
+tu = FoodWeb(ti[4])
+tu = FoodWeb(ti[9])
+tu.A
+EcologicalNetworksDynamics.is_connected(tu)
+tu.A
+tu.metabolic_class
 
-    println("Remove $(sum(disconnected_prod)) disconnected producers")
-    # Remove disconnected_prod
-    A[.!(disconnected_prod), .!(disconnected_prod)]
 
-    # Remove disconnected pred
-    prod = sum.(eachrow(A)) .== 0
-    sp_with_no_pred = sum.(eachcol(A)) .== 0
-    disconnected_prod = prod .&& sp_with_no_pred
+@enter sim_int_mat_check_disconnected(toy_param[5].A;
+            ρ = 0,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .1, Z = 10,
+            h = 3.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 500, last = 100,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
+            return_sol = false,
+            re_run = false,
+            digits = 5
+           )
 
-    println("Remove $(sum(disconnected_prod)) disconnected producers")
-    # Remove disconnected_prod
-    A[.!(disconnected_prod), .!(disconnected_prod)]
+p = get_parameters(m)
+p.network.A
+plot(m.species)
+FoodWeb(m.omega .> 0)
+FoodWeb(m.int_strength .> 0)
+m.int_strength
+ω
 
-end
-tmp_A = sim[4].int_strength .> 0
-sim[2].alive_species
-ti = map(x -> remove_disconnected_prod(x.omega[x.alive_species, x.alive_species]),sim)
-FoodWeb(remove_disconnected_prod(tmp_A))
-FoodWeb(ti[4]).A
-remove_disconnected_prod(ti[4])
+p = ModelParameters(tu)
+m = simulate_deter(p, rand(richness(tu)); tmax = 500)
+m.u
+ty = m[:, end]
+ty[ty .> 0]
+
+plot(m)
+
+tmp_A = sim[4].omega .> 0
+alive_species = sim[4].alive_species
+cons = sum.(eachrow(tmp_A)) .!= 0
 prod = sum.(eachrow(tmp_A)) .== 0
-sp_with_no_pred = sum.(eachcol(tmp_A)) .== 0
-prod .&& sp_with_no_pred
-.!( prod .&& sp_with_no_pred)
+living_A = tmp_A[alive_species, alive_species]
+alive_cons = cons[alive_species]
+alive_prod = prod[alive_species]
+
+species_with_no_pred = sum.(eachcol(living_A)) .== 0
+disconnected_prod = alive_prod .&& species_with_no_pred
+disconnected_cons = sum.(eachrow(living_A)) .== 0 .&& alive_cons
+to_keep = .!(disconnected_prod .|| disconnected_cons)
+
+living_A[to_keep, to_keep]
+tmp_cons = sum.(eachrow(tmp_A)) .!= 0
+sp_with_no_pred = sum.(eachcol(living_A)) .== 0
+disconnected_prod = alive_prod .&& sp_with_no_pred
+disconnected_cons = sum.(eachrow(living_A)) .== 0 .&& alive_cons
 
 FoodWeb(tmp_A)
 FoodWeb(tmp_A[.!( prod .&& sp_with_no_pred), .!( prod .&& sp_with_no_pred)])
