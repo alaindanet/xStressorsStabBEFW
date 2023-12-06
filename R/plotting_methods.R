@@ -71,13 +71,25 @@ plot_sim <- function(x = sim_for_plot,
   id = 6827,
   col_palette = NULL,
   node_size_scale = .5,
-  font_size = 10
+  font_size = 10,
+  tmax = 200,
+  replace0by = 1e-6,
+  title = NULL
   ) {
   # get the good sim
   sim <- x %>%
     filter(sim_id == id)
   # Get the matrix
   mat <- get_mat_list(sim)[[1]]
+
+  if (!is.null(tmax)) {
+    mat <- mat[(nrow(mat) - tmax):nrow(mat), ]
+  }
+
+  if (!is.null(replace0by)) {
+    mat[mat == 0] <- replace0by
+  }
+
 
   # Get species color
   if (is.null(col_palette)) {
@@ -91,6 +103,11 @@ plot_sim <- function(x = sim_for_plot,
     scale_color_manual(values = col_palette) +
     scale_y_continuous(trans = "log10")
 
+  if (!is.null(title)) {
+    ts_plot <- ts_plot +
+      ggtitle(title)
+  }
+
   # Add the stability and food-web metrics
   ts_plot_metric <- ts_plot +
     coord_cartesian(
@@ -99,7 +116,7 @@ plot_sim <- function(x = sim_for_plot,
       clip = "off") +
     # This widens the right margin
     theme(plot.margin = unit(c(1, 12, 1, 1), "lines")) +
-    annotate("text", x = 202, y = 0,
+    annotate("text", x = nrow(mat) + 2, y = 0,
       label = get_stab_fw_label(x = x, id = id),
       #https://stackoverflow.com/a/65077171
       size = font_size / .pt - 1,
@@ -107,6 +124,7 @@ plot_sim <- function(x = sim_for_plot,
       lineheight = .8,
       vjust = 0
     )
+
 
   # Get the Food-web
   ## Adjency matrix

@@ -432,7 +432,6 @@ list(
         term_to_del = "richness : resp_div : Z +"
         ),
       data = sim_fw %>%
-        select(-productivity) %>%
         mutate(across(c(stab_com, richness), log)) %>%
         mutate(across(c(sim_id, fw_id), as.factor)) %>%
         mutate(
@@ -452,7 +451,6 @@ list(
         term_to_del = "richness : resp_div : Z +"
         ),
       data = sim_fw %>%
-        select(-productivity) %>%
         mutate(across(c(stab_com, richness), log)) %>%
         mutate(across(c(sim_id, fw_id), as.factor)) %>%
         mutate(
@@ -491,8 +489,8 @@ list(
       resp_div = 1 - c(0, .75, 1),
       avg_int_strength = c(.01, .02, .05, .1),
       env_stoch = c(.1, .6),
-      w_avg_tlvl = c(1.5, 2, 3),
-      Z = c(10, 100),
+      w_avg_tlvl = c(1.0, 1.5, 2.3),
+      Z = c(1, 10, 100),
       h = c(2, 3),
       fw_id = NA) %>% expand.grid()
     ti <- predict(model_fw_stab,
@@ -532,7 +530,7 @@ list(
   tar_target(pred_sr_resp_div_tlvl,
     list(
       resp_div = seq(0, 1, length.out = 50),
-      w_avg_tlvl = seq(1.5, 3.5, length.out = 50)
+      w_avg_tlvl = seq(1.0, 2.5, length.out = 50)
       ) %>%
     expand.grid() %>%
     mutate(
@@ -577,10 +575,10 @@ list(
     c(
       "resp_div" = 0,
       "env_stoch" = .3,
-      "ct_alive" = .2,
+      "ct_alive" = .1,
       "avg_int_strength" = .01,
       "h" = 2,
-      "w_avg_tlvl" = 2,
+      "w_avg_tlvl" = 1,
       "Z" = 100
     )
   ),
@@ -596,9 +594,9 @@ list(
           tibble(
             variable = c("avg_int_strength", "w_avg_tlvl", "ct_alive"),
             values = list(
-              seq(0.01, 0.2, length.out = 50),
-              seq(1.5, 3.5, length.out = 50),
-              seq(.02, .3, length.out = 50)
+              seq(0.01, 0.1, length.out = 50),
+              seq(1.0, 2.5, length.out = 50),
+              seq(.02, .35, length.out = 50)
             )
           )
         )
@@ -824,27 +822,10 @@ list(
       geom_boxplot() +
       labs(x = "Environmental stochasticity", y = "Population stability") +
       theme_bw()),
-    tar_target(p_prod_bm,
-      sim_fw %>%
-        filter(bm_total > 10^-5) %>%
-        ggplot(aes(x = as.factor(productivity), y = log(bm_total))) +
-        geom_boxplot() +
-        labs(x = "Productivity", y = "Total biomass") +
-        theme_bw()
-      ),
-    tar_target(p_prod_pop_stab,
-      sim_fw %>%
-        ggplot(aes(x = as.factor(productivity), y = log(pop_stab))) +
-        geom_boxplot() +
-        labs(x = "Productivity", y = "Population stability") +
-        theme_bw()
-    ),
     tar_target(p_stab_comp_stress,
       plot_grid(
         p_cpe_env_rho,
         p_stoch_pop_stab,
-        p_prod_bm,
-        p_prod_pop_stab,
         labels = "auto"
       )
 
@@ -874,7 +855,7 @@ list(
         theme_bw()),
       tar_target(p_stab_s_resp_div,
         sim_fw %>%
-          filter(rho %in% c(0, 1), productivity == 5, env_stoch == .5) %>%
+          filter(rho %in% c(0, 1), env_stoch == .5) %>%
           ggplot(aes(x = richness, y = stab_com, color = as.factor(1 - rho))) +
           geom_point() +
           geom_smooth() +
@@ -912,7 +893,7 @@ sim_fw %>%
 
 ```{targets p_int_stab, tar_simple = TRUE}
 sim_fw %>%
-  filter(rho %in% c(0), productivity == 5, env_stoch == .5) %>%
+  filter(rho %in% c(0), env_stoch == .5) %>%
   pivot_longer(c(stab_com, async, sae_total, cpe,
       sae_even, evenness_sae,
       cpe_int, cpe_env, stab_pop
@@ -928,7 +909,7 @@ sim_fw %>%
 
 ```{targets p_int_fw, tar_simple = TRUE}
 sim_fw %>%
-  filter(rho %in% c(0), productivity == 5, env_stoch == .5) %>%
+  filter(rho %in% c(0), env_stoch == .5) %>%
   pivot_longer(c(richness, ct_alive, max_tlvl, avg_omnivory, w_avg_tlvl
       ), names_to = "fw_str", values_to = "values") %>%
   mutate(fw_str = var_replacement()[fw_str]) %>%
@@ -1070,6 +1051,7 @@ If you ran all the `{targets}` chunks in non-interactive mode, then your R scrip
 
 ```{r tar-make}
 tar_make()
+tar_make_future(workers = 3)
 ```
 
 # Output
@@ -1091,6 +1073,29 @@ library(ggcorrplot)
 lapply(list.files(here::here("R"), full.names = TRUE), source)
 ```
 
+```{r debug, eval = FALSE}
+tar_load(sim_fw)
+ti <- sim_fw %>%
+  mutate(across(c(stab_com, richness), log)) %>%
+  mutate(across(c(sim_id, fw_id), as.factor)) %>%
+  mutate(
+    across(c(stab_com, richness,
+        env_stoch, resp_div, Z,
+        ct_alive, w_avg_tlvl, avg_int_strength, avg_omnivory),
+      ~scale(.x)[, 1])
+  )
+tar_load(stab_com_part_var)
+tu <- map(stab_com_part_var,
+  ~glmmTMB(formula_stab_fw_model(
+      resp = .x,
+      rand_effect = TRUE,
+      term_to_del = "richness : resp_div : Z +"
+      ),
+    data = ti
+    ))
+```
+
+
 ```{r}
 tar_load(fix_fw_stab)
 tar_load(fix_fw_stab_comp)
@@ -1098,62 +1103,81 @@ tar_load(pred_stab_comp_rho)
 ```
 
 ```{r plot-sim}
-load(here("data","sim_for_plot"))
+load(here("data", "sim_for_plot"))
+length(unique(sim_for_plot$sim_id))
 sim_for_plot %<>%
-  select(-c(avg_cv_sp, sync)) %>%
   left_join(
-    tar_read(sim_fw) %>%
-      select(sim_id, ct_alive)
+    tar_read(sim_fw)
   )
+stoch <- 0.3
+hill <- 2
+env_corr <- 0
+unique(sim_for_plot$env_stoch)
 ```
+
 ```{r}
 sim_for_plot %>%
-  filter(env_stoch == .6, h == 2, Z == 1, S == 10, rho == 0) %>%
-  arrange(desc(async))
-low_z_low_rich <- sim_for_plot %>%
-  filter(env_stoch == .6, Z == 1, S == 10, rho == 0) %>%
-  arrange(desc(async))
+  filter()
 
+```
+
+
+```{r}
+sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr) %>%
+  arrange(fw_id)
+low_z_low_rich <- sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr, richness == 10) %>%
+  arrange(desc(max_tlvl), richness)
 tu <- timespecies_mat_to_long_tibble(low_z_low_rich$species[[1]])
 plot_timeseries_lg_tbl(tu)
 ```
 
-
-```{r}
-sim_for_plot %>%
-  filter(env_stoch == .6, h == 2, Z == 100, S == 10, rho == 0) %>%
-  arrange(desc(async))
-high_z_low_rich <- sim_for_plot %>%
-  filter(env_stoch == .6, h == 2, Z == 100, S == 10, rho == 0) %>%
-  arrange(desc(async))
-
-plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_low_rich$species[[1]]))
-```
-
-```{r}
-sim_for_plot %>%
-  filter(env_stoch == .6, h == 2, Z == 100, S == 40, rho == 0) %>%
-  arrange(desc(async))
-high_z_high_rich <- sim_for_plot %>%
-  filter(env_stoch == .6, h == 2, Z == 100, S == 40, rho == 0) %>%
-  arrange(desc(async))
-plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_high_rich))
-```
-
 ```{r}
 low_z_high_rich <- sim_for_plot %>%
-  filter(env_stoch == .6, h == 2, Z == 1, S == 40, rho == 0) %>%
-  arrange(desc(async))
+  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr) %>%
+  # For plotting purpose, not too much species
+  filter(richness > 15) %>%
+  arrange(desc(max_tlvl), desc(richness))
 
 low_z_high_rich_mat <- get_mat_list(low_z_high_rich)
-plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(low_z_high_rich_mat[[1]]))
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(low_z_high_rich_mat[[2]]))
 ```
 
 ```{r}
+sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 100,
+    rho == env_corr, richness == 10) %>%
+  arrange(desc(max_tlvl))
+high_z_low_rich <- sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 100,
+    rho == env_corr, richness == 10) %>%
+  arrange(desc(max_tlvl))
+
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_low_rich$species[[3]]))
+```
+
+```{r}
+sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 100, rho == env_corr) %>%
+  # For plotting purpose, not too much species
+  filter(richness <= 20) %>%
+  arrange(desc(max_tlvl))
+high_z_high_rich <- sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 100, rho == env_corr) %>%
+  # For plotting purpose, not too much species
+  filter(richness == 20) %>%
+  arrange(desc(max_tlvl))
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_high_rich$species[[3]]))
+```
+
+```{r}
+sim_for_plot$int_strength[[1]] %>% dim
 p_low_z_low_rich <- plot_sim(x = sim_for_plot,
   id = low_z_low_rich$sim_id[[1]],
   col_palette = NULL,
-  node_size_scale = .3
+  node_size_scale = .3,
+  tmax = 200
 )
 p_low_z_high_rich <- plot_sim(x = sim_for_plot,
   id = low_z_high_rich$sim_id[[2]],
@@ -1162,19 +1186,29 @@ p_low_z_high_rich <- plot_sim(x = sim_for_plot,
 )
 p_high_z_low_rich <- plot_sim(
   x = sim_for_plot,
-  id = high_z_low_rich$sim_id[[1]],
+  id = high_z_low_rich$sim_id[[5]],
   col_palette = NULL,
   node_size_scale = .3)
 p_high_z_high_rich <- plot_sim(
   x = sim_for_plot,
-  id = high_z_high_rich$sim_id[[1]],
+  id = high_z_high_rich$sim_id[[3]],
   col_palette = NULL,
   node_size_scale = .4
 )
 
+word_label_size <- 11
 p_sim_example <- plot_grid(
-  p_low_z_low_rich, p_low_z_high_rich,
-  p_high_z_low_rich, p_high_z_high_rich,
+  p_low_z_low_rich + draw_label(
+    "Low PPMR", fontface = 'bold', x = 0, y = .5,
+    hjust = .5, vjust = 1, angle = 90, size = word_label_size) +
+  draw_label("Low richness", fontface = 'bold', x = 0.5, y = 1,
+    hjust = 0.5, vjust = 1, angle = 0, size = word_label_size),
+  p_low_z_high_rich + draw_label("High richness", fontface = 'bold', x = 0.5, y = 1,
+    hjust = 0.5, vjust = 1, angle = 0, size = word_label_size),
+  p_high_z_low_rich + draw_label(
+    "High PPMR", fontface = 'bold', x = 0, y = .5,
+    hjust = .5, vjust = 1, angle = 90, size = word_label_size),
+  p_high_z_high_rich,
   labels = c("b", "", "", ""),
   align = "hv"
 )
@@ -1192,17 +1226,17 @@ ggsave_multiple(
 
 ```{r}
 sim_for_plot %>%
-  filter(Z == 100, env_stoch == 0.6, rho %in% c(0, 1), S == 10, h == 2) %>%
+  filter(Z == 100, env_stoch == 0.3, rho %in% c(0, 1), S == 10, h == 2) %>%
   group_by(fw_id) %>%
   summarise(n = n()) %>%
   filter(n > 1)
 sim_for_plot %>%
-  filter(env_stoch == 0.6, rho %in% c(0, .75), S == 10, h == 3) %>%
+  filter(env_stoch == 0.3, rho %in% c(0, 1), S == 10, h == 3) %>%
   group_by(fw_id) %>%
   summarise(n = n()) %>%
   filter(n > 1)
-fwid <- 549
-z <- 25
+fwid <- 6
+z <- 10
 sim_for_plot %>%
   filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho %in% c(0, 1), S == 10, h == 2)
 
@@ -1214,7 +1248,8 @@ p_high_resp_div_low_rich <- plot_sim(
   x = sim_for_plot,
   id = high_resp_div_low_rich$sim_id[[1]],
   col_palette = NULL,
-  node_size_scale = .2
+  node_size_scale = .2,
+  title = "High response diversity"
 )
 
 low_resp_div_low_rich <- sim_for_plot %>%
@@ -1224,11 +1259,13 @@ p_low_resp_div_low_rich <- plot_sim(
   x = sim_for_plot,
   id = low_resp_div_low_rich$sim_id[[1]],
   col_palette = NULL,
-  node_size_scale = .2
+  node_size_scale = .2,
+  title = "Low response diversity"
 )
 
 p_sim_rho_example <- plot_grid(
-  p_low_resp_div_low_rich, p_high_resp_div_low_rich,
+  p_low_resp_div_low_rich,
+  p_high_resp_div_low_rich,
   labels = c("a", ""),
   align = "hv"
 )
@@ -1249,7 +1286,7 @@ ggsave_multiple(
   paste0("p_methods", c(".png", ".pdf")),
   plot = p_methods,
   path = here::here("report", "figures"),
-  scale = 2.6,
+  scale = 3.0,
   dpi = 400,
   width = 80,
   height = 80 * .6,
@@ -1417,11 +1454,6 @@ ggsave_multiple(
 ```
 
 ```{r}
-```
-
-
-
-```{r}
 tar_load(model_fw_stab_comp_scaled_coeff)
 
 pattern <- c(var_replacement(), get_term_replacement())
@@ -1568,74 +1600,62 @@ ggsave_multiple(
 ```
 
 ```{r}
-tar_load(pred_data)
-p_pred_sr_resp_div_int_env <- pred_data %>%
-  filter(
-    ct_alive %in% c(.1),
-    resp_div %in% c(0, .75),
-    richness >= 1,
-    Z == 100,
-    h %in% c(2),
-    avg_int_strength %in% c(.01, .1),
-    w_avg_tlvl == 2.0
-    ) %>%
-  ggplot(aes(
-      x = richness, y = stab_com,
-      color = as.factor(resp_div),
-      fill = as.factor(resp_div),
-      linetype = as.factor(avg_int_strength),
-      alpha = as.factor(avg_int_strength)
-      )) +
-  ylim(2, 8) +
-  geom_line(linewidth = .8) +
-  geom_ribbon(aes(ymin = stab_com - stab_com_se, ymax = stab_com + stab_com_se), alpha = .3, color = NA) +
-  scale_alpha_manual(values = c(1, 1), guide = "none") +
-  facet_grid(
-    cols = vars(env_stoch),
-    labeller = as_labeller(function(x) paste0("Environmental stochasticity: ", x))) +
-  labs(
-    x = "Species richness (Log)", y = "Community stability (Log)",
-    linetype = "Avg. Interaction strength",
-    color = "Environmental correlation", fill = "Environmental correlation"
-  ) +
-  theme_bw() +
-  theme(legend.position = "bottom")
+fw_values_bin <- list(
+  ct_alive = c(low = .05, high = 0.30),
+  avg_int_strength = c(low = .01, high = .1),
+  w_avg_tlvl = c(low = 1, high = 2.3),
+  resp_div = c(low = .25, high = 1)
+)
 
-#pred_data$async <- predict(mod_tot_async, newdata = pred_data)
-#pred_data$pop_stab <- predict(mod_tot_pop_stab, newdata = pred_data)
-
-```
-
-```{r}
 pred_data_sr_fw <- pred_data %>%
   filter(
-    ct_alive %in% c(.1, .3),
-    resp_div %in% c(1, .25),
+    ct_alive %in% fw_values_bin$ct_alive,
+    resp_div %in% fw_values_bin$resp_div,
     richness >= 1,
     Z == 100,
     h %in% c(2),
-    avg_int_strength %in% c(.01, .1),
+    avg_int_strength %in% fw_values_bin$avg_int_strength,
     env_stoch == .1,
-    w_avg_tlvl %in% c(2.0, 3.0)
+    w_avg_tlvl %in% fw_values_bin$w_avg_tlvl
     ) %>%
 mutate(
   group_ct_alive = case_when(
-    ct_alive == .3 & avg_int_strength == .01 & w_avg_tlvl == 2.0 ~ "High",
-    ct_alive == .1 & avg_int_strength == .01 & w_avg_tlvl == 2.0 ~ "Low"
+    ct_alive == fw_values_bin$ct_alive["high"] &
+      avg_int_strength == fw_values_bin$avg_int_strength["low"] &
+      w_avg_tlvl == fw_values_bin$w_avg_tlvl["low"] ~ "High",
+    ct_alive == fw_values_bin$ct_alive["low"] &
+      avg_int_strength == fw_values_bin$avg_int_strength["low"] &
+      w_avg_tlvl == fw_values_bin$w_avg_tlvl["low"] ~ "Low"
     ),
   group_avg_int_strength = case_when(
-    ct_alive == .1 & avg_int_strength == .1 & w_avg_tlvl == 2.0 ~ "High",
-    ct_alive == .1 & avg_int_strength == .01 & w_avg_tlvl == 2.0 ~ "Low"
+    ct_alive == fw_values_bin$ct_alive["low"] &
+      avg_int_strength == fw_values_bin$avg_int_strength["high"] &
+      w_avg_tlvl == fw_values_bin$w_avg_tlvl["low"] ~ "High",
+    ct_alive == fw_values_bin$ct_alive["low"] &
+      avg_int_strength == fw_values_bin$avg_int_strength["low"] &
+      w_avg_tlvl == fw_values_bin$w_avg_tlvl["low"] ~ "Low"
     ),
   group_w_avg_tlvl = case_when(
-    ct_alive == .1 & avg_int_strength == .01 & w_avg_tlvl == 3.0 ~ "High",
-    ct_alive == .1 & avg_int_strength == .01 & w_avg_tlvl == 2.0 ~ "Low"
+    ct_alive == fw_values_bin$ct_alive["low"] &
+      avg_int_strength == fw_values_bin$avg_int_strength["low"] &
+      w_avg_tlvl == fw_values_bin$w_avg_tlvl["high"] ~ "High",
+    ct_alive == fw_values_bin$ct_alive["low"] &
+      avg_int_strength == fw_values_bin$avg_int_strength["low"] &
+      w_avg_tlvl == fw_values_bin$w_avg_tlvl["low"] ~ "Low"
     )) %>%
 pivot_longer(starts_with("group_")) %>%
 filter(!is.na(value)) %>%
 mutate(
   name = str_remove(name, "group_"),
-  resp_div_cat = str_replace_all(resp_div, resp_div_replacement())
+  resp_div_cat = str_replace_all(resp_div, resp_div_replacement()),
+  variable_values = case_when(
+    name == "ct_alive" & value == "Low" ~ fw_values_bin$ct_alive["low"],
+    name == "ct_alive" & value == "High" ~ fw_values_bin$ct_alive["high"],
+    name == "avg_int_strength" & value == "Low" ~ fw_values_bin$avg_int_strength["low"],
+    name == "avg_int_strength" & value == "High" ~ fw_values_bin$avg_int_strength["high"],
+    name == "w_avg_tlvl" & value == "Low" ~ fw_values_bin$w_avg_tlvl["low"],
+    name == "w_avg_tlvl" & value == "High" ~ fw_values_bin$w_avg_tlvl["high"]
+  )
 )
 
 breaks_log_richness <- log(c(3, 6, 20))
@@ -1691,9 +1711,27 @@ ggsave_multiple(
 ## Figure SR
 
 ```{r}
+pred_stab_comp_resp_div
+p_pred_sr_resp_div +
+  geom_point(
+    data = pred_data_sr_fw %>%
+      filter(richness == min(richness)) %>%
+      mutate(name = var_replacement()[name]) %>%
+      rename(variable = name),
+    aes(color = NULL, fill = NULL)
+  )
+
 p_pred_sr <- plot_grid(
   p_pred_data_sr_fw + theme(legend.position = "right"),
-  p_pred_sr_resp_div,
+  # Add location of the fw values of p_pred_data_sr_fw
+  p_pred_sr_resp_div +
+  geom_point(
+    data = pred_data_sr_fw %>%
+      filter(richness == min(richness)) %>%
+      mutate(name = var_replacement()[name]) %>%
+      rename(variable = name),
+    aes(color = NULL, fill = NULL)
+  ),
   nrow = 2,
   rel_heights = c(.7, 1),
   labels = "auto"
@@ -1789,60 +1827,12 @@ tar_read(p_ct_stab)
 tar_read(p_rich_stab)
 
 sim_fw %>%
-  filter(env_stoch == 0.3, rho %in% c(0, .5, 1), productivity == 5) %>%
+  filter(env_stoch == 0.3, rho %in% c(0, .5, 1)) %>%
   ggplot(aes(x = richness, y = cpe_env, color = as.factor(rho))) +
   geom_point() +
   labs(x = "Species richness", y = "Comp. effects (Environment)") +
   theme_bw()
 
-sim_fw %>%
-  filter(env_stoch == .6, rho == 0) %>%
-  ggplot(aes(x = as.factor(productivity), y = pop_stab, color = as.factor(Z))) +
-  geom_boxplot() +
-  labs(x = "Productivity", y = "Population stability") +
-  theme_bw()
-
-sim_fw %>%
-  filter(env_stoch == .3, rho == 0) %>%
-  ggplot(aes(x = as.factor(productivity), y = stab_com, color = as.factor(Z))) +
-  geom_boxplot() +
-  labs(x = "Productivity", y = "Population stability") +
-  theme_bw()
-
-sim_fw %>%
-  filter(env_stoch == .2, rho == 0) %>%
-  ggplot(aes(x = as.factor(Z), y = pop_stab, color = as.factor(productivity))) +
-  geom_boxplot() +
-  labs(x = "Productivity", y = "Population stability") +
-  theme_bw()
-
-sim_fw %>%
-  filter(env_stoch == .2, rho == 0) %>%
-  ggplot(aes(x = as.factor(Z), y = avg_int_strength, color = as.factor(productivity))) +
-  geom_boxplot() +
-  labs(x = "Productivity", y = "Population stability") +
-  theme_bw()
-
-sim_fw %>%
-  filter(env_stoch == .2, rho == 0, bm_total > 10^-5) %>%
-  ggplot(aes(x = as.factor(Z), y = bm_total, color = as.factor(productivity))) +
-  geom_boxplot() +
-  labs(x = "Productivity", y = "Population stability") +
-  theme_bw()
-
-sim_fw %>%
-  filter(env_stoch == .2, rho == 0) %>%
-  ggplot(aes(x = as.factor(Z), y = evenness_sae, color = as.factor(productivity))) +
-  geom_boxplot() +
-  labs(x = "Productivity", y = "Population stability") +
-  theme_bw()
-
-sim_fw %>%
-  filter(env_stoch == .2, rho == 0) %>%
-  ggplot(aes(x = as.factor(productivity), y = cpe_int, color = as.factor(Z))) +
-  geom_boxplot() +
-  labs(x = "Productivity", y = "Population stability") +
-  theme_bw()
 ```
 
 ```{r}
