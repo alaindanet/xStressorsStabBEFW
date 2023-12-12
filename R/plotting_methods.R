@@ -74,7 +74,10 @@ plot_sim <- function(x = sim_for_plot,
   font_size = 10,
   tmax = 200,
   replace0by = 1e-6,
-  title = NULL
+  title = NULL,
+  var_label = NULL,
+  plot_label = TRUE,
+  plot_fw = TRUE
   ) {
   # get the good sim
   sim <- x %>%
@@ -109,22 +112,30 @@ plot_sim <- function(x = sim_for_plot,
   }
 
   # Add the stability and food-web metrics
-  ts_plot_metric <- ts_plot +
-    coord_cartesian(
-      expand = FALSE,
-      # Do not cut the annotations below
-      clip = "off") +
-    # This widens the right margin
-    theme(plot.margin = unit(c(1, 12, 1, 1), "lines")) +
-    annotate("text", x = nrow(mat) + 2, y = 0,
-      label = get_stab_fw_label(x = x, id = id),
-      #https://stackoverflow.com/a/65077171
-      size = font_size / .pt - 1,
-      hjust = 0,
-      lineheight = .8,
-      vjust = 0
-    )
-
+  if (plot_label) {
+    ## Get labels
+    if (!is.null(var_label)) {
+      stab_fw_label <- get_stab_fw_label(x = x, id = id, var = var_label)
+    } else {
+      stab_fw_label <- get_stab_fw_label(x = x, id = id)
+    }
+    ## Add them to the plot
+    ts_plot <- ts_plot +
+      coord_cartesian(
+        expand = FALSE,
+        # Do not cut the annotations below
+        clip = "off") +
+      # This widens the right margin
+      theme(plot.margin = unit(c(1, 12, 1, 1), "lines")) +
+      annotate("text", x = nrow(mat) + 2, y = 0,
+        label = stab_fw_label,
+        #https://stackoverflow.com/a/65077171
+        size = font_size / .pt - 1,
+        hjust = 0,
+        lineheight = .8,
+        vjust = 0
+      )
+  }
 
   # Get the Food-web
   ## Adjency matrix
@@ -149,7 +160,8 @@ plot_sim <- function(x = sim_for_plot,
   }
 
   # Combine timeseries and food-web
-  ggdraw(ts_plot_metric) +
+  if (plot_fw) {
+  ggdraw(ts_plot) +
     draw_plot(p,
       x = 1, y = 1,
       scale = .4,
@@ -157,5 +169,8 @@ plot_sim <- function(x = sim_for_plot,
       halign = 1,
       valign = 1
     )
+  } else {
+    ts_plot
+  }
 
 }

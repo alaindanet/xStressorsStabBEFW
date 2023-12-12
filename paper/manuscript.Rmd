@@ -528,18 +528,19 @@ to a gradient of response diversity and of food-web structure.
 ```{r}
 sem_cap <- paste0(
   "Structural Equation Model linking initial model parameters to resulting
-  temporal stability of biomass. Arrows display positive (continuous) and
+  temporal stability of biomass. (a) Arrows display positive (continuous) and
   negative (dashed) standardised effects. Initial parameters were initial
   species richness, initial connectance, Prey-Predator Mass Ratio (PPMR), hill
   exponent, variance of stochastic mortality rates (Env. stochasticity), and
-  species response diversity. We only
-  displayed standardised coefficients whose absolute values are superior to 0.1
-  are displayed. A more complete SEM containing further partition of Statistical
-  Averaging Effect and Compensatory effects is displayed in Fig. SXX.")
+  species response diversity. Only the standardised coefficients whose absolute
+  values are superior to 0.1 are displayed. A more complete SEM containing
+  further partition of Statistical Averaging Effect and Compensatory effects is
+  displayed in Fig. SXX. (b) Partial relationships derived from the SEM, points
+  displaying the partial standardized residuals.")
 ```
 
 ```{r sem, fig.cap=sem_cap, fig.id = "sem"}
-knitr::include_graphics(here("report", "figures", "sem_stab_simplified.pdf"))
+knitr::include_graphics(here("report", "figures", "p_sem_tot.pdf"))
 ```
 
 

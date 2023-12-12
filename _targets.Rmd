@@ -575,10 +575,10 @@ list(
     c(
       "resp_div" = 0,
       "env_stoch" = .3,
-      "ct_alive" = .1,
+      "ct_alive" = .05,
       "avg_int_strength" = .01,
       "h" = 2,
-      "w_avg_tlvl" = 1,
+      "w_avg_tlvl" = 1.0,
       "Z" = 100
     )
   ),
@@ -802,9 +802,94 @@ list(
 )
 ```
 
-```{r}
+## Partial residuals SEM
 
+```{targets partial_sem_relations}
+list(
+  tar_target(scaled_sim_fw_sem,
+    sim_fw_sem %>%
+      mutate(across(where(is.numeric), ~scale(.x)[, 1]))
+    ),
+  tar_target(scaled_sem_simplified_model_list,
+    map(sem_simplified_model_list,
+      ~update(.x, data = scaled_sim_fw_sem)
+      )),
+  tar_target(scaled_sem_simplified,
+    as.psem(scaled_sem_simplified_model_list)
+    ),
+  tar_target(formula_sem_bivariate_relations,
+    c(
+      "pop_stab ~ w_avg_tlvl",
+      "pop_stab ~ h",
+      "pop_stab ~ env_stoch",
+      "sae_total ~ richness",
+      "sae_total ~ ct_alive",
+      "sae_total ~ w_avg_tlvl",
+      "sae_total ~ avg_int_strength",
+      "cpe ~ avg_int_strength",
+      "cpe ~ resp_div"
+    )
+    )#,
+  #tar_target(partial_resid_sem_simplified, {
+  #  partialResid(as.formula(formula_sem_bivariate_relations),
+  #          modelList = scaled_sem_simplified,
+  #          data = scaled_sim_fw_sem
+  #        )},
+  #        pattern = map(formula_sem_bivariate_relations)
+  #),
+  #tar_target(sem_simplified_bivariate_relations,
+  #  tibble(sem_formula = formula_sem_bivariate_relations) %>%
+  #    separate(
+  #      col = sem_formula,
+  #      into = c("response", "predictor"),
+  #      sep = " ~ ", remove = FALSE) %>%
+  #  mutate(
+  #    data = partial_resid_sem_simplified,
+  #    coefs = map2(response, predictor,
+  #      ~coefficients(scaled_sem_simplified[[.x]])[c("(Intercept)", .y)]
+  #      ),
+    #  plot = pmap(list(
+    #      data = data,
+    #      response = response,
+    #      predictor = predictor,
+    #      coef = coefs
+    #      ),
+    #    function (data, response, predictor, coef, ext_data) {
+    #      if (predictor %in% c("h", "env_stoch", "resp_div")) {
+    #        p <- data %>%
+    #          ggplot(aes(
+    #              y = yresid, x = xresid,
+    #              group = cut(round(xresid, 1),
+    #                breaks = length(unique(ext_data[[predictor]]))
+    #              )
+    #              )) +
+    #          geom_boxplot(alpha = .1)
+    #      } else {
+    #        p <- data %>%
+    #          ggplot(aes(y = yresid, x = xresid)) +
+    #          geom_point(alpha = .1)
+    #      }
+    #      p +
+    #        geom_abline(
+    #          intercept = coef["(Intercept)"],
+    #          slope = coef[2],
+    #          linewidth = 1
+    #          ) +
+    #        labs(
+    #          x = var_replacement()[predictor],
+    #          y = var_replacement()[response]
+    #          ) +
+    #        coord_cartesian(expand = FALSE) +
+    #        theme_half_open()
+
+    #    }, ext_data = scaled_sim_fw_sem)
+    #)
+  #)
+)
 ```
+
+
+
 
 
 ```{targets p-stab}
@@ -1050,7 +1135,7 @@ tar_read(sem_eff_tab) %>%
 If you ran all the `{targets}` chunks in non-interactive mode, then your R scripts are set up to run the pipeline.
 
 ```{r tar-make}
-tar_make()
+#tar_make()
 tar_make_future(workers = 3)
 ```
 
@@ -1097,218 +1182,90 @@ tu <- map(stab_com_part_var,
 
 
 ```{r}
-tar_load(fix_fw_stab)
-tar_load(fix_fw_stab_comp)
-tar_load(pred_stab_comp_rho)
+tar_load(c(formula_sem_bivariate_relations, scaled_sem_simplified, scaled_sim_fw_sem))
+sem_simplified_bivariate_relations <- tibble(formula = formula_sem_bivariate_relations) %>%
+      separate(
+        col = formula,
+        into = c("response", "predictor"),
+        sep = " ~ ", remove = FALSE) %>%
+    mutate(
+      data = map(formula_sem_bivariate_relations,
+        ~partialResid(as.formula(.x),
+            modelList = scaled_sem_simplified,
+            data = scaled_sim_fw_sem
+          )
+        ),
+      coefs = map2(response, predictor,
+        ~coefficients(scaled_sem_simplified[[.x]])[c("(Intercept)", .y)]
+        ),
+      plot = pmap(list(
+          data = data,
+          response = response,
+          predictor = predictor,
+          coef = coefs
+          ),
+        function (data, response, predictor, coef, ext_data) {
+          if (predictor %in% c("h", "env_stoch", "resp_div")) {
+            p <- data %>%
+              ggplot(aes(
+                  y = yresid, x = xresid,
+                  group = cut(round(xresid, 1),
+                    breaks = length(unique(ext_data[[predictor]]))
+                  )
+                  )) +
+              geom_boxplot(alpha = .1)
+          } else {
+            p <- data %>%
+              ggplot(aes(y = yresid, x = xresid)) +
+              geom_point(alpha = .1)
+          }
+          p +
+            geom_abline(
+              intercept = coef["(Intercept)"],
+              slope = coef[2],
+              linewidth = 1
+              ) +
+            labs(
+              x = var_replacement()[predictor],
+              y = var_replacement()[response]
+              ) +
+            coord_cartesian(expand = FALSE) +
+            theme_half_open()
+
+        }, ext_data = scaled_sim_fw_sem)
+    )
 ```
 
-```{r plot-sim}
-load(here("data", "sim_for_plot"))
-length(unique(sim_for_plot$sim_id))
-sim_for_plot %<>%
-  left_join(
-    tar_read(sim_fw)
+
+```{r}
+label_sem <- as.character(as.roman(seq_len(nrow(sem_simplified_bivariate_relations))))
+p_sem_simplified_bivariate_relations <-
+  plot_grid(
+    plotlist = sem_simplified_bivariate_relations$plot,
+    label_x = 1, hjust = 1.0,
+    labels = label_sem
   )
-stoch <- 0.3
-hill <- 2
-env_corr <- 0
-unique(sim_for_plot$env_stoch)
-```
-
-```{r}
-sim_for_plot %>%
-  filter()
-
-```
-
-
-```{r}
-sim_for_plot %>%
-  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr) %>%
-  arrange(fw_id)
-low_z_low_rich <- sim_for_plot %>%
-  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr, richness == 10) %>%
-  arrange(desc(max_tlvl), richness)
-tu <- timespecies_mat_to_long_tibble(low_z_low_rich$species[[1]])
-plot_timeseries_lg_tbl(tu)
-```
-
-```{r}
-low_z_high_rich <- sim_for_plot %>%
-  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr) %>%
-  # For plotting purpose, not too much species
-  filter(richness > 15) %>%
-  arrange(desc(max_tlvl), desc(richness))
-
-low_z_high_rich_mat <- get_mat_list(low_z_high_rich)
-plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(low_z_high_rich_mat[[2]]))
-```
-
-```{r}
-sim_for_plot %>%
-  filter(env_stoch == !!stoch, h == hill, Z == 100,
-    rho == env_corr, richness == 10) %>%
-  arrange(desc(max_tlvl))
-high_z_low_rich <- sim_for_plot %>%
-  filter(env_stoch == !!stoch, h == hill, Z == 100,
-    rho == env_corr, richness == 10) %>%
-  arrange(desc(max_tlvl))
-
-plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_low_rich$species[[3]]))
-```
-
-```{r}
-sim_for_plot %>%
-  filter(env_stoch == !!stoch, h == hill, Z == 100, rho == env_corr) %>%
-  # For plotting purpose, not too much species
-  filter(richness <= 20) %>%
-  arrange(desc(max_tlvl))
-high_z_high_rich <- sim_for_plot %>%
-  filter(env_stoch == !!stoch, h == hill, Z == 100, rho == env_corr) %>%
-  # For plotting purpose, not too much species
-  filter(richness == 20) %>%
-  arrange(desc(max_tlvl))
-plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_high_rich$species[[3]]))
-```
-
-```{r}
-sim_for_plot$int_strength[[1]] %>% dim
-p_low_z_low_rich <- plot_sim(x = sim_for_plot,
-  id = low_z_low_rich$sim_id[[1]],
-  col_palette = NULL,
-  node_size_scale = .3,
-  tmax = 200
-)
-p_low_z_high_rich <- plot_sim(x = sim_for_plot,
-  id = low_z_high_rich$sim_id[[2]],
-  col_palette = NULL,
-  node_size_scale = .5
-)
-p_high_z_low_rich <- plot_sim(
-  x = sim_for_plot,
-  id = high_z_low_rich$sim_id[[5]],
-  col_palette = NULL,
-  node_size_scale = .3)
-p_high_z_high_rich <- plot_sim(
-  x = sim_for_plot,
-  id = high_z_high_rich$sim_id[[3]],
-  col_palette = NULL,
-  node_size_scale = .4
-)
-
-word_label_size <- 11
-p_sim_example <- plot_grid(
-  p_low_z_low_rich + draw_label(
-    "Low PPMR", fontface = 'bold', x = 0, y = .5,
-    hjust = .5, vjust = 1, angle = 90, size = word_label_size) +
-  draw_label("Low richness", fontface = 'bold', x = 0.5, y = 1,
-    hjust = 0.5, vjust = 1, angle = 0, size = word_label_size),
-  p_low_z_high_rich + draw_label("High richness", fontface = 'bold', x = 0.5, y = 1,
-    hjust = 0.5, vjust = 1, angle = 0, size = word_label_size),
-  p_high_z_low_rich + draw_label(
-    "High PPMR", fontface = 'bold', x = 0, y = .5,
-    hjust = .5, vjust = 1, angle = 90, size = word_label_size),
-  p_high_z_high_rich,
-  labels = c("b", "", "", ""),
-  align = "hv"
-)
-
-ggsave_multiple(
-  paste0("p_sim_example", c(".png", ".pdf")),
-  plot = p_sim_example,
-  path = here::here("report", "figures"),
-  scale = 2.6,
-  dpi = 400,
-  width = 80,
-  height = 80 * .5,
-  units = "mm")
-```
-
-```{r}
-sim_for_plot %>%
-  filter(Z == 100, env_stoch == 0.3, rho %in% c(0, 1), S == 10, h == 2) %>%
-  group_by(fw_id) %>%
-  summarise(n = n()) %>%
-  filter(n > 1)
-sim_for_plot %>%
-  filter(env_stoch == 0.3, rho %in% c(0, 1), S == 10, h == 3) %>%
-  group_by(fw_id) %>%
-  summarise(n = n()) %>%
-  filter(n > 1)
-fwid <- 6
-z <- 10
-sim_for_plot %>%
-  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho %in% c(0, 1), S == 10, h == 2)
-
-high_resp_div_low_rich <- sim_for_plot %>%
-  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho == 0)
-  #filter(env_stoch == .6, Z == 1, S == 10, rho == 0) %>%
-  #arrange(desc(async))
-p_high_resp_div_low_rich <- plot_sim(
-  x = sim_for_plot,
-  id = high_resp_div_low_rich$sim_id[[1]],
-  col_palette = NULL,
-  node_size_scale = .2,
-  title = "High response diversity"
-)
-
-low_resp_div_low_rich <- sim_for_plot %>%
-  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho == 1) %>%
-  arrange(desc(async))
-p_low_resp_div_low_rich <- plot_sim(
-  x = sim_for_plot,
-  id = low_resp_div_low_rich$sim_id[[1]],
-  col_palette = NULL,
-  node_size_scale = .2,
-  title = "Low response diversity"
-)
-
-p_sim_rho_example <- plot_grid(
-  p_low_resp_div_low_rich,
-  p_high_resp_div_low_rich,
-  labels = c("a", ""),
-  align = "hv"
+sem_file <- here("report", "figures", "sem_stab_simplified.pdf")
+p_sem <- ggdraw() +
+  draw_image(magick::image_read_pdf(sem_file, density = 600),
+    x = 0, y = 0,
+    width = 1, height = 1,
+    hjust = 0, halign = 0, valign = 0
+  )
+p_sem_tot <- plot_grid(
+  p_sem, p_sem_simplified_bivariate_relations,
+  nrow = 2, rel_heights = c(.6, 1),
+  labels = "auto"
 )
 ggsave_multiple(
-  paste0("p_sim_rho_example", c(".png", ".pdf")),
-  plot = p_sim_rho_example,
+  paste0("p_sem_tot", c(".png", ".pdf")),
+  plot = p_sem_tot,
   path = here::here("report", "figures"),
-  scale = 2.6,
+  scale = 2.4,
   dpi = 400,
   width = 80,
-  height = 80 * .3,
+  height = 80 * 1.6,
   units = "mm")
-```
-
-```{r}
-p_methods <- plot_grid(p_sim_rho_example, p_sim_example, nrow = 2, rel_heights = c(1, 2))
-ggsave_multiple(
-  paste0("p_methods", c(".png", ".pdf")),
-  plot = p_methods,
-  path = here::here("report", "figures"),
-  scale = 3.0,
-  dpi = 400,
-  width = 80,
-  height = 80 * .6,
-  units = "mm")
-```
-
-
-```{r}
-tar_read(sim_fw) %>%
-  filter(env_stoch == .6, S == 10, Z == 100) %>%
-  ggplot(aes(y = pop_stab, x = as.factor(resp_div), color = as.factor(h))) +
-  geom_boxplot()
-```
-
-
-
-```{r}
-tar_read(sem_simplified_eff_tab) %>%
-  filter(effect_type == "direct") %>%
-  #filter(response %in% c("async", "pop_stab", "stab_com")) %>%
-  filter(predictor %in% c("resp_div")) %>%
-  mutate(across(c(response, predictor), ~var_replacement()[.x]))
 ```
 
 ```{r}
@@ -1412,6 +1369,253 @@ ggsave_multiple(
   height = 80 * .4,
   units = "mm")
 ```
+
+```{r}
+p_sem_fig <- plot_grid(
+  p_sem, p_sem_simplified_bivariate_relations,
+  print(
+    p_sem_tot_stab +
+      guides(
+        color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
+      ) +
+      theme(
+        legend.title = element_blank(),
+        legend.position = c(.005, .995),
+        legend.justification = c("left", "top"),
+
+      )
+    ),
+  nrow = 3, rel_heights = c(.7, 1, .6),
+  labels = "auto"
+)
+ggsave_multiple(
+  paste0("p_sem_fig", c(".png", ".pdf")),
+  plot = p_sem_fig,
+  path = here::here("report", "figures"),
+  scale = 2.4,
+  dpi = 400,
+  width = 80,
+  height = 80 * 2.0,
+  units = "mm")
+```
+
+```{r}
+tar_load(fix_fw_stab)
+tar_load(fix_fw_stab_comp)
+tar_load(pred_stab_comp_rho)
+```
+
+```{r plot-sim}
+load(here("data", "sim_for_plot"))
+length(unique(sim_for_plot$sim_id))
+sim_for_plot %<>%
+  left_join(
+    tar_read(sim_fw)
+  )
+stoch <- 0.3
+hill <- 2
+env_corr <- 0
+label_var <- c("w_avg_tlvl", "stab_com", "pop_stab", "async", "sae_total", "cpe")
+unique(sim_for_plot$env_stoch)
+```
+
+
+```{r}
+sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr) %>%
+  arrange(fw_id)
+low_z_low_rich <- sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr, richness == 10) %>%
+  arrange(desc(max_tlvl), richness)
+tu <- timespecies_mat_to_long_tibble(low_z_low_rich$species[[1]])
+plot_timeseries_lg_tbl(tu)
+```
+
+```{r}
+low_z_high_rich <- sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 1, rho == env_corr) %>%
+  # For plotting purpose, not too much species
+  filter(richness > 15) %>%
+  arrange(desc(max_tlvl), desc(richness))
+
+low_z_high_rich_mat <- get_mat_list(low_z_high_rich)
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(low_z_high_rich_mat[[2]]))
+```
+
+```{r}
+sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 100,
+    rho == env_corr, richness == 10) %>%
+  arrange(desc(max_tlvl))
+high_z_low_rich <- sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 100,
+    rho == env_corr, richness == 10) %>%
+  arrange(desc(max_tlvl))
+
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_low_rich$species[[3]]))
+```
+
+```{r}
+sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 100, rho == env_corr) %>%
+  # For plotting purpose, not too much species
+  filter(richness <= 20) %>%
+  arrange(desc(max_tlvl))
+high_z_high_rich <- sim_for_plot %>%
+  filter(env_stoch == !!stoch, h == hill, Z == 100, rho == env_corr) %>%
+  # For plotting purpose, not too much species
+  filter(richness == 20) %>%
+  arrange(desc(max_tlvl))
+plot_timeseries_lg_tbl(timespecies_mat_to_long_tibble(high_z_high_rich$species[[3]]))
+```
+
+```{r}
+sim_for_plot$int_strength[[1]] %>% dim
+p_low_z_low_rich <- plot_sim(x = sim_for_plot,
+  id = low_z_low_rich$sim_id[[1]],
+  col_palette = NULL,
+  node_size_scale = .3,
+  tmax = 200,
+  var_label = label_var
+)
+p_low_z_high_rich <- plot_sim(x = sim_for_plot,
+  id = low_z_high_rich$sim_id[[2]],
+  col_palette = NULL,
+  node_size_scale = .5,
+  var_label = label_var
+)
+p_high_z_low_rich <- plot_sim(
+  x = sim_for_plot,
+  id = high_z_low_rich$sim_id[[5]],
+  col_palette = NULL,
+  node_size_scale = .3,
+  var_label = label_var)
+p_high_z_high_rich <- plot_sim(
+  x = sim_for_plot,
+  id = high_z_high_rich$sim_id[[3]],
+  col_palette = NULL,
+  node_size_scale = .4,
+  var_label = label_var
+)
+
+word_label_size <- 11
+p_sim_example <- plot_grid(
+  p_low_z_low_rich + draw_label(
+    "Low PPMR", fontface = 'bold', x = 0, y = .5,
+    hjust = .5, vjust = 1, angle = 90, size = word_label_size) +
+  draw_label("Low richness", fontface = 'bold', x = 0.5, y = 1,
+    hjust = 0.5, vjust = 1, angle = 0, size = word_label_size),
+  p_low_z_high_rich + draw_label("High richness", fontface = 'bold', x = 0.5, y = 1,
+    hjust = 0.5, vjust = 1, angle = 0, size = word_label_size),
+  p_high_z_low_rich + draw_label(
+    "High PPMR", fontface = 'bold', x = 0, y = .5,
+    hjust = .5, vjust = 1, angle = 90, size = word_label_size),
+  p_high_z_high_rich,
+  labels = c("b", "", "", ""),
+  align = "hv"
+)
+
+ggsave_multiple(
+  paste0("p_sim_example", c(".png", ".pdf")),
+  plot = p_sim_example,
+  path = here::here("report", "figures"),
+  scale = 2.6,
+  dpi = 400,
+  width = 80,
+  height = 80 * .5,
+  units = "mm")
+```
+
+```{r}
+sim_for_plot %>%
+  filter(Z == 100, env_stoch == 0.3, rho %in% c(0, 1), S == 10, h == 2) %>%
+  group_by(fw_id) %>%
+  summarise(n = n()) %>%
+  filter(n > 1)
+sim_for_plot %>%
+  filter(env_stoch == 0.3, rho %in% c(0, 1), S == 10, h == 3) %>%
+  group_by(fw_id) %>%
+  summarise(n = n()) %>%
+  filter(n > 1)
+fwid <- 6
+z <- 10
+sim_for_plot %>%
+  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho %in% c(0, 1), S == 10, h == 2)
+
+high_resp_div_low_rich <- sim_for_plot %>%
+  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho == 0)
+  #filter(env_stoch == .6, Z == 1, S == 10, rho == 0) %>%
+  #arrange(desc(async))
+p_high_resp_div_low_rich <- plot_sim(
+  x = sim_for_plot,
+  id = high_resp_div_low_rich$sim_id[[1]],
+  col_palette = NULL,
+  node_size_scale = .2,
+  title = "High response diversity",
+  var_label = label_var
+)
+
+low_resp_div_low_rich <- sim_for_plot %>%
+  filter(fw_id == fwid, Z == z, env_stoch == 0.6, rho == 1) %>%
+  arrange(desc(async))
+p_low_resp_div_low_rich <- plot_sim(
+  x = sim_for_plot,
+  id = low_resp_div_low_rich$sim_id[[1]],
+  col_palette = NULL,
+  node_size_scale = .2,
+  title = "Low response diversity",
+  var_label = label_var
+)
+
+p_sim_rho_example <- plot_grid(
+  p_low_resp_div_low_rich,
+  p_high_resp_div_low_rich,
+  labels = c("a", ""),
+  align = "hv"
+)
+ggsave_multiple(
+  paste0("p_sim_rho_example", c(".png", ".pdf")),
+  plot = p_sim_rho_example,
+  path = here::here("report", "figures"),
+  scale = 2.6,
+  dpi = 400,
+  width = 80,
+  height = 80 * .3,
+  units = "mm")
+```
+
+```{r}
+p_methods <- plot_grid(p_sim_rho_example, p_sim_example, nrow = 2, rel_heights = c(1, 2))
+ggsave_multiple(
+  paste0("p_methods", c(".png", ".pdf")),
+  plot = p_methods,
+  path = here::here("report", "figures"),
+  scale = 3.0,
+  dpi = 400,
+  width = 80,
+  height = 80 * .6,
+  units = "mm")
+```
+
+
+```{r}
+tar_read(sim_fw) %>%
+  filter(env_stoch == .6, S == 10, Z == 100) %>%
+  ggplot(aes(y = pop_stab, x = as.factor(resp_div), color = as.factor(h))) +
+  geom_boxplot()
+```
+
+
+
+```{r}
+tar_read(sem_simplified_eff_tab) %>%
+  filter(effect_type == "direct") %>%
+  #filter(response %in% c("async", "pop_stab", "stab_com")) %>%
+  filter(predictor %in% c("resp_div")) %>%
+  mutate(across(c(response, predictor), ~var_replacement()[.x]))
+```
+
+
 
 
 ```{r}
