@@ -1258,7 +1258,7 @@ p_sem_tot <- plot_grid(
   labels = "auto"
 )
 ggsave_multiple(
-  paste0("p_sem_tot", c(".png", ".pdf")),
+  paste0("p_sem_tot", c(".jpg", ".png", ".pdf")),
   plot = p_sem_tot,
   path = here::here("report", "figures"),
   scale = 2.4,
@@ -1269,14 +1269,15 @@ ggsave_multiple(
 ```
 
 ```{r}
+
 ggsave_multiple(
-  paste0("p_sem_bivariate_relations", c(".png", ".pdf")),
-  plot = tar_read(p_sem_bivariate_relations),
+  paste0("p_sem_simplified_bivariate_relations", c(".jpg", ".png", ".pdf")),
+  plot = p_sem_simplified_bivariate_relations + theme(axis.title = element_text(size = 7)),
   path = here::here("report", "figures"),
-  scale = 3,
-  dpi = 400,
-  width = 80,
-  height = 80 * .9,
+  scale = 3.5,
+  dpi = 300,
+  width = 70,
+  height = 70 * .9,
   units = "mm")
 ```
 
@@ -1371,8 +1372,16 @@ ggsave_multiple(
 ```
 
 ```{r}
+bivariate_rel_file <- here("report", "figures", "p_sem_simplified_bivariate_relations.jpg")
+p_bivariate_rel <- ggdraw() +
+  draw_image(magick::image_read(bivariate_rel_file, density = 300),
+    x = 0, y = 0,
+    width = 1, height = 1,
+    hjust = 0, halign = 0, valign = 0
+  )
+
 p_sem_fig <- plot_grid(
-  p_sem, p_sem_simplified_bivariate_relations,
+  p_sem, p_bivariate_rel,
   print(
     p_sem_tot_stab +
       guides(
@@ -1388,14 +1397,34 @@ p_sem_fig <- plot_grid(
   nrow = 3, rel_heights = c(.7, 1, .6),
   labels = "auto"
 )
+
+p_sem_fig <- plot_grid(p_sem,
+  print(
+    p_sem_tot_stab +
+      guides(
+        color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
+      ) +
+      theme(
+        legend.title = element_blank(),
+        legend.position = c(.005, .995),
+        legend.justification = c("left", "top"),
+
+      )
+    ),
+  p_bivariate_rel,
+  NULL,
+  nrow = 2, rel_heights = c(.7, 1),
+  labels = c("a", "b", "c", ""),
+  align = "h", axis = "tblr"
+)
 ggsave_multiple(
   paste0("p_sem_fig", c(".png", ".pdf")),
   plot = p_sem_fig,
   path = here::here("report", "figures"),
-  scale = 2.4,
+  scale = 3.4,
   dpi = 400,
   width = 80,
-  height = 80 * 2.0,
+  height = 80 * .8,
   units = "mm")
 ```
 
