@@ -18,6 +18,12 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
+m = (t = 0, b = 0)
+m[:t]
+dictionary = Dict(1 => 77, 2 => 66, 3 => 1)
+keys(dictionary)
+dictionary[:1]
+
 param = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
 
 filter([:S, :sigma, :h] => (rich, s, h) -> rich == 40 && s == .6 && h == 2, param)

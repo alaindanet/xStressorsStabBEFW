@@ -246,12 +246,13 @@ tar_target(pred_rho,
 
 ```{targets raw_sim}
 list(
-tar_target(sim_fw_file, here::here("data", "sim_fw"), format = "file"),
+  tar_target(sim_fw_file, here::here("data", "sim_fw"), format = "file"),
   tar_target(sim_fw, {
     x <- readRDS(sim_fw_file)
     x %>%
       mutate(resp_div = 1 - rho)
   }),
+  tar_target(sim_param, readRDS(here::here("data", "sim_param_d2"))),
   tar_target(sim_fw_df, as.data.frame(sim_fw)),
   tar_target(sim_fw_cons, readRDS(here::here("data", "sim_fw_cons"))),
   tar_target(sim_fw_cons_df, as.data.frame(sim_fw_cons))
@@ -1129,6 +1130,43 @@ tar_read(sem_eff_tab) %>%
   theme(axis.text.x = element_text(angle = 20, hjust = 1))
 ```
 
+# Table
+
+```{targets}
+list(
+  tar_target(sim_param_tab,
+    sim_param %>%
+      mutate(resp_div = 1 - rho) %>%
+      select(-A) %>%
+      pivot_longer(everything(), names_to = "Parameter", values_to = "values") %>%
+      group_by(Parameter) %>%
+      summarise(
+        u = list(unique(values)),
+        n = length(unique(round(values, 2))),
+        min = min(values),
+        max = max(values)
+        )
+    ),
+  tar_target(tab_sim_param,
+    sim_param_tab %>%
+      mutate(Values = pmap_chr(list(u = u, min = min, max = max, n = n),
+          function(u, min, max, n) {
+            if (length(u) < 10) {
+              out <- paste0("[", paste(round(u, 2), collapse = ", "), "]")
+            } else {
+              out <- paste0("(", round(min, 2), ", ", round(max, 2), ")", ", N = ", n)
+            }
+            out
+          }
+          )) %>%
+      filter(!Parameter %in% c("sim_id", "fw_id", "rho")) %>%
+      select(Parameter, Values) %>%
+      mutate(Parameter = recode_factor(Parameter, !!!var_replacement()))
+  )
+)
+```
+
+
 
 # Pipeline
 
@@ -1143,7 +1181,7 @@ tar_make_future(workers = 3)
 
 You can retrieve results from the `_targets/` data store using `tar_read()` or `tar_load()`.
 
-```{r, message = FALSE}
+```{r output-load, message = FALSE}
 library(targets)
 library(tidyverse)
 library(magrittr)
@@ -1155,6 +1193,7 @@ library(semEff)
 library(easystats)
 library(glmmTMB)
 library(ggcorrplot)
+library(kableExtra)
 lapply(list.files(here::here("R"), full.names = TRUE), source)
 ```
 
@@ -1178,6 +1217,10 @@ tu <- map(stab_com_part_var,
       ),
     data = ti
     ))
+```
+
+```{r}
+tar_load(sim_param_tab)
 ```
 
 
@@ -1269,7 +1312,6 @@ ggsave_multiple(
 ```
 
 ```{r}
-
 ggsave_multiple(
   paste0("p_sem_simplified_bivariate_relations", c(".jpg", ".png", ".pdf")),
   plot = p_sem_simplified_bivariate_relations + theme(axis.title = element_text(size = 7)),
@@ -1790,9 +1832,12 @@ ggsave_multiple(
 ```{r}
 tar_load(fix_fw_stab)
 ```
-
 ```{r}
 tar_load(pred_stab_comp_resp_div)
+```
+
+
+```{r}
 p_pred_sr_resp_div <- pred_stab_comp_resp_div %>%
   filter(response == "stab_com") %>%
   mutate(
@@ -1831,6 +1876,51 @@ ggsave_multiple(
   height = 120 * .45,
   units = "mm")
 ```
+
+```{r}
+p_pred_sr_resp_div_supp <- pred_stab_comp_resp_div %>%
+  mutate(
+    variable = var_replacement()[variable],
+    response = recode_factor(response, !!!var_replacement(), .ordered = TRUE),
+    ) %>%
+  ggplot(aes(x = resp_div, y = variable_values, fill = slope)) +
+  geom_raster() +
+  facet_grid(cols = vars(response), rows = vars(variable), scales = "free") +
+  coord_cartesian(expand = FALSE) +
+  scale_x_continuous(
+    breaks = c(0, .5, 1),
+    labels = c(0, 0.5, 1)
+    ) +
+  scale_fill_gradient2(
+    low = resp_div_cat_colors()["Low"],
+    mid = "white",
+    high = resp_div_cat_colors()["High"],
+    midpoint = 0,
+    space = "Lab",
+    na.value = "grey50",
+    guide = "colourbar",
+    aesthetics = "fill") +
+  labs(
+    x = var_replacement()["resp_div"],
+    y = "Food-web structure",
+    fill = "Slope stability - Richness"
+    ) +
+  theme(
+    legend.position = "bottom",
+    legend.key.width = unit(2.0, "cm"),
+    plot.margin = margin(l = 10, r = 10, unit = "pt")
+  )
+ggsave_multiple(
+  paste0("p_pred_sr_resp_div_supp", c(".png", ".pdf")),
+  plot = p_pred_sr_resp_div_supp,
+  path = here::here("report", "figures"),
+  scale = 2.4,
+  dpi = 400,
+  width = 80,
+  height = 80 * 1,
+  units = "mm")
+```
+
 
 ```{r}
 fw_values_bin <- list(
@@ -2491,6 +2581,24 @@ sem_eff_tab %>%
   filter(abs(effect) > .1) %>%
   filter(effect_type == "direct") %>%
   print(., n = 30)
+
+```
+
+```{r, eval=FALSE}
+tar_load(sim_param)
+sim_param %<>%
+  select(-A)
+sim_param %>%
+  group_by(h, rho, env_stoch, Z) %>%
+  summarise(
+    nb_fw = length(unique(fw_id)),
+    n = length(fw_id)
+  )
+
+sim_param %>%
+  group_by(fw_id) %>%
+  summarise(n = n())
+
 
 ```
 
