@@ -377,18 +377,21 @@ list(
     as_tibble),
   tar_target(sem_simplified_rsquared,
     map_dfr(sem_simplified_model_list, rsquared) %>%
-      mutate(Response = var_replacement()[Response]) %>%
+      mutate(
+      Response = var_replacement()[Response],
+      R.squared = round(R.squared, 2)
+      ) %>%
       select(Response, R.squared)
     ),
   tar_target(tab_sem_simplified_vif,
     sem_simplified_collinearity %>%
       mutate(
         response = var_replacement()[response],
-        Term = var_replacement()[Term]
+        Term = var_replacement()[Term],
+        VIF = round(VIF, 2),
+        SE_factor = round(SE_factor, 2)
         ) %>%
-      kable(
-        caption = "Variance Inflation Factors for the Structural Equation Model.") %>%
-      kable_styling()
+        rename(Response = response)
     ),
   tar_target(tab_sem_simplified_rsquared,
     sem_simplified_rsquared %>%
@@ -1098,12 +1101,13 @@ plot_grid(p1, p2, p3, ncol = 2)
 ```{targets p_cor, tar_simple = TRUE}
 cor_var <- cor(
   sim_fw %>%
-    select(c(richness, ct_alive, Z, bm_total,
-        avg_int_strength, avg_omnivory, max_tlvl,
+    select(c(
+        bm_total, stab_com, pop_stab, async, sae_total, sae_even,
+        evenness_sae, cpe, cpe_int, cpe_env,
+        richness, ct_alive, avg_int_strength, avg_omnivory, max_tlvl,
         w_avg_tlvl,
-        rho, env_stoch, h,
-        stab_com, pop_stab, async, sae_total, sae_even,
-        evenness_sae, cpe, cpe_int, cpe_env)) %>%
+        Z, resp_div, env_stoch, h
+        )) %>%
   na.omit() %>%
   rename(any_of(get_rev_vec_name_val(var_replacement()))),
     method = "spearman")
@@ -2133,6 +2137,19 @@ p$rotated
 cor(ti$rotated$scores[, "RC1"], sim_fw_df[,"richness"])
 ```
 
+## Correlation matrix
+
+```{r}
+ggsave_multiple(
+  paste0("p_cor", c(".png", ".pdf")),
+  plot = tar_read(p_cor),
+  path = here::here("report", "figures"),
+  scale = 3.4,
+  dpi = 400,
+  width = 80,
+  height = 80 * .9,
+  units = "mm")
+```
 
 
 

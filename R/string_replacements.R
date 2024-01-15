@@ -1,5 +1,6 @@
 var_replacement <- function() {
   c(
+    bm_total = "Total biomass",
     stab_com = "Community stability",
     log_stab_com = "Community stability",
     stab_pop = "Population stability",
