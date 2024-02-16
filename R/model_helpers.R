@@ -1,3 +1,41 @@
+formula_mod_rho_fixed_effect <- function() {
+  "log_richness +
+  ct_alive +
+  log1_avg_max_int_alive +
+  productivity +
+  rho +
+  I(rho^2) +
+  env_stoch +
+
+  log_richness:ct_alive +
+  log_richness:log1_avg_max_int_alive +
+  log_richness:productivity +
+  log_richness:rho +
+
+  log1_avg_max_int_alive:ct_alive +
+  log1_avg_max_int_alive:productivity +
+  log1_avg_max_int_alive:rho +
+
+  ct_alive:rho +
+  ct_alive:productivity +
+  rho:productivity +
+  I(rho^2):productivity +
+
+
+  log_richness:log1_avg_max_int_alive:ct_alive +
+  log_richness:log1_avg_max_int_alive:productivity +
+  log_richness:log1_avg_max_int_alive:rho +
+  log_richness:ct_alive:productivity +
+  log_richness:ct_alive:rho +
+  log_richness:rho:productivity +
+
+  log1_avg_max_int_alive:ct_alive:rho +
+  log1_avg_max_int_alive:ct_alive:productivity +
+  log1_avg_max_int_alive:rho:productivity +
+
+  ct_alive:rho:productivity"
+
+}
 formula_stab_fw_model <- function(
   resp = "stab_com",
   rand_effect = TRUE,

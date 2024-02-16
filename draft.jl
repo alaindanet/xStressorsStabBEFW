@@ -1,3 +1,4 @@
+using EcologicalNetworksDynamics: simulate_deter
 using Revise
 using EcologicalNetworksDynamics
 using SparseArrays
@@ -17,6 +18,14 @@ include("src/interaction_strength.jl")
 include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
+
+fw = FoodWeb(nichemodel, 10, C = .4, Z = 100)
+p = ModelParameters(fw)
+tmax = 1000
+m = simulate_deter(p, rand(richness(fw)))
+coefficient_of_variation(m, last = 100)
+
+simulate(p, rand(richness(fw)), saveat = (0:1:tmax))
 
 m = (t = 0, b = 0)
 m[:t]

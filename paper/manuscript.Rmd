@@ -54,12 +54,9 @@ sapply(list.files(here("R"), full.names = TRUE), source)
 ```
 
 ---
-## IDEA, meeting with Sonia
-#- Simplifying SEM in main text, move details to appendix
-#- State diagram for stability - richness relationships along two food-web
-#  metrics and panels varying response diversity.
-#- Look at the french data for portefolio and compensatory dynamics effects.
-#- Mid-October
+## IDEA:
+# Talk about about how stochasticity minor interaction effects similar to
+# dispersal (Holt, 1985; other papers I guess)
 ---
 
 # Abstract

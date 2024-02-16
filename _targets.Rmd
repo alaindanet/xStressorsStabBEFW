@@ -151,42 +151,7 @@ sim_rho %>%
 
 ```{targets rho_model}
 list(
-  tar_target(formula_fixed_rho, "log_richness +
-    ct_alive +
-    log1_avg_max_int_alive +
-    productivity +
-    rho +
-    I(rho^2) +
-    env_stoch +
-
-    log_richness:ct_alive +
-    log_richness:log1_avg_max_int_alive +
-    log_richness:productivity +
-    log_richness:rho +
-
-    log1_avg_max_int_alive:ct_alive +
-    log1_avg_max_int_alive:productivity +
-    log1_avg_max_int_alive:rho +
-
-    ct_alive:rho +
-    ct_alive:productivity +
-    rho:productivity +
-    I(rho^2):productivity +
-
-
-    log_richness:log1_avg_max_int_alive:ct_alive +
-    log_richness:log1_avg_max_int_alive:productivity +
-    log_richness:log1_avg_max_int_alive:rho +
-    log_richness:ct_alive:productivity +
-    log_richness:ct_alive:rho +
-    log_richness:rho:productivity +
-
-    log1_avg_max_int_alive:ct_alive:rho +
-    log1_avg_max_int_alive:ct_alive:productivity +
-    log1_avg_max_int_alive:rho:productivity +
-
-    ct_alive:rho:productivity"
-    ),
+  tar_target(formula_fixed_rho, formula_mod_rho_fixed_effect()),
   tar_target(formula_rand_rho, "(1 | Z)"),
   tar_target(mod_rho, map(setNames(
     c("log_stab_com", "log_stab_pop", "log_async"),
@@ -644,6 +609,70 @@ list(
 
 # plot
 
+```{targets sem_tot_predictor, tar_simple = TRUE}
+c("richness", "avg_int_strength", "w_avg_tlvl", "ct_alive", "Z", "h",
+  "resp_div", "env_stoch")
+```
+
+```{targets plot-sem-tot}
+list(
+  tar_target(p_sem_tot_stab,
+    sem_simplified_eff_tab %>%
+      filter(effect_type == "total") %>%
+      filter(response %in% c("async", "pop_stab", "stab_com")) %>%
+      filter(predictor %in% sem_tot_predictor()) %>%
+      mutate(
+        response = recode_factor(response, !!!var_replacement(), .ordered = TRUE),
+        predictor = recode_factor(predictor, !!!var_replacement()[rev(sem_tot_predictor())], .ordered = TRUE)
+        ) %>%
+      ggplot(aes(
+          y = predictor,
+          x = effect,
+          color = response,
+          alpha = response,
+          ymin = lower_ci,
+          ymax = upper_ci)
+        ) +
+      geom_pointrange() +
+      scale_colour_manual(values = stab_color()) +
+      scale_alpha_manual(values = stab_alpha()) +
+      #  geom_hline(yintercept = 0, linetype = "dashed") +
+      geom_vline(xintercept = 0, linetype = "dashed") +
+      #facet_grid(cols = vars(response)) +
+      labs(
+        x = "Total standardised effects",
+        color = "Stability component",
+        alpha = "Stability component"
+        ) +
+      theme_bw() +
+      theme(
+        axis.title.y = element_blank(),
+        #legend.justification = "right",
+        legend.position = "bottom") +
+      guides(
+        color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
+        ) +
+      theme(
+        legend.title = element_blank(),
+        legend.position = c(.005, .995),
+        legend.justification = c("left", "top")
+      )
+    ),
+  tar_target(p_sem_tot_stab_leg,
+    plot_grid(
+      print(p_sem_tot_stab +
+        theme(
+          legend.position = "none",
+        )
+        ),
+      get_legend(p_sem_tot_stab),
+      nrow = 2,
+      rel_heights = c(1, .05)
+      )
+  )
+)
+```
+
 ```{targets r}
 list(
   tar_target(p_pop_stab_w_avg_tlvl,
@@ -926,14 +955,6 @@ list(
 
 ```{targets p-stab-rich}
 list(
-#  tar_target(p_stab_s_prod,
-#    sim_fw %>%
-#      filter(productivity %in% c(5, 30), rho == 0, env_stoch == .3) %>%
-#      ggplot(aes(x = richness, y = stab_com, color = as.factor(productivity))) +
-#      geom_point() +
-#      geom_smooth() +
-#      labs(x = "Species richness", y = "Community stability", color = "Productivity") +
-#      theme_bw()),
     tar_target(p_stab_s_env_stoch,
       sim_fw %>%
         filter(env_stoch %in% c(.5, 1.5), rho == 0) %>%
@@ -953,7 +974,6 @@ list(
       ),
       tar_target(p_stab_s_stress,
          plot_grid(
-#           p_stab_s_prod,
            p_stab_s_env_stoch,
            p_stab_s_resp_div,
            labels = "auto"
@@ -1114,25 +1134,6 @@ cor_var <- cor(
 ggcorrplot(cor_var, type = "lower", lab = TRUE)
 ```
 
-```{targets p_sem_tot_stab, tar_simple=TRUE}
-tar_read(sem_eff_tab) %>%
-  filter(effect_type == "total") %>%
-  filter(response %in% c("async", "pop_stab", "stab_com")) %>%
-  filter(!predictor %in% c("evenness_sae", "sae_even", "cpe_int", "cpe_env", "pop_stab", "async", "S", "ct")) %>%
-  mutate(across(c(response, predictor), ~var_replacement()[.x])) %>%
-  ggplot(aes(
-      x = predictor,
-      y = effect,
-      ymin = lower_ci,
-      ymax = upper_ci)
-    ) +
-  geom_pointrange() +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  facet_grid(cols = vars(response)) +
-  labs(x = "Predictor", y = "Total effect") +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 20, hjust = 1))
-```
 
 # Table
 
@@ -1177,7 +1178,8 @@ list(
 If you ran all the `{targets}` chunks in non-interactive mode, then your R scripts are set up to run the pipeline.
 
 ```{r tar-make}
-#tar_make()
+tar_make()
+tar_visnetwork()
 tar_make_future(workers = 3)
 ```
 
@@ -1227,71 +1229,89 @@ tu <- map(stab_com_part_var,
 tar_load(sim_param_tab)
 ```
 
+## SEM plot
+
+The partial residual function does not work inside targets unfortunately,
+
+>   Last error: ℹ In argument: `data = map(...)`.
+> Caused by error in `map()`:
+> ℹ In index: 1.
+> Caused by error in `is.data.frame()`:
+> ! object 'scaled_sim_fw_sem' not found
 
 ```{r}
-tar_load(c(formula_sem_bivariate_relations, scaled_sem_simplified, scaled_sim_fw_sem))
+tar_load(
+  c(
+    formula_sem_bivariate_relations,
+    scaled_sem_simplified,
+    scaled_sim_fw_sem
+  )
+)
 sem_simplified_bivariate_relations <- tibble(formula = formula_sem_bivariate_relations) %>%
-      separate(
-        col = formula,
-        into = c("response", "predictor"),
-        sep = " ~ ", remove = FALSE) %>%
-    mutate(
-      data = map(formula_sem_bivariate_relations,
-        ~partialResid(as.formula(.x),
-            modelList = scaled_sem_simplified,
-            data = scaled_sim_fw_sem
-          )
-        ),
-      coefs = map2(response, predictor,
-        ~coefficients(scaled_sem_simplified[[.x]])[c("(Intercept)", .y)]
-        ),
-      plot = pmap(list(
-          data = data,
-          response = response,
-          predictor = predictor,
-          coef = coefs
-          ),
-        function (data, response, predictor, coef, ext_data) {
-          if (predictor %in% c("h", "env_stoch", "resp_div")) {
-            p <- data %>%
-              ggplot(aes(
-                  y = yresid, x = xresid,
-                  group = cut(round(xresid, 1),
-                    breaks = length(unique(ext_data[[predictor]]))
-                  )
-                  )) +
-              geom_boxplot(alpha = .1)
-          } else {
-            p <- data %>%
-              ggplot(aes(y = yresid, x = xresid)) +
-              geom_point(alpha = .1)
-          }
-          p +
-            geom_abline(
-              intercept = coef["(Intercept)"],
-              slope = coef[2],
-              linewidth = 1
-              ) +
-            labs(
-              x = var_replacement()[predictor],
-              y = var_replacement()[response]
-              ) +
-            coord_cartesian(expand = FALSE) +
-            theme_half_open()
-
-        }, ext_data = scaled_sim_fw_sem)
+  separate(
+    col = formula,
+    into = c("response", "predictor"),
+    sep = " ~ ", remove = FALSE
+    ) %>%
+mutate(
+  data = map(formula_sem_bivariate_relations,
+    ~partialResid(as.formula(.x),
+      modelList = scaled_sem_simplified,
+      data = scaled_sim_fw_sem
     )
+    ),
+  coefs = map2(response, predictor,
+    ~coefficients(scaled_sem_simplified[[.x]])[c("(Intercept)", .y)]
+    ),
+  plot = pmap(list(
+      data = data,
+      response = response,
+      predictor = predictor,
+      coef = coefs
+      ),
+    function (data, response, predictor, coef, ext_data) {
+      if (predictor %in% c("h", "env_stoch", "resp_div")) {
+        p <- data %>%
+          ggplot(aes(
+              y = yresid, x = xresid,
+              group = cut(round(xresid, 1),
+                breaks = length(unique(ext_data[[predictor]]))
+              )
+              )) +
+          geom_boxplot(alpha = .1)
+      } else {
+        p <- data %>%
+          ggplot(aes(y = yresid, x = xresid)) +
+          geom_point(alpha = .1)
+      }
+      p +
+        geom_abline(
+          intercept = coef["(Intercept)"],
+          slope = coef[2],
+          linewidth = 1
+          ) +
+        labs(
+          x = var_replacement()[predictor],
+          y = var_replacement()[response]
+          ) +
+        coord_cartesian(expand = FALSE) +
+        theme_half_open()
+
+    }, ext_data = scaled_sim_fw_sem)
+)
+```
+
+```{r}
+label_sem <- as.character(as.roman(seq_len(nrow(sem_simplified_bivariate_relations))))
+p_sem_simplified_bivariate_relations <- plot_grid(
+  plotlist = sem_simplified_bivariate_relations$plot,
+  label_x = 1, hjust = 1.0,
+  labels = label_sem
+)
 ```
 
 
 ```{r}
-label_sem <- as.character(as.roman(seq_len(nrow(sem_simplified_bivariate_relations))))
-p_sem_simplified_bivariate_relations <-
-  plot_grid(
-    plotlist = sem_simplified_bivariate_relations$plot,
-    label_x = 1, hjust = 1.0,
-    labels = label_sem
-  )
 sem_file <- here("report", "figures", "sem_stab_simplified.pdf")
 p_sem <- ggdraw() +
   draw_image(magick::image_read_pdf(sem_file, density = 600),
@@ -1304,6 +1324,10 @@ p_sem_tot <- plot_grid(
   nrow = 2, rel_heights = c(.6, 1),
   labels = "auto"
 )
+```
+
+
+```{r fig-sem}
 ggsave_multiple(
   paste0("p_sem_tot", c(".jpg", ".png", ".pdf")),
   plot = p_sem_tot,
@@ -1329,76 +1353,10 @@ ggsave_multiple(
 
 
 ```{r}
-library(RColorBrewer)
-library(ggbreak)
-#cols <- c("Community stability" = "black",
-#  "Asynchrony" = "blue",
-#  "Population stability" = "darkgreen"
-#)
-custom_stab_color <- c(
-  "Community stability" = "black", #"#ffffbf"
-  "Asynchrony" = "#91bfdb",
-  "Population stability" = "#fc8d59"
-)
-alpha <- c("Community stability" = 1, "Asynchrony" = 1, "Population stability" = 1)
-
-sem_tot_predictor <- c("richness", "avg_int_strength", "w_avg_tlvl",
-  "ct_alive", "Z", "h", "resp_div", "env_stoch")
-var_replacement()[sem_tot_predictor]
-p_sem_tot_stab <- tar_read(sem_simplified_eff_tab) %>%
-  filter(effect_type == "total") %>%
-  filter(response %in% c("async", "pop_stab", "stab_com")) %>%
-  filter(predictor %in% sem_tot_predictor) %>%
-  mutate(
-    response = recode_factor(response, !!!var_replacement(), .ordered = TRUE),
-    predictor = recode_factor(predictor, !!!var_replacement()[rev(sem_tot_predictor)], .ordered = TRUE)
-) %>%
-  ggplot(aes(
-      y = predictor,
-      x = effect,
-      color = response,
-      alpha = response,
-      ymin = lower_ci,
-      ymax = upper_ci)
-    ) +
-  geom_pointrange() +
-  scale_colour_manual(values = custom_stab_color) +
-  scale_alpha_manual(values = alpha) +
-#  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  #facet_grid(cols = vars(response)) +
-  labs(
-    x = "Total standardised effects",
-    color = "Stability component",
-    alpha = "Stability component"
-    ) +
-  theme_bw() +
-  theme(
-    axis.title.y = element_blank(),
-    #legend.justification = "right",
-    legend.position = "bottom") +
-  guides(
-    color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
-    ) +
-  theme(
-    legend.title = element_blank(),
-    legend.position = c(.005, .995),
-    legend.justification = c("left", "top")
-  )
-p_sem_tot_stab_leg <- plot_grid(
-  print(p_sem_tot_stab +
-    theme(
-      legend.position = "none",
-    )
-  ),
-  get_legend(p_sem_tot_stab),
-  nrow = 2,
-  rel_heights = c(1, .05)
-)
 ggsave_multiple(
   paste0("p_sem_tot_stab", c(".png", ".pdf")),
   plot = print(
-    p_sem_tot_stab +
+    tar_read(p_sem_tot_stab) +
       guides(
         color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
       ) +
@@ -1429,7 +1387,7 @@ p_bivariate_rel <- ggdraw() +
 p_sem_fig <- plot_grid(
   p_sem, p_bivariate_rel,
   print(
-    p_sem_tot_stab +
+    tar_read(p_sem_tot_stab) +
       guides(
         color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
       ) +
@@ -1446,7 +1404,7 @@ p_sem_fig <- plot_grid(
 
 p_sem_fig <- plot_grid(p_sem,
   print(
-    p_sem_tot_stab +
+    tar_read(p_sem_tot_stab) +
       guides(
         color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
       ) +
