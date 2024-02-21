@@ -308,6 +308,56 @@ list(
 )
 ```
 
+```{targets all-analysis}
+library(tarchetypes)
+tar_map(
+  values = tibble::tibble(
+  names = c("no_rerun", "non_allo_no_rerun", "rerun")
+    ),
+  names = names,
+  tar_target(sim_files, here::here("data", paste0("sim_fw_", names)), format = "file"),
+  tar_target(sim_fw, readRDS(sim_files)),
+  tar_target(sem_simplified_eff_file, here::here("data", paste0("sem_simplified_eff_", names)), format = "file"),
+  tar_target(sem_simplified_eff, {
+    readRDS(sem_simplified_eff_file)
+    }
+  ),
+  tar_target(sem_simplified_eff_tab, from_semEff_to_table(sem_simplified_eff))
+)
+```
+
+```{r, eval = FALSE}
+tar_load(c(sem_simplified_eff_tab_no_rerun, sem_simplified_eff_tab_rerun,
+    sem_simplified_eff_tab_non_allo_no_rerun))
+sem_simplified_eff_tab_no_rerun %>%
+  filter(effect_type == "total", response %in% c("pop_stab"))
+sem_simplified_eff_tab_rerun %>%
+  filter(effect_type == "total", response %in% c("pop_stab"))
+sem_simplified_eff_tab_non_allo_no_rerun %>%
+  filter(effect_type == "total", response %in% c("pop_stab"))
+```
+
+
+```{r, eval = FALSE}
+library(tidyverse)
+library(magrittr)
+tar_load(c(sim_fw_no_rerun, sim_fw_rerun))
+sim_id <- intersect(sim_fw_no_rerun$sim_id, sim_fw_rerun$sim_id)
+cor(
+  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$stab_com, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$stab_com, use = "pairwise.complete.obs"
+)
+cor(
+  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$richness, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$richness, use = "pairwise.complete.obs"
+)
+cor(
+  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$async, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$async, use = "pairwise.complete.obs"
+)
+cor(
+  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$stab_pop, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$stab_pop, use = "pairwise.complete.obs"
+)
+```
+
+
 ```{targets simplified-sem}
 list(
   tar_target(sem_simplified_model_list,
