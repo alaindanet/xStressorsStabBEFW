@@ -1146,7 +1146,7 @@ list(
       pivot_longer(everything(), names_to = "Parameter", values_to = "values") %>%
       group_by(Parameter) %>%
       summarise(
-        u = list(unique(values)),
+        u = list(sort(unique(values))),
         n = length(unique(round(values, 2))),
         min = min(values),
         max = max(values)
@@ -1167,6 +1167,37 @@ list(
       filter(!Parameter %in% c("sim_id", "fw_id", "rho")) %>%
       select(Parameter, Values) %>%
       mutate(Parameter = recode_factor(Parameter, !!!var_replacement()))
+  ),
+  tar_target(fix_parameter,
+    tibble(
+      c = 0,
+      B0 = 0.5,
+      r = 1.0,
+      K = 10,
+      alpha_ij = 0.5,
+      prod_mass = 1.0
+    )
+  ),
+  tar_target(allometric_parameter,
+    tibble(
+      d0 = 0.4,
+      allo_slope = -0.25,
+      ax = list(c(producer = 0, ectotherm = 0.88)), #, endotherm = 0.314
+      ay = list(c(producer = 0.0, ectotherm = 4.0)), #, endotherm = 8.0 #not allometric
+      eij = list(c(carnivory = 0.85, herbivory = 0.45))
+    )
+  ),
+  tar_target(param_table,
+    fix_parameter %>%
+      bind_cols(allometric_parameter) %>%
+      mutate(across(where(is.list), ~map_chr(.x, function(x) paste_named_vector(x)))) %>%
+      mutate(across(where(is.double), ~as.character(.x))) %>%
+      pivot_longer(everything(), names_to = "Parameter", values_to = "Values") %>%
+      mutate(
+        Parameter = latex_symbol_replacement()[Parameter],
+        Parameter = surround_latex_math(Parameter)
+      ) %>%
+      bind_rows(tab_sim_param)
   )
 )
 ```
@@ -1227,7 +1258,15 @@ tu <- map(stab_com_part_var,
 
 ```{r}
 tar_load(sim_param_tab)
+tar_load(tab_sim_param)
+tar_load(param_table)
+kable(param_table, "html", booktabs = T, escape = FALSE) %>%
+  kable_styling()
 ```
+
+```{r}
+```
+
 
 ## SEM plot
 
