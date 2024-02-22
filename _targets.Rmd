@@ -308,6 +308,56 @@ list(
 )
 ```
 
+```{targets all-analysis}
+library(tarchetypes)
+tar_map(
+  values = tibble::tibble(
+  names = c("no_rerun", "non_allo_no_rerun", "rerun")
+    ),
+  names = names,
+  tar_target(sim_files, here::here("data", paste0("sim_fw_", names)), format = "file"),
+  tar_target(sim_fw, readRDS(sim_files)),
+  tar_target(sem_simplified_eff_file, here::here("data", paste0("sem_simplified_eff_", names)), format = "file"),
+  tar_target(sem_simplified_eff, {
+    readRDS(sem_simplified_eff_file)
+    }
+  ),
+  tar_target(sem_simplified_eff_tab, from_semEff_to_table(sem_simplified_eff))
+)
+```
+
+```{r, eval = FALSE}
+tar_load(c(sem_simplified_eff_tab_no_rerun, sem_simplified_eff_tab_rerun,
+    sem_simplified_eff_tab_non_allo_no_rerun))
+sem_simplified_eff_tab_no_rerun %>%
+  filter(effect_type == "total", response %in% c("pop_stab"))
+sem_simplified_eff_tab_rerun %>%
+  filter(effect_type == "total", response %in% c("pop_stab"))
+sem_simplified_eff_tab_non_allo_no_rerun %>%
+  filter(effect_type == "total", response %in% c("pop_stab"))
+```
+
+
+```{r, eval = FALSE}
+library(tidyverse)
+library(magrittr)
+tar_load(c(sim_fw_no_rerun, sim_fw_rerun))
+sim_id <- intersect(sim_fw_no_rerun$sim_id, sim_fw_rerun$sim_id)
+cor(
+  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$stab_com, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$stab_com, use = "pairwise.complete.obs"
+)
+cor(
+  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$richness, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$richness, use = "pairwise.complete.obs"
+)
+cor(
+  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$async, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$async, use = "pairwise.complete.obs"
+)
+cor(
+  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$stab_pop, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$stab_pop, use = "pairwise.complete.obs"
+)
+```
+
+
 ```{targets simplified-sem}
 list(
   tar_target(sem_simplified_model_list,
@@ -1146,7 +1196,7 @@ list(
       pivot_longer(everything(), names_to = "Parameter", values_to = "values") %>%
       group_by(Parameter) %>%
       summarise(
-        u = list(unique(values)),
+        u = list(sort(unique(values))),
         n = length(unique(round(values, 2))),
         min = min(values),
         max = max(values)
@@ -1167,6 +1217,37 @@ list(
       filter(!Parameter %in% c("sim_id", "fw_id", "rho")) %>%
       select(Parameter, Values) %>%
       mutate(Parameter = recode_factor(Parameter, !!!var_replacement()))
+  ),
+  tar_target(fix_parameter,
+    tibble(
+      c = 0,
+      B0 = 0.5,
+      r = 1.0,
+      K = 10,
+      alpha_ij = 0.5,
+      prod_mass = 1.0
+    )
+  ),
+  tar_target(allometric_parameter,
+    tibble(
+      d0 = 0.4,
+      allo_slope = -0.25,
+      ax = list(c(producer = 0, ectotherm = 0.88)), #, endotherm = 0.314
+      ay = list(c(producer = 0.0, ectotherm = 4.0)), #, endotherm = 8.0 #not allometric
+      eij = list(c(carnivory = 0.85, herbivory = 0.45))
+    )
+  ),
+  tar_target(param_table,
+    fix_parameter %>%
+      bind_cols(allometric_parameter) %>%
+      mutate(across(where(is.list), ~map_chr(.x, function(x) paste_named_vector(x)))) %>%
+      mutate(across(where(is.double), ~as.character(.x))) %>%
+      pivot_longer(everything(), names_to = "Parameter", values_to = "Values") %>%
+      mutate(
+        Parameter = latex_symbol_replacement()[Parameter],
+        Parameter = surround_latex_math(Parameter)
+      ) %>%
+      bind_rows(tab_sim_param)
   )
 )
 ```
@@ -1227,7 +1308,15 @@ tu <- map(stab_com_part_var,
 
 ```{r}
 tar_load(sim_param_tab)
+tar_load(tab_sim_param)
+tar_load(param_table)
+kable(param_table, "html", booktabs = T, escape = FALSE) %>%
+  kable_styling()
 ```
+
+```{r}
+```
+
 
 ## SEM plot
 

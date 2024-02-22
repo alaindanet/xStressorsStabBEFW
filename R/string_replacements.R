@@ -33,6 +33,12 @@ var_replacement <- function() {
     env_stoch = "Env stochasticity",
     Z = "PPMR",
     h = "Hill exponent",
+    c = "Predator interference",
+    B0 = "Half saturation consumption rate",
+    alpha_ij = "Interspecific competition coefficient",
+    prod_mass = "Primary producer mass",
+    K = "Carrying capacity",
+    r = "Maximum growth rate",
     S = "Initial species richness",
     ct = "Initial connectance",
     resp_div = "Response diversity"
@@ -65,4 +71,28 @@ get_rev_vec_name_val <- function(x = NULL) {
   y <- names(x)
   names(y) <- x
   return(y)
+}
+
+surround_latex_math <- function(x = "a") {
+  paste0("$", x, "$")
+}
+
+paste_named_vector <- function(x = NULL, sep = " = ", collapse = ", ") {
+  paste0(names(x), sep, x,  collapse = collapse)
+}
+
+latex_symbol_replacement <- function() {
+  c(
+    alpha_ij = "\\alpha_{ij}",
+    B0 = "B_0",
+    d0 = "d_0",
+    r = "r",
+    c = "c",
+    K = "K",
+    eij = "e_{ij}",
+    ay = "y",
+    ax = "a_x",
+    allo_slope = "b",
+    prod_mass = "M_p"
+  )
 }

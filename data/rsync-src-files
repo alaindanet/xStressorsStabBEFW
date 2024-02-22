@@ -1,6 +1,13 @@
 sim_fw
+sim_fw_rerun
+sim_fw_no_rerun
+sim_fw_non_allo_no_rerun
 sem_eff
 sem_simplified_eff
+sem_simplified_eff_rerun
+sem_simplified_eff_no_rerun
+sem_simplified_eff_non_allo_no_rerun
 sim_for_plot
 sim
 sim_param_d2
+sem_eff
