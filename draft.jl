@@ -19,10 +19,29 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
-fw = FoodWeb(nichemodel, 10, C = .4, Z = 100)
-p = ModelParameters(fw)
+fw = FoodWeb(nichemodel, 10, C = .2, Z = 4)
+bioener = BioenergeticResponse(fw,
+                               h = 3,
+                               # Predator interference
+                               c = 0
+                              )
+p = ModelParameters(fw,
+                    functional_response = bioener,
+                    env_stoch = EnvStoch(.3))
 tmax = 1000
-m = simulate_deter(p, rand(richness(fw)))
+m = simulate(p, rand(richness(fw));
+         rho = 0,
+         dt = .1,
+         tmax = tmax
+        )
+species_persistence(m)
+p = get_parameters(m)
+alive_species = trophic_structure(m, last = 1).alive_species
+
+idxs = alive_species
+ti = filter_model_parameters(p, idxs = alive_species)
+ti.environment.K
+
 coefficient_of_variation(m, last = 100)
 
 simulate(p, rand(richness(fw)), saveat = (0:1:tmax))

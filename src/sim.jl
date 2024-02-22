@@ -108,6 +108,7 @@ function sim_int_mat_check_disconnected(A;
         gc_thre = .02,
         return_sol = false,
         re_run = true,
+        keep_K_omega = false,
         dt_rescue = 0.05,
         digits = nothing
     )
@@ -122,8 +123,10 @@ function sim_int_mat_check_disconnected(A;
         else
             max = 500 + last
         end
+        # TODO: get solution object to rerun everythings 
         m = sim_int_mat(A;
                         B0 = nothing,
+                        p  = nothing,
                         d = d,
                         da = da,
                         ρ = ρ, σₑ = σₑ,
@@ -170,6 +173,7 @@ function sim_int_mat(A;
         dt = 0.1,
         K_alpha_corrected = true,
         B0 = nothing,
+        p = nothing,
         dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
         extinction_threshold = 1e-5,
         gc_thre = .02,
@@ -186,38 +190,40 @@ function sim_int_mat(A;
     end
 
     if dim(A) != 0
+        if isnothing(p)
 
-        fw = FoodWeb(A, Z = Z, quiet = true)
-        S = richness(fw)
-        C = connectance(fw)
+            fw = FoodWeb(A, Z = Z, quiet = true)
+            S = richness(fw)
+            C = connectance(fw)
 
-        # Parameters of the functional response
-        funcrep = BioenergeticResponse(fw; h = h, c = c)
-        # Carrying capacity
-        env = Environment(fw,
-                          K = if K_alpha_corrected
-                              nprod = length(producers(fw))
-                              # Loreau & de Mazancourt (2008), Ives et al. (1999)
-                              K * (1 + (alpha_ij * (nprod - 1))) / nprod
-                          else
-                              K
-                          end
-                         )
-        if isnothing(d)
-            if !isnothing(da)
-                d = allometric_rate(fw, AllometricParams(da.ap, da.ai, da.ae,-.25, -0.25, -.25))
-            else
-                d = allometric_rate(fw, DefaultMortalityParams())
+            # Parameters of the functional response
+            funcrep = BioenergeticResponse(fw; h = h, c = c)
+            # Carrying capacity
+            env = Environment(fw,
+                              K = if K_alpha_corrected
+                                  nprod = length(producers(fw))
+                                  # Loreau & de Mazancourt (2008), Ives et al. (1999)
+                                  K * (1 + (alpha_ij * (nprod - 1))) / nprod
+                              else
+                                  K
+                              end
+                             )
+            if isnothing(d)
+                if !isnothing(da)
+                    d = allometric_rate(fw, AllometricParams(da.ap, da.ai, da.ae,-.25, -0.25, -.25))
+                else
+                    d = allometric_rate(fw, DefaultMortalityParams())
+                end
             end
+            # generate the model parameters
+            p = ModelParameters(fw;
+                                biorates = BioRates(fw; r = r, d = d),
+                                functional_response = funcrep,
+                                environment = env,
+                                producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
+                                env_stoch = EnvStoch(σₑ)
+                               )
         end
-        # generate the model parameters
-        p = ModelParameters(fw;
-                            biorates = BioRates(fw; r = r, d = d),
-                            functional_response = funcrep,
-                            environment = env,
-                            producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
-                            env_stoch = EnvStoch(σₑ)
-                           )
 
         ω = p.functional_response.ω
         if isnothing(B0)
@@ -544,4 +550,43 @@ function remove_disconnected_species(A, alive_species)
 
     living_A[to_keep, to_keep]
 
+end
+
+function filter_model_parameters(p; idxs = nothing)
+    # Extract body mass, network, metabolic_class
+    fw_new = FoodWeb(p.network.A[idxs, idxs],
+                     M = p.network.M[idxs],
+                     metabolic_class = p.network.metabolic_class[idxs]
+                    )
+
+    # BioEnergeticResponse
+    # Extract omega and K, keep same alpha
+    new_bioner = BioenergeticResponse(fw_new,
+                                      h = p.functional_response.h,
+                                      c = p.functional_response.c[idxs],
+                                      B0 = p.functional_response.B0[idxs],
+                                      ω = p.functional_response.ω[idxs, idxs]
+                                     )
+    # Environment
+    new_env = Environment(fw_new, K = p.environment.K[idxs])
+
+    # BioRates 
+    new_biorates = BioRates(fw_new;
+                            r = p.biorates.r[idxs],
+                            d = p.biorates.d[idxs]
+            )
+    # ProducerCompetition
+    new_prod = ProducerCompetition(fw_new, α = p.producer_competition.α[idxs, idxs])
+
+    # EnvStoch
+    env_stoch = p.env_stoch
+
+    ModelParameters(
+                    fw_new,
+                    biorates = new_biorates,
+                    functional_response = new_bioner,
+                    environment = new_env,
+                    producer_competition = new_prod,
+                    env_stoch = env_stoch
+                   )
 end
