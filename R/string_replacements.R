@@ -96,3 +96,12 @@ latex_symbol_replacement <- function() {
     prod_mass = "M_p"
   )
 }
+
+sim_type_replacement <- function() {
+  c(
+    "no_rerun" = "Default (5000 timesteps)",
+    "rerun" = "Until no extinction",
+    "non_allo_no_rerun" = "Fixed death rate"
+  )
+
+}

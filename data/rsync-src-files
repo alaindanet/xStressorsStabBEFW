@@ -11,3 +11,9 @@ sim_for_plot
 sim
 sim_param_d2
 sem_eff
+sem_simplified_collinearity_rerun
+sem_simplified_collinearity_no_rerun
+sem_simplified_collinearity_non_allo_no_rerun
+sem_simplified_rsquared_rerun
+sem_simplified_rsquared_no_rerun
+sem_simplified_rsquared_non_allo_no_rerun

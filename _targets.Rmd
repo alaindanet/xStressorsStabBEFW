@@ -45,6 +45,9 @@ options(tidyverse.quiet = TRUE)
 tar_option_set(packages = c("tidyverse", "magrittr", "cowplot", "here", "arrow", "piecewiseSEM", "semEff", "easystats", "glmmTMB", "ggcorrplot", "kableExtra"))
 # Load custom functions
 lapply(list.files(here::here("R"), full.names = TRUE), source)
+map_tibble <- tibble::tibble(
+  names = c("no_rerun", "non_allo_no_rerun", "rerun")
+    )
 ```
 
 
@@ -311,20 +314,87 @@ list(
 ```{targets all-analysis}
 library(tarchetypes)
 tar_map(
-  values = tibble::tibble(
-  names = c("no_rerun", "non_allo_no_rerun", "rerun")
-    ),
+  values = map_tibble,
   names = names,
   tar_target(sim_files, here::here("data", paste0("sim_fw_", names)), format = "file"),
   tar_target(sim_fw, readRDS(sim_files)),
   tar_target(sem_simplified_eff_file, here::here("data", paste0("sem_simplified_eff_", names)), format = "file"),
-  tar_target(sem_simplified_eff, {
-    readRDS(sem_simplified_eff_file)
-    }
-  ),
+  tar_target(sem_simplified_eff, { readRDS(sem_simplified_eff_file) }),
+  tar_target(sem_simplified_collinearity_file, here::here("data", paste0("sem_simplified_collinearity_", names)), format = "file"),
+  tar_target(sem_simplified_collinearity, { readRDS(sem_simplified_collinearity_file) }),
+  tar_target(sem_simplified_rsquared_file, here::here("data", paste0("sem_simplified_rsquared_", names)), format = "file"),
+  tar_target(sem_simplified_rsquared, { readRDS(sem_simplified_rsquared_file) }),
   tar_target(sem_simplified_eff_tab, from_semEff_to_table(sem_simplified_eff))
 )
 ```
+
+```{r targets group-all-analysis}
+list(
+  tar_target(sem_simplified_eff_tab_tot,
+    tibble(
+      sim_type = map_tibble$names,
+      data = list(sem_simplified_eff_tab_no_rerun,
+        sem_simplified_eff_tab_non_allo_no_rerun, sem_simplified_eff_tab_rerun)
+      ) %>%
+    unnest(cols = data)),
+  tar_target(p_sem_simplified_eff_tab_tot,
+    sem_simplified_eff_tab_tot %>%
+      filter(effect_type == "total") %>%
+      filter(response %in% c("async", "pop_stab", "stab_com")) %>%
+      filter(predictor %in% sem_tot_predictor()) %>%
+      mutate(
+        response = recode_factor(response, !!!var_replacement(), .ordered = TRUE),
+        predictor = recode_factor(predictor, !!!var_replacement()[rev(sem_tot_predictor())], .ordered = TRUE),
+        sim_type = recode_factor(sim_type, !!!sim_type_replacement(), .ordered = TRUE)
+        ) %>%
+      ggplot(aes(
+          y = predictor,
+          x = effect,
+          color = response,
+          shape = sim_type
+        )
+        ) +
+      geom_point(alpha = .5) +
+      scale_colour_manual(values = stab_color()) +
+      scale_alpha_manual(values = stab_alpha()) +
+      #  geom_hline(yintercept = 0, linetype = "dashed") +
+      geom_vline(xintercept = 0, linetype = "dashed") +
+      facet_grid(cols = vars(response)) +
+      labs(
+        x = "Total standardised effects",
+        color = "Stability component",
+        alpha = "Stability component"
+        ) +
+      theme_bw() +
+      theme(
+        axis.title.y = element_blank(),
+        #legend.justification = "right",
+        legend.position = "bottom") +
+      guides(
+        color = FALSE
+        ) +
+      theme(
+        legend.title = element_blank(),
+        legend.position = "bottom",
+        legend.justification = c("left", "top")
+      )
+  )
+)
+
+```
+
+
+```{r, eval = FALSE}
+tar_load(c(sem_simplified_collinearity_no_rerun, sem_simplified_collinearity_rerun,
+    sem_simplified_collinearity_non_allo_no_rerun))
+sem_simplified_collinearity_no_rerun %>%
+  print(n = 30)
+sem_simplified_collinearity_rerun %>%
+  print(n = 30)
+sem_simplified_collinearity_non_allo_no_rerun %>%
+  print(n = 30)
+```
+
 
 ```{r, eval = FALSE}
 tar_load(c(sem_simplified_eff_tab_no_rerun, sem_simplified_eff_tab_rerun,
@@ -336,6 +406,12 @@ sem_simplified_eff_tab_rerun %>%
 sem_simplified_eff_tab_non_allo_no_rerun %>%
   filter(effect_type == "total", response %in% c("pop_stab"))
 ```
+
+```{r, eval = FALSE}
+tar_load(sem_simplified_eff_tab_tot)
+
+```
+
 
 
 ```{r, eval = FALSE}
@@ -1427,6 +1503,18 @@ ggsave_multiple(
   height = 80 * 1.6,
   units = "mm")
 ```
+```{r fig-sem-tot-sensibility}
+ggsave_multiple(
+  paste0("p_sem_simplified_eff_tab_tot", c(".jpg", ".png", ".pdf")),
+  plot = tar_read(p_sem_simplified_eff_tab_tot),
+  path = here::here("report", "figures"),
+  scale = 2.4,
+  dpi = 400,
+  width = 80,
+  height = 80 * .5,
+  units = "mm")
+```
+
 
 ```{r}
 ggsave_multiple(
@@ -1520,6 +1608,7 @@ ggsave_multiple(
   height = 80 * .8,
   units = "mm")
 ```
+
 
 ```{r}
 tar_load(fix_fw_stab)
