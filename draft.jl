@@ -19,7 +19,7 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
-fw = FoodWeb(nichemodel, 10, C = .2, Z = 4)
+fw = FoodWeb(nichemodel, 10, C = .1, Z = 1)
 bioener = BioenergeticResponse(fw,
                                h = 3,
                                # Predator interference
@@ -28,15 +28,41 @@ bioener = BioenergeticResponse(fw,
 p = ModelParameters(fw,
                     functional_response = bioener,
                     env_stoch = EnvStoch(.3))
-tmax = 1000
+tmax = 500
 m = simulate(p, rand(richness(fw));
          rho = 0,
          dt = .1,
          tmax = tmax
         )
+
 species_persistence(m)
-p = get_parameters(m)
+
+pm = get_parameters(m)
 alive_species = trophic_structure(m, last = 1).alive_species
+check_disconnected_species(pm.network.A, alive_species)
+
+ti = [
+ 0 0 0 0;
+ 0 0 0 0;
+ 1 0 0 0;
+ 0 1 0 0
+]
+pu = check_disconnected_species(ti, [1, 2, 3, 4])
+
+
+bm = [1, 1, 3, 4]
+alive = [1, 3, 4]
+kill_disconnected_species(ti, alive_species = [1, 2, 3, 4], bm = bm) == [1, 1, 3, 4]
+kill_disconnected_species(ti, alive_species = [], bm = bm) == [0, 0, 0, 0]
+kill_disconnected_species(ti, alive_species = [1, 3, 4], bm = bm) == [1, 0, 3, 0]
+kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
+kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
+
+to = [1, 2, 3, 4]
+tu = to[.![false, false, false, false]]
+bm_to_set_to_zero = 1:length(bm) .∉ [tu]
+bm[bm_to_set_to_zero] .= 0
+1:length(bm)
 
 idxs = alive_species
 ti = filter_model_parameters(p, idxs = alive_species)
@@ -87,7 +113,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            dt = 0.1, gc_thre = .1,
                                            dt_rescue = .05,
                                            return_sol = false,
-                                           re_run = true,
+                                           re_run = false,
                                            digits = 5
                                           )
                               ),
@@ -98,6 +124,7 @@ sim_df = DataFrame(sim)
 select(sim_df, [:max_tlvl, :richness])
 names(sim_df)
 
+
 ti = map(x -> remove_disconnected_species(x.omega, x.alive_species),sim)
 tu = FoodWeb(ti[4])
 tu = FoodWeb(ti[9])
@@ -107,7 +134,7 @@ tu.A
 tu.metabolic_class
 
 
-@enter sim_int_mat_check_disconnected(toy_param[5].A;
+ti = sim_int_mat_check_disconnected(toy_param[6].A;
             ρ = 0,
             alpha_ij = 0.5,
             d = nothing,
@@ -120,9 +147,27 @@ tu.metabolic_class
             dt = 0.1, gc_thre = .1,
             dt_rescue = .05,
             return_sol = false,
-            re_run = false,
+            re_run = true,
             digits = 5
            )
+
+ti = sim_int_mat_check_disconnected(toy_param[1].A;
+            ρ = 0,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .1, Z = 10,
+            h = 3.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 500, last = 100,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
+            return_sol = false,
+            re_run = true,
+            digits = 5
+           )
+ti.species
 
 p = get_parameters(m)
 p.network.A

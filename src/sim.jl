@@ -115,6 +115,7 @@ function sim_int_mat_check_disconnected(A;
 
     ti = false
     i = 1
+    starting_bm = nothing
     while ti != true
         println("Re-run until no more disconnected species \
                 over the last $(last) timesteps. Iteration = $i.")
@@ -123,9 +124,9 @@ function sim_int_mat_check_disconnected(A;
         else
             max = 500 + last
         end
-        # TODO: get solution object to rerun everythings 
+        println("Starting biomass: $starting_bm, nb timesteps: $(max)")
         m = sim_int_mat(A;
-                        B0 = nothing,
+                        B0 = starting_bm,
                         p  = nothing,
                         d = d,
                         da = da,
@@ -150,11 +151,16 @@ function sim_int_mat_check_disconnected(A;
         end
         old_A = m.omega .> 0
         alive_species = m.alive_species
-        A = remove_disconnected_species(old_A, alive_species)
-        ti = dim(A) == dim(old_A)
+        disconnected_species = check_disconnected_species(old_A, alive_species)
+        ti = length(disconnected_species) == 0
+        biomass_vector = zeros(dim(old_A))
+        biomass_vector[alive_species] = m.bm_sp
+        starting_bm = kill_disconnected_species(old_A, alive_species, biomass_vector)
+
+        @assert length(starting_bm) == dim(A)
 
         if ti == true
-            println("all species connected: $ti, nb species: $(dim(A))")
+            println("all species connected: $ti, nb alive species: $(length(alive_species))")
             return m
             break
         end
@@ -527,13 +533,90 @@ function mysim(A, n, Z, f, ρ, σₑ; max = 50000, last = 25000, dt = 0.1, corr_
     out
 end
 
+"""
+kill_disconnected_species(A; alive_species = nothing, bm = nothing)
+
+# Examples
+
+ti = [
+ 0 0 0 0;
+ 0 0 0 0;
+ 1 0 0 0;
+ 0 1 0 0
+]
+
+bm = [1, 1, 3, 4]
+alive = [1, 3, 4]
+kill_disconnected_species(ti, alive_species = [1, 2, 3, 4], bm = bm) == [1, 1, 3, 4]
+kill_disconnected_species(ti, alive_species = [], bm = bm) == [0, 0, 0, 0]
+kill_disconnected_species(ti, alive_species = [1, 3, 4], bm = bm) == [1, 0, 3, 0]
+kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
+kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
+"""
+
+function kill_disconnected_species(A; alive_species = nothing, bm = nothing)
+    bm = deepcopy(bm)
+    disconnected_alive_species = check_disconnected_species(A, alive_species)
+    in_disconnected = in(disconnected_alive_species)
+    mask_alive_disconnected = in_disconnected.(alive_species)
+    alive_to_keep = alive_species[.!mask_alive_disconnected]
+    bm_to_set_to_zero = 1:length(bm) .∉ [alive_to_keep]
+    bm[bm_to_set_to_zero] .= 0
+    bm
+end
+
+"""
+    remove_disconnected_species(A, alive_species)
+
+# Examples
+
+ti = [
+ 0 0 0 0;
+ 0 0 0 0;
+ 1 0 0 0;
+ 0 1 0 0
+]
+remove_disconnected_species(ti, [1, 2, 3])
+"""
 function remove_disconnected_species(A, alive_species)
+
+    disconnected_alive_species = check_disconnected_species(A, alive_species)
+    in_disconnected = in(disconnected_alive_species)
+    mask_alive_disconnected = in_disconnected.(alive_species)
+    to_keep = .!(mask_alive_disconnected)
+
+    living_A = A[alive_species, alive_species]
+    living_A[to_keep, to_keep]
+
+end
+
+"""
+    check_disconnected_species(A, alive_species)
+
+# Examples
+
+ti = [
+ 0 0 0 0;
+ 0 0 0 0;
+ 1 0 0 0;
+ 0 1 0 0
+]
+
+check_disconnected_species(ti, [1, 2, 3]) == [2]
+check_disconnected_species(ti, [1, 2, 4]) == [1]
+check_disconnected_species(ti, [2, 3, 4]) == [3]
+check_disconnected_species(ti, [1, 3, 4]) == [4]
+check_disconnected_species(ti, [1, 2, 3, 4]) == []
+
+"""
+function check_disconnected_species(A, alive_species)
     # Get binary matrix
     A = A .> 0
+    living_A = A[alive_species, alive_species]
     cons = sum.(eachrow(A)) .!= 0
     prod = sum.(eachrow(A)) .== 0
 
-    living_A = A[alive_species, alive_species]
+
     alive_cons = cons[alive_species]
     alive_prod = prod[alive_species]
 
@@ -543,13 +626,12 @@ function remove_disconnected_species(A, alive_species)
     disconnected_prod = alive_prod .&& species_with_no_pred
     disconnected_cons = alive_cons .&& species_with_no_prey
 
-    to_keep = .!(disconnected_prod .|| disconnected_cons)
-
-    println("Remove $(sum(disconnected_prod)) disconnected producers
+    if sum([disconnected_prod; disconnected_cons]) > 0
+        println("There are $(sum(disconnected_prod)) disconnected producers
             and $(sum(disconnected_cons)) consumers.")
+    end
 
-    living_A[to_keep, to_keep]
-
+    alive_species[ disconnected_prod .|| disconnected_cons ]
 end
 
 function filter_model_parameters(p; idxs = nothing)
