@@ -155,7 +155,9 @@ function sim_int_mat_check_disconnected(A;
         ti = length(disconnected_species) == 0
         biomass_vector = zeros(dim(old_A))
         biomass_vector[alive_species] = m.bm_sp
-        starting_bm = kill_disconnected_species(old_A, alive_species, biomass_vector)
+        starting_bm = kill_disconnected_species(old_A;
+                                                alive_species = alive_species,
+                                                bm = biomass_vector)
 
         @assert length(starting_bm) == dim(A)
 
