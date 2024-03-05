@@ -12,8 +12,8 @@ rho_cat_colors <- function() {
 stab_color <- function() {
   c(
     "Community stability" = "black", #"#ffffbf"
-    "Asynchrony" = setNames(rho_cat_colors()["High"], NULL),
-    "Population stability" = setNames(rho_cat_colors()["Low"], NULL)
+    "Asynchrony" = "#44AA99",
+    "Population stability" = "#E1BE6A"
   )
 }
 
@@ -26,9 +26,8 @@ stab_alpha <- function () {
 }
 
 sem_tot_predictor <- function () {
-c("richness", "avg_int_strength", "w_avg_tlvl", "ct_alive", "Z", "h",
-  "resp_div", "env_stoch")
-
+  c("resp_div", "ct_alive", "w_avg_tlvl", "avg_int_strength", "richness",
+    "env_stoch")
 }
 
 resp_div_cat_colors <- function() {

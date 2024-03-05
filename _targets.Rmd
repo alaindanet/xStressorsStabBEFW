@@ -46,7 +46,8 @@ tar_option_set(packages = c("tidyverse", "magrittr", "cowplot", "here", "arrow",
 # Load custom functions
 lapply(list.files(here::here("R"), full.names = TRUE), source)
 map_tibble <- tibble::tibble(
-  names = c("no_rerun", "non_allo_no_rerun", "rerun")
+  names = c("no_rerun", "non_allo_no_rerun", "rerun", "no_rerun_short",
+  "no_rerun_no_disconnected")
     )
 ```
 
@@ -214,16 +215,9 @@ tar_target(pred_rho,
 
 ```{targets raw_sim}
 list(
-  tar_target(sim_fw_file, here::here("data", "sim_fw"), format = "file"),
-  tar_target(sim_fw, {
-    x <- readRDS(sim_fw_file)
-    x %>%
-      mutate(resp_div = 1 - rho)
-  }),
+  tar_target(sim_fw, sim_fw_rerun),
   tar_target(sim_param, readRDS(here::here("data", "sim_param_d2"))),
-  tar_target(sim_fw_df, as.data.frame(sim_fw)),
-  tar_target(sim_fw_cons, readRDS(here::here("data", "sim_fw_cons"))),
-  tar_target(sim_fw_cons_df, as.data.frame(sim_fw_cons))
+  tar_target(sim_fw_df, as.data.frame(sim_fw))
   )
 ```
 
@@ -328,15 +322,43 @@ tar_map(
 )
 ```
 
-```{r targets group-all-analysis}
+```{targets group-all-analysis}
 list(
-  tar_target(sem_simplified_eff_tab_tot,
+  tar_target(sem_simplified_tot,
     tibble(
-      sim_type = map_tibble$names,
-      data = list(sem_simplified_eff_tab_no_rerun,
-        sem_simplified_eff_tab_non_allo_no_rerun, sem_simplified_eff_tab_rerun)
-      ) %>%
-    unnest(cols = data)),
+      sim_type = c(
+        "no_rerun",
+        "non_allo_no_rerun",
+        "rerun",
+        "no_rerun_short",
+        "no_rerun_no_disconnected"),
+      eff = list(
+        sem_simplified_eff_tab_no_rerun,
+        sem_simplified_eff_tab_non_allo_no_rerun,
+        sem_simplified_eff_tab_rerun,
+        sem_simplified_eff_tab_no_rerun_short,
+        sem_simplified_eff_tab_no_rerun_no_disconnected
+        ),
+      rsq = list(
+        sem_simplified_rsquared_no_rerun,
+        sem_simplified_rsquared_non_allo_no_rerun,
+        sem_simplified_rsquared_rerun,
+        sem_simplified_rsquared_no_rerun_short,
+        sem_simplified_rsquared_no_rerun_no_disconnected
+        ),
+      collinearity = list(
+        sem_simplified_collinearity_no_rerun,
+        sem_simplified_collinearity_non_allo_no_rerun,
+        sem_simplified_collinearity_rerun,
+        sem_simplified_collinearity_no_rerun_short,
+        sem_simplified_collinearity_no_rerun_no_disconnected
+        ),
+    )
+  ),
+  tar_target(sem_simplified_eff_tab_tot,
+    sem_simplified_tot %>%
+      select(sim_type, eff) %>%
+      unnest(cols = eff)),
   tar_target(p_sem_simplified_eff_tab_tot,
     sem_simplified_eff_tab_tot %>%
       filter(effect_type == "total") %>%
@@ -380,57 +402,6 @@ list(
       )
   )
 )
-
-```
-
-
-```{r, eval = FALSE}
-tar_load(c(sem_simplified_collinearity_no_rerun, sem_simplified_collinearity_rerun,
-    sem_simplified_collinearity_non_allo_no_rerun))
-sem_simplified_collinearity_no_rerun %>%
-  print(n = 30)
-sem_simplified_collinearity_rerun %>%
-  print(n = 30)
-sem_simplified_collinearity_non_allo_no_rerun %>%
-  print(n = 30)
-```
-
-
-```{r, eval = FALSE}
-tar_load(c(sem_simplified_eff_tab_no_rerun, sem_simplified_eff_tab_rerun,
-    sem_simplified_eff_tab_non_allo_no_rerun))
-sem_simplified_eff_tab_no_rerun %>%
-  filter(effect_type == "total", response %in% c("pop_stab"))
-sem_simplified_eff_tab_rerun %>%
-  filter(effect_type == "total", response %in% c("pop_stab"))
-sem_simplified_eff_tab_non_allo_no_rerun %>%
-  filter(effect_type == "total", response %in% c("pop_stab"))
-```
-
-```{r, eval = FALSE}
-tar_load(sem_simplified_eff_tab_tot)
-
-```
-
-
-
-```{r, eval = FALSE}
-library(tidyverse)
-library(magrittr)
-tar_load(c(sim_fw_no_rerun, sim_fw_rerun))
-sim_id <- intersect(sim_fw_no_rerun$sim_id, sim_fw_rerun$sim_id)
-cor(
-  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$stab_com, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$stab_com, use = "pairwise.complete.obs"
-)
-cor(
-  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$richness, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$richness, use = "pairwise.complete.obs"
-)
-cor(
-  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$async, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$async, use = "pairwise.complete.obs"
-)
-cor(
-  sim_fw_no_rerun[sim_fw_no_rerun$sim_id %in% sim_id, ]$stab_pop, sim_fw_rerun[sim_fw_rerun$sim_id %in% sim_id, ]$stab_pop, use = "pairwise.complete.obs"
-)
 ```
 
 
@@ -440,12 +411,13 @@ list(
     list(
       ct_alive = lm(ct_alive ~ ct + S, sim_fw_sem),
       richness = lm(richness ~ ct + S, sim_fw_sem),
-      #max_tlvl = lm(max_tlvl ~ ct + S + Z, sim_fw_sem),
       w_avg_tlvl = lm(w_avg_tlvl ~ ct + S + Z, sim_fw_sem),
       avg_omnivory = lm(avg_omnivory ~ ct + S + Z, sim_fw_sem),
       avg_int_strength = lm(avg_int_strength ~ ct + S + Z, sim_fw_sem),
       pop_stab = lm(pop_stab ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + env_stoch + h, sim_fw_sem),
-      sae_total = lm(sae_total ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + h, sim_fw_sem),
+      #sae_even = lm(sae_even ~ richness, sim_fw_sem),
+      evenness_sae = lm(evenness_sae ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + h, sim_fw_sem),
+      sae_total = lm(sae_total ~ richness + evenness_sae, sim_fw_sem),
       cpe = lm(cpe ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + h + resp_div, sim_fw_sem),
       async = lm(async ~ sae_total + cpe, sim_fw_sem),
       stab_com = lm(stab_com ~ pop_stab + async, sim_fw_sem)
@@ -456,18 +428,26 @@ list(
     update(ti, avg_omnivory %~~% w_avg_tlvl)
     }
     ),
-  tar_target(sem_simplified_coeff, {
-    ti <- summary(sem_simplified)$coefficients[, c(1, 2, 8, 9)]
-    colnames(ti)[4] <- "Signif"
-    ti
-    }),
+  tar_target(sem_main_text_model_list,
+    list(
+      pop_stab = lm(pop_stab ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + env_stoch, sim_fw_sem),
+      evenness_sae = lm(evenness_sae ~ richness + avg_int_strength + w_avg_tlvl + ct_alive, sim_fw_sem),
+      sae_total = lm(sae_total ~ richness + evenness_sae, sim_fw_sem),
+      cpe = lm(cpe ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + resp_div, sim_fw_sem),
+      async = lm(async ~ sae_total + cpe, sim_fw_sem),
+      stab_com = lm(stab_com ~ pop_stab + async, sim_fw_sem)
+    )
+  ),
+  tar_target(sem_main_text, {
+    ti <- as.psem(sem_main_text_model_list)
+    #update(ti, avg_omnivory %~~% w_avg_tlvl)
+    }
+    ),
   tar_target(sem_simplified_collinearity,
-    map_dfr(setNames(sem_simplified_model_list, names(sem_simplified_model_list)),
-      performance::check_collinearity,
-      .id = "response") %>%
-    as_tibble),
+    sem_simplified_collinearity_no_rerun
+    ),
   tar_target(sem_simplified_rsquared,
-    map_dfr(sem_simplified_model_list, rsquared) %>%
+    sem_simplified_rsquared_no_rerun %>%
       mutate(
       Response = var_replacement()[Response],
       R.squared = round(R.squared, 2)
@@ -489,15 +469,25 @@ list(
       kable(caption = "Rsquared for the Structural Equation Model.") %>%
       kable_styling()
   ),
-  tar_target(sem_simplified_eff_file, here::here("data", "sem_simplified_eff"), format = "file"),
-  tar_target(sem_simplified_eff, {
-    readRDS(sem_simplified_eff_file)
-    #semEff(sem_simplified, ci.type = "perc", R = 10, seed = 13, parallel = "no", data = sim_fw_sem)
-    }
-    ),
-  tar_target(sem_simplified_eff_tab, from_semEff_to_table(sem_simplified_eff))
+  tar_target(sem_simplified_eff_tab, sem_simplified_eff_tab_no_rerun)
 )
 ```
+
+```{r, eval = FALSE}
+tar_load(sem_main_text)
+m <- list(
+  pop_stab = lm(pop_stab ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + env_stoch, sim_fw_sem),
+  evenness_sae = lm(evenness_sae ~ richness + avg_int_strength + w_avg_tlvl + ct_alive, sim_fw_sem),
+  sae_total = lm(sae_total ~ richness + evenness_sae, sim_fw_sem),
+  cpe = lm(cpe ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + resp_div, sim_fw_sem),
+  async = lm(async ~ sae_total + cpe, sim_fw_sem),
+  stab_com = lm(stab_com ~ pop_stab + async, sim_fw_sem)
+)
+ti <- as.psem(m)
+update(ti, avg_omnivory %~~% w_avg_tlvl)
+summary(ti)
+```
+
 
 ```{targets model-to-pred}
 list(
@@ -595,8 +585,8 @@ list(
     to$stab_com_se <- ti$se.fit
     to
     }),
-  tar_target(fix_fw_stab, fixef(model_fw_stab)$cond),
-  tar_target(fix_fw_stab_comp,
+  tar_target(fixed_effect_fw_stab, fixef(model_fw_stab)$cond),
+  tar_target(fixed_effect_fw_stab_comp,
     model_fw_stab_comp %>%
       mutate(
       fix_effect = map(model, ~fixef(.x)$cond)
@@ -612,7 +602,7 @@ list(
     mutate(
       slope_richness = map2_dbl(resp_div, avg_int_strength,
         ~get_slope_change(
-          coeff = fix_fw_stab,
+          coeff = fixed_effect_fw_stab,
           gen_term = "richness",
           coeff_values = c(
             "resp_div" = .x,
@@ -631,7 +621,7 @@ list(
     mutate(
       slope_richness = map2_dbl(resp_div, w_avg_tlvl,
         ~get_slope_change(
-          coeff = fix_fw_stab,
+          coeff = fixed_effect_fw_stab,
           gen_term = "richness",
           coeff_values = c(
             "resp_div" = .x,
@@ -650,7 +640,7 @@ list(
     mutate(
       slope_richness = map2_dbl(resp_div, ct_alive,
         ~get_slope_change(
-          coeff = fix_fw_stab,
+          coeff = fixed_effect_fw_stab,
           gen_term = "richness",
           coeff_values = c(
             "resp_div" = .x,
@@ -678,10 +668,10 @@ list(
     )
   ),
   tar_target(pred_stab_comp_resp_div,
-    fix_fw_stab_comp %>%
+    fixed_effect_fw_stab_comp %>%
       left_join(
         list(
-          response = fix_fw_stab_comp$response,
+          response = fixed_effect_fw_stab_comp$response,
           variable = c("avg_int_strength", "w_avg_tlvl", "ct_alive")
           ) %>%
         expand.grid() %>%
@@ -735,15 +725,23 @@ list(
 
 # plot
 
-```{targets sem_tot_predictor, tar_simple = TRUE}
-c("richness", "avg_int_strength", "w_avg_tlvl", "ct_alive", "Z", "h",
-  "resp_div", "env_stoch")
+```{r, eval = FALSE}
+tar_load(sem_simplified_tot)
+sem_simplified_tot %>%
+  select(sim_type, collinearity) %>%
+  unnest(cols = c(collinearity)) %>%
+  group_by(sim_type) %>%
+  summarise(
+    med = median(VIF),
+    max = max(VIF)
+  )
 ```
+
 
 ```{targets plot-sem-tot}
 list(
   tar_target(p_sem_tot_stab,
-    sem_simplified_eff_tab %>%
+    sem_simplified_eff_tab_no_rerun %>%
       filter(effect_type == "total") %>%
       filter(response %in% c("async", "pop_stab", "stab_com")) %>%
       filter(predictor %in% sem_tot_predictor()) %>%
@@ -795,9 +793,41 @@ list(
       nrow = 2,
       rel_heights = c(1, .05)
       )
+  ),
+  tar_target(sem_file, here("report", "figures", "sem_stab_simplified_simple.pdf"), format = "file"),
+  tar_target(p_sem,
+    ggdraw() +
+      draw_image(magick::image_read_pdf(sem_file, density = 600),
+        x = 0, y = 0,
+        width = 1, height = 1,
+        hjust = 0, halign = 0, valign = 0
+      )
+  ),
+  tar_target(p_sem_fig,
+    plot_grid(
+      p_sem,
+      print(
+        tar_read(p_sem_tot_stab) +
+          guides(
+            color = guide_legend(override.aes = list(linetype = 0, alpha = 1)),
+            y = "none",
+            y.sec = "axis"
+          ) +
+          theme(
+            legend.title = element_blank(),
+            legend.position = c(.005, .995),
+            legend.justification = c("left", "top"),
+
+          )
+        ),
+      nrow = 2, rel_heights = c(1, .8),
+      labels = "auto"
+  )
+
   )
 )
 ```
+
 
 ```{targets r}
 list(
@@ -1360,6 +1390,19 @@ library(kableExtra)
 lapply(list.files(here::here("R"), full.names = TRUE), source)
 ```
 
+```{r, eval=FALSE}
+tar_load(sem_simplified_eff_tab_no_rerun_short)
+sem_simplified_eff_tab_rerun %>%
+  filter(
+    effect_type == "direct",
+    predictor %in% c(sem_tot_predictor(), "async", "stab_com", "sae_total", "cpe", "evenness_sae", "sae_even")
+    ) %>%
+select(response, predictor, effect) %>%
+filter(abs(effect) > .05) %>%
+mutate(effect = round(effect, 2))
+```
+
+
 ```{r debug, eval = FALSE}
 tar_load(sim_fw)
 ti <- sim_fw %>%
@@ -1477,13 +1520,6 @@ p_sem_simplified_bivariate_relations <- plot_grid(
 
 
 ```{r}
-sem_file <- here("report", "figures", "sem_stab_simplified.pdf")
-p_sem <- ggdraw() +
-  draw_image(magick::image_read_pdf(sem_file, density = 600),
-    x = 0, y = 0,
-    width = 1, height = 1,
-    hjust = 0, halign = 0, valign = 0
-  )
 p_sem_tot <- plot_grid(
   p_sem, p_sem_simplified_bivariate_relations,
   nrow = 2, rel_heights = c(.6, 1),
@@ -1552,7 +1588,7 @@ ggsave_multiple(
   units = "mm")
 ```
 
-```{r}
+```{r, eval = FALSE}
 bivariate_rel_file <- here("report", "figures", "p_sem_simplified_bivariate_relations.jpg")
 p_bivariate_rel <- ggdraw() +
   draw_image(magick::image_read(bivariate_rel_file, density = 300),
@@ -1560,59 +1596,26 @@ p_bivariate_rel <- ggdraw() +
     width = 1, height = 1,
     hjust = 0, halign = 0, valign = 0
   )
+```
 
-p_sem_fig <- plot_grid(
-  p_sem, p_bivariate_rel,
-  print(
-    tar_read(p_sem_tot_stab) +
-      guides(
-        color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
-      ) +
-      theme(
-        legend.title = element_blank(),
-        legend.position = c(.005, .995),
-        legend.justification = c("left", "top"),
 
-      )
-    ),
-  nrow = 3, rel_heights = c(.7, 1, .6),
-  labels = "auto"
-)
+```{r}
 
-p_sem_fig <- plot_grid(p_sem,
-  print(
-    tar_read(p_sem_tot_stab) +
-      guides(
-        color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
-      ) +
-      theme(
-        legend.title = element_blank(),
-        legend.position = c(.005, .995),
-        legend.justification = c("left", "top"),
-
-      )
-    ),
-  p_bivariate_rel,
-  NULL,
-  nrow = 2, rel_heights = c(.7, 1),
-  labels = c("a", "b", "c", ""),
-  align = "h", axis = "tblr"
-)
 ggsave_multiple(
   paste0("p_sem_fig", c(".png", ".pdf")),
-  plot = p_sem_fig,
+  plot = tar_read(p_sem_fig),
   path = here::here("report", "figures"),
   scale = 3.4,
   dpi = 400,
   width = 80,
-  height = 80 * .8,
+  height = 80 * 1,
   units = "mm")
 ```
 
 
 ```{r}
-tar_load(fix_fw_stab)
-tar_load(fix_fw_stab_comp)
+tar_load(fixed_effect_fw_stab)
+tar_load(fixed_effect_fw_stab_comp)
 tar_load(pred_stab_comp_rho)
 ```
 
@@ -1970,7 +1973,7 @@ ggsave_multiple(
 
 
 ```{r}
-tar_load(fix_fw_stab)
+tar_load(fixed_effect_fw_stab)
 ```
 ```{r}
 tar_load(pred_stab_comp_resp_div)

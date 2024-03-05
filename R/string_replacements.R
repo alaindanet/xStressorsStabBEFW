@@ -101,7 +101,9 @@ sim_type_replacement <- function() {
   c(
     "no_rerun" = "Default (5000 timesteps)",
     "rerun" = "Until no extinction",
-    "non_allo_no_rerun" = "Fixed death rate"
+    "non_allo_no_rerun" = "Fixed death rate",
+    "no_rerun_short" = "2000 timesteps",
+    "no_rerun_no_disconnected" = "Disconnected species not removed"
   )
 
 }

@@ -3,12 +3,12 @@ title: Food-web structure, stochasticity and response diversity drive temporal c
 author: "Alain Danet, (Sonia Kéfi, Thomas F Johnson), Andrew P. Beckerman"
 date: ""
 output:
-  officedown::rdocx_document:
-    number_sections: false
   bookdown::pdf_document2:
     latex_engine: xelatex
     keep_tex: true
     spacing: double
+    number_sections: false
+  officedown::rdocx_document:
     number_sections: false
 always_allow_html: true
 bibliography: references.bib
@@ -695,6 +695,7 @@ knitr::include_graphics(here("report", "figures", "p_sem_fig.pdf"))
 
 ```{r}
 tar_load(c(sem_eff_tab, sem_simplified_eff_tab))
+#TODO: change for main text SEM, other SEM in appendix
 
 get_eff <- function(
   y = "pop_stab", x = "richness",
@@ -735,8 +736,28 @@ rvr <- get_eff(y = "cpe_env", x = "richness", tab = sem_eff_tab)
 rvd <- get_eff(y = "cpe_env", x = "resp_div", tab = sem_eff_tab)
 ```
 ```{r, eval = FALSE}
-sem_simplified_eff_tab %>%
-  filter(abs(effect) > .1, effect_type == "direct")
+tar_load(c(sem_main_text, sem_simplified))
+get_coeff_psem <- function(x = NULL) {
+  ti <- summary(x)$coefficients
+  ti[[9]] <- NULL
+  janitor::clean_names(ti)
+}
+
+ti <- get_coeff_psem(sem_main_text)
+ti %>%
+  filter(abs(std_estimate) > .05) %>%
+  select(response, predictor, std_estimate) %>%
+  mutate(std_estimate = round(std_estimate, 1))
+to <- get_coeff_psem(sem_simplified)
+to %>%
+  filter(
+    abs(std_estimate) > .05,
+    predictor %in% c(
+      "env_stoch", "resp_div", "ct_alive", "avg_int_strength", "w_avg_tlvl", "richness",
+      "sae_total", "evenness_sae", "cpe", "pop_stab", "async", "stab_com"
+    )) %>%
+  select(response, predictor, std_estimate) %>%
+  mutate(std_estimate = round(std_estimate, 1))
 ```
 
 We found that food-web structure had significant effect on temporal population
