@@ -108,7 +108,7 @@ function sim_int_mat_check_disconnected(A;
         gc_thre = .02,
         return_sol = false,
         re_run = true,
-        keep_K_omega = false,
+        remove_disconnected = true,
         dt_rescue = 0.05,
         digits = nothing
     )
@@ -149,23 +149,37 @@ function sim_int_mat_check_disconnected(A;
             return m
             break
         end
+        # Retrieve network
         old_A = m.omega .> 0
         alive_species = m.alive_species
+        # Check
         disconnected_species = check_disconnected_species(old_A, alive_species)
         ti = length(disconnected_species) == 0
+        # Build the vector of biomasses
         biomass_vector = zeros(dim(old_A))
         biomass_vector[alive_species] = m.bm_sp
-        starting_bm = kill_disconnected_species(old_A;
-                                                alive_species = alive_species,
-                                                bm = biomass_vector)
-
-        @assert length(starting_bm) == dim(A)
-
+        killed_species = kill_disconnected_species(old_A;
+                                                    alive_species = alive_species,
+                                                    bm = biomass_vector)
         if ti == true
             println("all species connected: $ti, nb alive species: $(length(alive_species))")
             return m
             break
         end
+
+        # Rebuilding network or set disconnected species to 0
+        if remove_disconnected == true
+            A = remove_disconnected_species(old_A, alive_species)
+            mask = killed_species .!= 0
+            starting_bm = biomass_vector[mask]
+            println("Rebuilding model without disconnected species.")
+        else
+            starting_bm = killed_species
+            A = A
+            println("Rebuilding model with disconnected species having a biomass of 0.")
+        end
+
+        @assert length(starting_bm) == dim(A)
         i = i + 1
     end
     m
@@ -554,6 +568,20 @@ kill_disconnected_species(ti, alive_species = [], bm = bm) == [0, 0, 0, 0]
 kill_disconnected_species(ti, alive_species = [1, 3, 4], bm = bm) == [1, 0, 3, 0]
 kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
 kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
+
+# Filter network and biomass
+to = kill_disconnected_species(ti, alive_species = [1, 2, 3, 4], bm = bm)
+mask = to .== 0
+A = ti[mask, mask]
+new_bm = bm[mask]
+dim(A) == length(new_bm)
+to = kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm)
+mask = to .== 0
+A = ti[mask, mask]
+new_bm = bm[mask]
+dim(A) == length(new_bm)
+
+
 """
 
 function kill_disconnected_species(A; alive_species = nothing, bm = nothing)
@@ -611,7 +639,7 @@ check_disconnected_species(ti, [1, 3, 4]) == [4]
 check_disconnected_species(ti, [1, 2, 3, 4]) == []
 
 """
-function check_disconnected_species(A, alive_species)
+function check_disconnected_species(A, alive_species; verbose = false)
     # Get binary matrix
     A = A .> 0
     living_A = A[alive_species, alive_species]
@@ -628,7 +656,7 @@ function check_disconnected_species(A, alive_species)
     disconnected_prod = alive_prod .&& species_with_no_pred
     disconnected_cons = alive_cons .&& species_with_no_prey
 
-    if sum([disconnected_prod; disconnected_cons]) > 0
+    if sum([disconnected_prod; disconnected_cons]) > 0 & verbose
         println("There are $(sum(disconnected_prod)) disconnected producers
             and $(sum(disconnected_cons)) consumers.")
     end

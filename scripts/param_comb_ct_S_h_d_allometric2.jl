@@ -4,7 +4,7 @@ nrep = 5
 sigma = .1:.1:0.6#[0.1, 0.3, 0.6]#.1:.2:0.6
 Z = [1, 5, 10, 25, 50, 100]
 ρ = 0:.25:1
-h = 2.0:.25:3.0#[2.0, 3.0]
+h = 1.0:.25:2.0#[2.0, 3.0]
 S = [10, 20, 30, 40, 50]
 C = 0.02:.02:.32
 
@@ -26,7 +26,7 @@ param = map(p -> (;Dict(k => v for (k, v) in zip(names, p))...),
 
 fw_test = map(p -> try
                   FoodWeb(nichemodel, p.richness, C = p.connectance,
-                          Z = 100, tol_C = .02,
+                          Z = 100, tol_C = .05,
                           check_cycle = true,
                           check_disconnected = true)
               catch

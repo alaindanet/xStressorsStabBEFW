@@ -312,6 +312,8 @@ tar_map(
   names = names,
   tar_target(sim_files, here::here("data", paste0("sim_fw_", names)), format = "file"),
   tar_target(sim_fw, readRDS(sim_files)),
+  tar_target(sem_simplified_file, here::here("data", paste0("sem_simplified_", names)), format = "file"),
+  tar_target(sem_simplified, { readRDS(sem_simplified_file) }),
   tar_target(sem_simplified_eff_file, here::here("data", paste0("sem_simplified_eff_", names)), format = "file"),
   tar_target(sem_simplified_eff, { readRDS(sem_simplified_eff_file) }),
   tar_target(sem_simplified_collinearity_file, here::here("data", paste0("sem_simplified_collinearity_", names)), format = "file"),
@@ -1405,23 +1407,17 @@ mutate(effect = round(effect, 2))
 
 ```{r debug, eval = FALSE}
 tar_load(sim_fw)
-ti <- sim_fw %>%
-  mutate(across(c(stab_com, richness), log)) %>%
-  mutate(across(c(sim_id, fw_id), as.factor)) %>%
-  mutate(
-    across(c(stab_com, richness,
-        env_stoch, resp_div, Z,
-        ct_alive, w_avg_tlvl, avg_int_strength, avg_omnivory),
-      ~scale(.x)[, 1])
-  )
-tar_load(stab_com_part_var)
-tu <- map(stab_com_part_var,
-  ~glmmTMB(formula_stab_fw_model(
-      resp = .x,
-      rand_effect = TRUE,
-      term_to_del = "richness : resp_div : Z +"
-      ),
-    data = ti
+tar_load(c(sim_fw_no_rerun,
+    sim_fw_rerun,
+    sim_fw_no_rerun_short,
+    sim_fw_no_rerun_no_disconnected,
+    sim_fw_non_allo_no_rerun))
+tar_load(c(
+    sem_simplified_no_rerun,
+    sem_simplified_rerun,
+    sem_simplified_no_rerun_short,
+    sem_simplified_no_rerun_no_disconnected,
+    sem_simplified_non_allo_no_rerun
     ))
 ```
 
@@ -2724,8 +2720,6 @@ ggsave(
 )
 ```
 
-```{r}
-```
 
 
 

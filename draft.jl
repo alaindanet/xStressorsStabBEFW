@@ -19,28 +19,6 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
-fw = FoodWeb(nichemodel, 10, C = .1, Z = 1)
-bioener = BioenergeticResponse(fw,
-                               h = 3,
-                               # Predator interference
-                               c = 0
-                              )
-p = ModelParameters(fw,
-                    functional_response = bioener,
-                    env_stoch = EnvStoch(.3))
-tmax = 500
-m = simulate(p, rand(richness(fw));
-         rho = 0,
-         dt = .1,
-         tmax = tmax
-        )
-
-species_persistence(m)
-
-pm = get_parameters(m)
-alive_species = trophic_structure(m, last = 1).alive_species
-check_disconnected_species(pm.network.A, alive_species)
-
 ti = [
  0 0 0 0;
  0 0 0 0;
@@ -48,7 +26,6 @@ ti = [
  0 1 0 0
 ]
 pu = check_disconnected_species(ti, [1, 2, 3, 4])
-
 
 bm = [1, 1, 3, 4]
 alive = [1, 3, 4]
@@ -64,23 +41,11 @@ bm_to_set_to_zero = 1:length(bm) .∉ [tu]
 bm[bm_to_set_to_zero] .= 0
 1:length(bm)
 
-idxs = alive_species
-ti = filter_model_parameters(p, idxs = alive_species)
-ti.environment.K
-
-coefficient_of_variation(m, last = 100)
-
-simulate(p, rand(richness(fw)), saveat = (0:1:tmax))
-
-m = (t = 0, b = 0)
-m[:t]
-dictionary = Dict(1 => 77, 2 => 66, 3 => 1)
-keys(dictionary)
-dictionary[:1]
 
 param = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
 
-filter([:S, :sigma, :h] => (rich, s, h) -> rich == 40 && s == .6 && h == 2, param)
+param = filter([:S, :sigma, :h, :Z] => (rich, s, h, z) -> rich == 40 && s == .3 && h == 2 && z == 100,
+               param)
 
 #toy_param = param[[2, 30, 58, 362, 390, 742, 750, 766, 1082, 1098],:]
 toy_param = param[[1, 3, 4, 6, 7, 10, 11, 13, 14],:]
@@ -97,6 +62,39 @@ toy_param[!, :A] = map(x -> reshape_array(x), toy_param[!, :A])
 toy_param = NamedTuple.(eachrow(toy_param))
 
 include("src/sim.jl")
+
+sim_no_check = @showprogress pmap(p ->
+                         merge(
+                               (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
+                               sim_int_mat_check_disconnected(p.A;
+                                           ρ = p.rho,
+                                           alpha_ij = 0.5,
+                                           d = nothing,
+                                           da = (ap = .4, ai = .4, ae = .4),
+                                           σₑ = p.sigma, Z = p.Z,
+                                           h = p.h, c = 0.0, K = 10,
+                                           dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                                           max = 2000, last = 500,
+                                           K_alpha_corrected = true,
+                                           dt = 0.1, gc_thre = .1,
+                                           dt_rescue = .05,
+                                           remove_disconnected = true,
+                                           return_sol = false,
+                                           re_run = false,
+                                           digits = 5
+                                          )
+                              ),
+                         toy_param,
+                         batch_size = 100
+                        )
+for i in 1:length(sim_no_check)
+    check_disconnected_species(sim_no_check[i].omega, sim_no_check[i].alive_species)
+    println("richness: $(sim_no_check[i].richness)")
+end
+sim_df = DataFrame(sim_no_check)
+select(sim_df, [:max_tlvl, :richness, :avg_int_strength])
+#TODO: implement option to rebuild the food-web entirely after removing disconnected species
+
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
                                (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
@@ -108,11 +106,12 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            σₑ = p.sigma, Z = p.Z,
                                            h = p.h, c = 0.0, K = 10,
                                            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-                                           max = 5000, last = 500,
+                                           max = 2000, last = 500,
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
                                            dt_rescue = .05,
                                            return_sol = false,
+                                           remove_disconnected = false,
                                            re_run = false,
                                            digits = 5
                                           )
@@ -120,9 +119,8 @@ timing = @elapsed sim = @showprogress pmap(p ->
                          toy_param,
                          batch_size = 100
                         )
-sim_df = DataFrame(sim)
-select(sim_df, [:max_tlvl, :richness])
-names(sim_df)
+sim_df2 = DataFrame(sim)
+select(sim_df2, [:sim_id, :max_tlvl, :richness, :avg_int_strength])
 
 
 ti = map(x -> remove_disconnected_species(x.omega, x.alive_species),sim)
@@ -134,15 +132,16 @@ tu.A
 tu.metabolic_class
 
 
-ti = sim_int_mat_check_disconnected(toy_param[6].A;
+include("src/sim.jl")
+ti = sim_int_mat_check_disconnected(toy_param[1].A;
             ρ = 0,
             alpha_ij = 0.5,
             d = nothing,
             da = (ap = .4, ai = .4, ae = .4),
             σₑ = .1, Z = 10,
-            h = 3.0, c = 0.0, K = 10,
+            h = 1.0, c = 0.0, K = 10,
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-            max = 500, last = 100,
+            max = 1000, last = 100,
             K_alpha_corrected = true,
             dt = 0.1, gc_thre = .1,
             dt_rescue = .05,
@@ -156,72 +155,35 @@ ti = sim_int_mat_check_disconnected(toy_param[1].A;
             alpha_ij = 0.5,
             d = nothing,
             da = (ap = .4, ai = .4, ae = .4),
-            σₑ = .1, Z = 10,
-            h = 3.0, c = 0.0, K = 10,
+            σₑ = .3, Z = 10,
+            h = 1.0, c = 0.0, K = 10,
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-            max = 500, last = 100,
+            max = 1000, last = 500,
             K_alpha_corrected = true,
             dt = 0.1, gc_thre = .1,
             dt_rescue = .05,
             return_sol = false,
-            re_run = true,
+            re_run = false,
+            remove_disconnected = true,
             digits = 5
            )
 ti.species
 
-p = get_parameters(m)
-p.network.A
-plot(m.species)
-FoodWeb(m.omega .> 0)
-FoodWeb(m.int_strength .> 0)
-m.int_strength
-ω
-
-p = ModelParameters(tu)
-m = simulate_deter(p, rand(richness(tu)); tmax = 500)
-m.u
-ty = m[:, end]
-ty[ty .> 0]
-
-plot(m)
-
-tmp_A = sim[4].omega .> 0
-alive_species = sim[4].alive_species
-cons = sum.(eachrow(tmp_A)) .!= 0
-prod = sum.(eachrow(tmp_A)) .== 0
-living_A = tmp_A[alive_species, alive_species]
-alive_cons = cons[alive_species]
-alive_prod = prod[alive_species]
-
-species_with_no_pred = sum.(eachcol(living_A)) .== 0
-disconnected_prod = alive_prod .&& species_with_no_pred
-disconnected_cons = sum.(eachrow(living_A)) .== 0 .&& alive_cons
-to_keep = .!(disconnected_prod .|| disconnected_cons)
-
-living_A[to_keep, to_keep]
-tmp_cons = sum.(eachrow(tmp_A)) .!= 0
-sp_with_no_pred = sum.(eachcol(living_A)) .== 0
-disconnected_prod = alive_prod .&& sp_with_no_pred
-disconnected_cons = sum.(eachrow(living_A)) .== 0 .&& alive_cons
-
-FoodWeb(tmp_A)
-FoodWeb(tmp_A[.!( prod .&& sp_with_no_pred), .!( prod .&& sp_with_no_pred)])
-select(sim_df, [:richness, :w_avg_tlvl, :max_tlvl])
-test_param = toy_param[6]
-ti = sim_int_mat(test_param.A;
+test_param = toy_param[2]
+ti = sim_int_mat_check_disconnected(test_param.A;
             ρ = test_param.rho,
             alpha_ij = 0.5,
-            d = nothing,
+            d = .05,
             da = (ap = .4, ai = .4, ae = .4),
             σₑ = test_param.sigma, Z = test_param.Z,
             h = test_param.h, c = 0.0, K = 10,
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-            max = 5000, last = 500,
+            max = 2000, last = 500,
             K_alpha_corrected = true,
             extinction_threshold = 1e-5,
             dt = 0.1, gc_thre = .1,
             dt_rescue = .05,
-            return_sol = true,
+            return_sol = false,
             re_run = true,
             digits = 5
            )
