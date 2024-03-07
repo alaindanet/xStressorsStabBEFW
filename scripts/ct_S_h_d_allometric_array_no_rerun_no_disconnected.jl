@@ -1,7 +1,7 @@
 include("../scripts/sim_setup.jl")
 
 # Prepare saving
-dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_allo_d5_no_rerun_no_disconnected/"
+dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_allo_d6_no_rerun_no_disconnected/"
 
 if !isdir(dest_dir)
     mkdir(dest_dir)
@@ -50,12 +50,13 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            σₑ = p.sigma, Z = p.Z,
                                            h = p.h, c = 0.0, K = 10,
                                            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-                                           max = 5000, last = 500,
+                                           max = 2000, last = 500,
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
                                            dt_rescue = 0.05,
                                            extinction_threshold = 1e-6,
                                            return_sol = false,
+                                           remove_disconnected = true,
                                            re_run = false, # works only if you get rid of disconnected species
                                            digits = 5
                                           )
