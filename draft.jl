@@ -19,33 +19,10 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
-ti = [
- 0 0 0 0;
- 0 0 0 0;
- 1 0 0 0;
- 0 1 0 0
-]
-pu = check_disconnected_species(ti, [1, 2, 3, 4])
+params = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
 
-bm = [1, 1, 3, 4]
-alive = [1, 3, 4]
-kill_disconnected_species(ti, alive_species = [1, 2, 3, 4], bm = bm) == [1, 1, 3, 4]
-kill_disconnected_species(ti, alive_species = [], bm = bm) == [0, 0, 0, 0]
-kill_disconnected_species(ti, alive_species = [1, 3, 4], bm = bm) == [1, 0, 3, 0]
-kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
-kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
-
-to = [1, 2, 3, 4]
-tu = to[.![false, false, false, false]]
-bm_to_set_to_zero = 1:length(bm) .∉ [tu]
-bm[bm_to_set_to_zero] .= 0
-1:length(bm)
-
-
-param = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
-
-param = filter([:S, :sigma, :h, :Z] => (rich, s, h, z) -> rich == 40 && s == .3 && h == 2 && z == 100,
-               param)
+param = filter([:S, :sigma, :h, :Z] => (rich, s, h, z) -> rich == 20 && s == .1 && h == 2 && z == 10,
+               params)
 
 #toy_param = param[[2, 30, 58, 362, 390, 742, 750, 766, 1082, 1098],:]
 toy_param = param[[1, 3, 4, 6, 7, 10, 11, 13, 14],:]
@@ -93,7 +70,6 @@ for i in 1:length(sim_no_check)
 end
 sim_df = DataFrame(sim_no_check)
 select(sim_df, [:max_tlvl, :richness, :avg_int_strength])
-#TODO: implement option to rebuild the food-web entirely after removing disconnected species
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
@@ -106,7 +82,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            σₑ = p.sigma, Z = p.Z,
                                            h = p.h, c = 0.0, K = 10,
                                            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-                                           max = 2000, last = 500,
+                                           max = 1000, last = 500,
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
                                            dt_rescue = .05,

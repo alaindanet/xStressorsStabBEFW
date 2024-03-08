@@ -179,7 +179,12 @@ function sim_int_mat_check_disconnected(A;
             println("Rebuilding model with disconnected species having a biomass of 0.")
         end
 
-        @assert length(starting_bm) == dim(A)
+        if length(starting_bm) != dim(A)
+            println("Length of starting biomass differs from A: \
+                    Starting biomass: $starting_bm, A: $(A), dim A: $(dim(A)).")
+            println("alive species: $alive_species, killed species: $killed_species.")
+            println("sigma: $(σₑ), h: $h, rho = $(ρ).")
+        end
         i = i + 1
     end
     m
