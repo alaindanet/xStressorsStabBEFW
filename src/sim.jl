@@ -116,16 +116,16 @@ function sim_int_mat_check_disconnected(A;
     ti = false
     i = 1
     starting_bm = nothing
+    println("Re-run until no more disconnected species \
+            over the last $(last) timesteps.")
     while ti != true
-        println("Re-run until no more disconnected species \
-                over the last $(last) timesteps. Iteration = $i.")
+         println("Iteration = $i.")
         if i == 1
             max = max
         else
-            max = 500 + last
+            max = max
         end
-        println("Starting biomass: $starting_bm, nb timesteps: $(max)")
-        m = sim_int_mat(A;
+        output = sim_int_mat(A;
                         B0 = starting_bm,
                         p  = nothing,
                         d = d,
@@ -144,29 +144,28 @@ function sim_int_mat_check_disconnected(A;
                         re_run = re_run,
                         dt_rescue = dt_rescue,
                         digits = digits)
-        if ismissing(m.omega) || ismissing(m.alive_species)
-            println("No more species.")
-            return m
+        if ismissing(output.omega) || ismissing(output.alive_species)
+            println("No more species or problem in starting biomass.")
+            return output
             break
         end
         # Retrieve network
-        old_A = m.omega .> 0
-        alive_species = m.alive_species
+        old_A = output.omega .> 0
+        alive_species = output.alive_species
         # Check
         disconnected_species = check_disconnected_species(old_A, alive_species)
         ti = length(disconnected_species) == 0
+        if ti == true
+            println("No disconnected species, all fine.")
+            return output
+        end
+
         # Build the vector of biomasses
         biomass_vector = zeros(dim(old_A))
-        biomass_vector[alive_species] = m.bm_sp
+        biomass_vector[alive_species] = output.bm_sp
         killed_species = kill_disconnected_species(old_A;
                                                     alive_species = alive_species,
                                                     bm = biomass_vector)
-        if ti == true
-            println("all species connected: $ti, nb alive species: $(length(alive_species))")
-            return m
-            break
-        end
-
         # Rebuilding network or set disconnected species to 0
         if remove_disconnected == true
             A = remove_disconnected_species(old_A, alive_species)
@@ -179,17 +178,132 @@ function sim_int_mat_check_disconnected(A;
             println("Rebuilding model with disconnected species having a biomass of 0.")
         end
 
+
         if length(starting_bm) != dim(A)
             println("Length of starting biomass differs from A: \
                     Starting biomass: $starting_bm, A: $(A), dim A: $(dim(A)).")
             println("alive species: $alive_species, killed species: $killed_species.")
-            println("sigma: $(σₑ), h: $h, rho = $(ρ).")
         end
         i = i + 1
     end
-    m
+    output
 end
 
+"""
+
+# Examples/test
+
+## Basic example 
+ti = sim_int_mat([0 0; 0 0];
+            ρ = 0,
+            B0 = nothing,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .1, Z = 10,
+            h = 1.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 1000, last = 100,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
+            return_sol = false,
+            re_run = false,
+            digits = 5
+           )
+# Wrong biomass length: 
+ti = sim_int_mat([0 0; 0 0];
+            ρ = 0,
+            B0 = rand(1),
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .1, Z = 10,
+            h = 1.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 1000, last = 100,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
+            return_sol = true,
+            re_run = true,
+            digits = 5
+           )
+# Empty biomass or A: 
+empty_bm = rand(1)[[false]]
+ti = sim_int_mat([0 0; 0 0];
+            ρ = 0,
+            B0 = empty_bm,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .1, Z = 10,
+            h = 1.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 1000, last = 100,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
+            return_sol = true,
+            re_run = true,
+            digits = 5
+           )
+empty_A = [0 0; 0 0][[false, false], [false, false]]
+ti = sim_int_mat(empty_A;
+            ρ = 0,
+            B0 = empty_bm,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .1, Z = 10,
+            h = 1.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 1000, last = 100,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
+            return_sol = true,
+            re_run = true,
+            digits = 5
+           )
+ti = sim_int_mat(empty_A;
+            ρ = 0,
+            B0 = rand(2),
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .1, Z = 10,
+            h = 1.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 1000, last = 100,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
+            return_sol = true,
+            re_run = true,
+            digits = 5
+           )
+# Negative bm
+negative_bm = [0, -3]
+ti = sim_int_mat([0 0; 0 0];
+            ρ = 0,
+            B0 = negative_bm,
+            alpha_ij = 0.5,
+            d = nothing,
+            da = (ap = .4, ai = .4, ae = .4),
+            σₑ = .1, Z = 10,
+            h = 1.0, c = 0.0, K = 10,
+            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+            max = 1000, last = 100,
+            K_alpha_corrected = true,
+            dt = 0.1, gc_thre = .1,
+            dt_rescue = .05,
+            return_sol = false,
+            re_run = true,
+            digits = 5
+           )
+
+"""
 function sim_int_mat(A;
         d = 0, ρ = 0.0, σₑ = .5,
         alpha_ij = 0, Z = 100,
@@ -216,7 +330,11 @@ function sim_int_mat(A;
         GC.safepoint()
     end
 
-    if dim(A) != 0
+    if !isnothing(B0)
+        B0 = sanatize_biomass(B0)
+    end
+
+    if dim(A) != 0 && check_starting_bm(A, B0)
         if isnothing(p)
 
             fw = FoodWeb(A, Z = Z, quiet = true)
@@ -271,23 +389,26 @@ function sim_int_mat(A;
             (t = 0, x = missing)
         end
 
-        # If unstable, it means that dt was too big
-        if m.retcode == DifferentialEquations.ReturnCode.Unstable && !isnothing(dt_rescue)
-            dt = dt_rescue
-            println("rerun with dt = $dt_rescue.")
-            # Simulate
-            timing = @elapsed m = try
-                simulate(p, B0;
-                         rho = ρ,
-                         dt = dt,
-                         tmax = max,
-                         extinction_threshold = extinction_threshold,
-                         diff_code_data = (dbdt, p),
-                         verbose = false
-                        );
+        # If simulation did not fail
+        if length(m.t) != 0
+            # If unstable, it means that dt was too big
+            if m.retcode == DifferentialEquations.ReturnCode.Unstable && !isnothing(dt_rescue)
+                dt = dt_rescue
+                println("rerun with dt = $dt_rescue.")
+                # Simulate
+                timing = @elapsed m = try
+                    simulate(p, B0;
+                             rho = ρ,
+                             dt = dt,
+                             tmax = max,
+                             extinction_threshold = extinction_threshold,
+                             diff_code_data = (dbdt, p),
+                             verbose = false
+                            );
 
-            catch
-                (t = 0, x = missing)
+                catch
+                    (t = 0, x = missing)
+                end
             end
         end
 
@@ -329,6 +450,7 @@ function sim_int_mat(A;
             return m
         end
     else
+        println("No more species, returns missing.")
         m = (t = 0, x = missing)
         ω = missing
         d = missing
@@ -667,6 +789,27 @@ function check_disconnected_species(A, alive_species; verbose = false)
     end
 
     alive_species[ disconnected_prod .|| disconnected_cons ]
+end
+
+
+function check_starting_bm(A, x)
+    out = isnothing(x) || (!isnothing(x) && length(x) != 0 && length(x) == dim(A))
+    if !isnothing(x) && length(x) != 0 && length(x) != dim(A)
+        println("Starting biomass vector length do not fit species number in the network.\
+                dim(A): $(dim(A)), length(biomass) = $(length(x)).
+                ")
+    end
+    out
+end
+
+function sanatize_biomass(bm)
+    # For negative biomass
+    mask = bm .< 0
+    if any(mask)
+        println("Some starting biomass are negative: $(bm[mask]), put them to 0.")
+    end
+    bm[mask] .= 0
+    bm
 end
 
 function filter_model_parameters(p; idxs = nothing)

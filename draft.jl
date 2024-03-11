@@ -21,7 +21,7 @@ include("src/get_modules.jl")
 
 params = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
 
-param = filter([:S, :sigma, :h, :Z] => (rich, s, h, z) -> rich == 20 && s == .1 && h == 2 && z == 10,
+param = filter([:S, :sigma, :h, :Z] => (rich, s, h, z) -> rich == 20 && s == .3 && h == 1.0 && z == 10,
                params)
 
 #toy_param = param[[2, 30, 58, 362, 390, 742, 750, 766, 1082, 1098],:]
@@ -38,7 +38,7 @@ toy_param[!, :A] = map(x -> reshape_array(x), toy_param[!, :A])
 # Make a tuple vector
 toy_param = NamedTuple.(eachrow(toy_param))
 
-include("src/sim.jl")
+#include("src/sim.jl")
 
 sim_no_check = @showprogress pmap(p ->
                          merge(
@@ -51,7 +51,7 @@ sim_no_check = @showprogress pmap(p ->
                                            σₑ = p.sigma, Z = p.Z,
                                            h = p.h, c = 0.0, K = 10,
                                            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-                                           max = 2000, last = 500,
+                                           max = 1000, last = 500,
                                            K_alpha_corrected = true,
                                            dt = 0.1, gc_thre = .1,
                                            dt_rescue = .05,
@@ -100,16 +100,32 @@ select(sim_df2, [:sim_id, :max_tlvl, :richness, :avg_int_strength])
 
 
 ti = map(x -> remove_disconnected_species(x.omega, x.alive_species),sim)
-tu = FoodWeb(ti[4])
+tu = FoodWeb(ti[4] .> 0)
 tu = FoodWeb(ti[9])
 tu.A
 EcologicalNetworksDynamics.is_connected(tu)
 tu.A
 tu.metabolic_class
 
+function test_while(x)
+    ti = false
+    i = 1
+    out = while ti != true
+        if i >= 5
+            ti = true
+            m = "finish"
+            return m
+        end
+        println("i = $(i)")
+        i = i + 1
+    end
+    m
+end
+test_while("x")
 
 include("src/sim.jl")
-ti = sim_int_mat_check_disconnected(toy_param[1].A;
+break_on(:error)
+sim_int_mat_check_disconnected(toy_param[1].A;
             ρ = 0,
             alpha_ij = 0.5,
             d = nothing,
@@ -117,14 +133,15 @@ ti = sim_int_mat_check_disconnected(toy_param[1].A;
             σₑ = .1, Z = 10,
             h = 1.0, c = 0.0, K = 10,
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-            max = 1000, last = 100,
+            max = 1000, last = 200,
             K_alpha_corrected = true,
             dt = 0.1, gc_thre = .1,
             dt_rescue = .05,
             return_sol = false,
-            re_run = true,
+            re_run = false,
             digits = 5
            )
+
 
 ti = sim_int_mat_check_disconnected(toy_param[1].A;
             ρ = 0,
