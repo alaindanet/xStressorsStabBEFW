@@ -86,6 +86,7 @@ function empirical_interaction_strength(B::Vector{Float64}, params::ModelParamet
     x = params.biorates.x
     y = params.biorates.y
     c = params.functional_response.c
+    B = sanatize_biomass(B)
 
     for i in 1:S
         int[i, :] = [

@@ -19,6 +19,17 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
+ti = sim_int_mat([0 0 0; 0 0 0; 1 1 0];
+            ρ = 1.0, alpha_ij = 0,
+            d = 0.0,
+            σₑ = .5, Z = 1000, h = 1.25, c = 0.0, K = 1.0,
+            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+            max = 1000, last = 500, dt = 0.1, return_sol = true)
+
+empirical_interaction_strength([1.0, 1.0, 1.0], get_parameters(ti))
+empirical_interaction_strength([1, 1, -1.10^-5], get_parameters(ti))
+empirical_interaction_strength([-10^-5, 1, -10^-5], get_parameters(ti))
+
 params = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
 
 param = filter([:S, :sigma, :h, :Z] => (rich, s, h, z) -> rich == 20 && s == .3 && h == 1.0 && z == 10,
