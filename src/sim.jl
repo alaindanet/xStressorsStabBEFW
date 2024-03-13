@@ -302,7 +302,14 @@ ti = sim_int_mat([0 0; 0 0];
             re_run = true,
             digits = 5
            )
-
+# NaN biomass
+ti = sim_int_mat([0 0 0; 0 0 0; 1 1 0];
+                 B0 = [NaN, NaN, NaN],
+                 ρ = 1.0, alpha_ij = 0,
+                 d = 0.0,
+                 σₑ = .5, Z = 1000, h = 1.25, c = 0.0, K = 1.0,
+                 dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                 max = 1000, last = 500, dt = 0.1, return_sol = true)
 """
 function sim_int_mat(A;
         d = 0, ρ = 0.0, σₑ = .5,
@@ -390,7 +397,7 @@ function sim_int_mat(A;
         end
 
         # If simulation did not fail
-        if length(m.t) != 0
+        if length(m.t) != 0 && !(:x ∈  keys(m) && ismissing(m.x))
             # If unstable, it means that dt was too big
             if m.retcode == DifferentialEquations.ReturnCode.Unstable && !isnothing(dt_rescue)
                 dt = dt_rescue
@@ -414,7 +421,7 @@ function sim_int_mat(A;
 
 
         # Re-run simulations until no more extinction
-        if re_run
+        if re_run && !(:x ∈  keys(m) && ismissing(m.x))
             if length(m.t) >= last
                 ti = EcologicalNetworksDynamics.check_last_extinction(m;
                                                                       idxs = 1:S,

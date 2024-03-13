@@ -20,15 +20,18 @@ include("src/plot.jl")
 include("src/get_modules.jl")
 
 ti = sim_int_mat([0 0 0; 0 0 0; 1 1 0];
-            ρ = 1.0, alpha_ij = 0,
-            d = 0.0,
-            σₑ = .5, Z = 1000, h = 1.25, c = 0.0, K = 1.0,
-            dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
-            max = 1000, last = 500, dt = 0.1, return_sol = true)
+                 B0 = [NaN, NaN, NaN],
+                 ρ = 1.0, alpha_ij = 0,
+                 d = 0.0,
+                 σₑ = .5, Z = 1000, h = 1.25, c = 0.0, K = 1.0,
+                 dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                 max = 1000, last = 500, dt = 0.1, return_sol = true)
 
 empirical_interaction_strength([1.0, 1.0, 1.0], get_parameters(ti))
 empirical_interaction_strength([1, 1, -1.10^-5], get_parameters(ti))
 empirical_interaction_strength([-10^-5, 1, -10^-5], get_parameters(ti))
+
+sanatize_biomass([NaN, NaN])
 
 params = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
 
@@ -81,11 +84,13 @@ for i in 1:length(sim_no_check)
 end
 sim_df = DataFrame(sim_no_check)
 select(sim_df, [:max_tlvl, :richness, :avg_int_strength])
-
+repeat([NaN], 3)
+include("src/sim.jl")
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
                                (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
-                               sim_int_mat_check_disconnected(p.A;
+                               sim_int_mat(p.A;
+                                           B0 = nothing,
                                            ρ = p.rho,
                                            alpha_ij = 0.5,
                                            d = nothing,
@@ -98,7 +103,33 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            dt = 0.1, gc_thre = .1,
                                            dt_rescue = .05,
                                            return_sol = false,
-                                           remove_disconnected = false,
+                                           re_run = false,
+                                           digits = 5
+                                          )
+                              ),
+                         toy_param,
+                         batch_size = 100
+                        )
+sim_df2 = DataFrame(sim)
+select(sim_df2, [:sim_id, :max_tlvl, :richness, :avg_int_strength])
+
+timing = @elapsed sim = @showprogress pmap(p ->
+                         merge(
+                               (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
+                               sim_int_mat(p.A;
+                                           B0 = repeat([NaN], dim(p.A)),
+                                           ρ = p.rho,
+                                           alpha_ij = 0.5,
+                                           d = nothing,
+                                           da = (ap = .4, ai = .4, ae = .4),
+                                           σₑ = p.sigma, Z = p.Z,
+                                           h = p.h, c = 0.0, K = 10,
+                                           dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                                           max = 1000, last = 500,
+                                           K_alpha_corrected = true,
+                                           dt = 0.1, gc_thre = .1,
+                                           dt_rescue = .05,
+                                           return_sol = false,
                                            re_run = false,
                                            digits = 5
                                           )
@@ -110,33 +141,7 @@ sim_df2 = DataFrame(sim)
 select(sim_df2, [:sim_id, :max_tlvl, :richness, :avg_int_strength])
 
 
-ti = map(x -> remove_disconnected_species(x.omega, x.alive_species),sim)
-tu = FoodWeb(ti[4] .> 0)
-tu = FoodWeb(ti[9])
-tu.A
-EcologicalNetworksDynamics.is_connected(tu)
-tu.A
-tu.metabolic_class
-
-function test_while(x)
-    ti = false
-    i = 1
-    out = while ti != true
-        if i >= 5
-            ti = true
-            m = "finish"
-            return m
-        end
-        println("i = $(i)")
-        i = i + 1
-    end
-    m
-end
-test_while("x")
-
-include("src/sim.jl")
-break_on(:error)
-sim_int_mat_check_disconnected(toy_param[1].A;
+sim_int_mat(toy_param[1].A;
             ρ = 0,
             alpha_ij = 0.5,
             d = nothing,
