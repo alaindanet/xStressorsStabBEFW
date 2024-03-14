@@ -397,7 +397,7 @@ function sim_int_mat(A;
         end
 
         # If simulation did not fail
-        if length(m.t) != 0 && !(:x ∈  keys(m) && ismissing(m.x))
+        if length(m.t) != 0
             # If unstable, it means that dt was too big
             if m.retcode == DifferentialEquations.ReturnCode.Unstable && !isnothing(dt_rescue)
                 dt = dt_rescue
@@ -421,7 +421,7 @@ function sim_int_mat(A;
 
 
         # Re-run simulations until no more extinction
-        if re_run && !(:x ∈  keys(m) && ismissing(m.x))
+        if re_run
             if length(m.t) >= last
                 ti = EcologicalNetworksDynamics.check_last_extinction(m;
                                                                       idxs = 1:S,
