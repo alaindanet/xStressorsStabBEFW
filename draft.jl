@@ -35,11 +35,11 @@ sanatize_biomass([NaN, NaN])
 
 params = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
 
-param = filter([:S, :sigma, :h, :Z] => (rich, s, h, z) -> rich == 20 && s == .3 && h == 1.0 && z == 10,
+param = filter([:S, :sigma, :h, :Z] => (rich, s, h, z) -> rich == 40 && s == .3 && h == 2.0 && z == 100,
                params)
 
 #toy_param = param[[2, 30, 58, 362, 390, 742, 750, 766, 1082, 1098],:]
-toy_param = param[[1, 3, 4, 6, 7, 10, 11, 13, 14],:]
+toy_param = param[1:10,:]
 
 # Reshape interaction matrix
 reshape_array(vec) = reshape(vec, (
@@ -63,7 +63,7 @@ sim_no_check = @showprogress pmap(p ->
                                            d = nothing,
                                            da = (ap = .4, ai = .4, ae = .4),
                                            σₑ = p.sigma, Z = p.Z,
-                                           h = p.h, c = 0.0, K = 10,
+                                           h = p.h, c = 0.0, K = 5.0,
                                            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
                                            max = 1000, last = 500,
                                            K_alpha_corrected = true,
@@ -82,10 +82,37 @@ for i in 1:length(sim_no_check)
     check_disconnected_species(sim_no_check[i].omega, sim_no_check[i].alive_species)
     println("richness: $(sim_no_check[i].richness)")
 end
+names(sim_df)
 sim_df = DataFrame(sim_no_check)
-select(sim_df, [:max_tlvl, :richness, :avg_int_strength])
-repeat([NaN], 3)
-include("src/sim.jl")
+select(sim_df, [:max_tlvl, :richness, :avg_int_strength, :stab_com, :sync, :avg_cv_sp, :total_biomass])
+
+sim_higher_K = @showprogress pmap(p ->
+                         merge(
+                               (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
+                               sim_int_mat_check_disconnected(p.A;
+                                           ρ = p.rho,
+                                           alpha_ij = 0.5,
+                                           d = nothing,
+                                           da = (ap = .4, ai = .4, ae = .4),
+                                           σₑ = p.sigma, Z = p.Z,
+                                           h = p.h, c = 0.0, K = 10.0,
+                                           dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                                           max = 1000, last = 500,
+                                           K_alpha_corrected = true,
+                                           dt = 0.1, gc_thre = .1,
+                                           dt_rescue = .05,
+                                           remove_disconnected = true,
+                                           return_sol = false,
+                                           re_run = false,
+                                           digits = 5
+                                          )
+                              ),
+                         toy_param,
+                         batch_size = 100
+                        )
+sim_higher_K_df = DataFrame(sim_higher_K)
+select(sim_higher_K_df, [:max_tlvl, :richness, :avg_int_strength, :stab_com, :sync, :avg_cv_sp, :total_biomass])
+
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
                                (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),

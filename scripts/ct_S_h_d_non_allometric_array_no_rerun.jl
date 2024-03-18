@@ -1,7 +1,7 @@
 include("../scripts/sim_setup.jl")
 
 # Prepare saving
-dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_non_allo_d6_no_rerun/"
+dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_non_allo_d7_no_rerun/"
 
 if !isdir(dest_dir)
     mkdir(dest_dir)
@@ -28,7 +28,7 @@ warmup = sim_int_mat_check_disconnected([0 0; 0 0];
             ρ = pm.rho, alpha_ij = 0,
             d = nothing,
             da = (ap = .4, ai = .4, ae = .4),
-            σₑ = pm.sigma, Z = pm.Z, h = pm.h, c = 0.0, K = 10,
+            σₑ = pm.sigma, Z = pm.Z, h = pm.h, c = 0.0, K = 5,
             dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
             max = 50, last = 10, dt = 0.1, return_sol = false)
 println("$(warmup)")
@@ -48,7 +48,7 @@ timing = @elapsed sim = @showprogress pmap(p ->
                                            d = .1,
                                            da = nothing,
                                            σₑ = p.sigma, Z = p.Z,
-                                           h = p.h, c = 0.0, K = 10,
+                                           h = p.h, c = 0.0, K = 5,
                                            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
                                            max = 2000, last = 500,
                                            K_alpha_corrected = true,
