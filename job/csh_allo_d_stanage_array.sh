@@ -10,7 +10,7 @@
 #SBATCH --ntasks=1
 
 # Replace by the path to the folder where your script lives if necessary
-DIR_ENV=/users/${USER}/xStressorsStabBEFW
+DIR_ENV=/users/bi1ahd/xStressorsStabBEFW
 DIR_SCRIPT=scripts
 
 # Load modules
