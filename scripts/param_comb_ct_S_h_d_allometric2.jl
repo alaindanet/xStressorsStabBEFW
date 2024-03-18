@@ -124,5 +124,14 @@ param_complete[!, :sim_id] = 1:nrow(param_complete)
 
 
 Arrow.write("../param_comb_ct_S_h_d3.arrow", param_complete)
-ti = DataFrame(Arrow.Table("../param_comb_ct_S_h_d3.arrow"))
+
+
+# Change Z gradient
+ti = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d3.arrow"))
+
+#Z = [1, 5, 10, 25, 50, 100]
+ti.Z = replace(ti.Z, 5 => 1000, 25 => 10000, 50 => 500)
+unique(ti.Z)
+Arrow.write("scripts/param_comb_ct_S_h_d4.arrow", ti)
+ti = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d4.arrow"))
 

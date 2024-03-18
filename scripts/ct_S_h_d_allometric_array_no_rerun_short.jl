@@ -1,13 +1,13 @@
 include("../scripts/sim_setup.jl")
 
 # Prepare saving
-dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_allo_d7_no_rerun_long/"
+dest_dir = "/mnt/parscratch/users/bi1ahd/sim/simCSh_allo_d8_no_rerun_long/"
 
 if !isdir(dest_dir)
     mkdir(dest_dir)
 end
 
-param = DataFrame(Arrow.Table(joinpath(proj_dir, "scripts/param_comb_ct_S_h_d3.arrow")))
+param = DataFrame(Arrow.Table(joinpath(proj_dir, "scripts/param_comb_ct_S_h_d4.arrow")))
 
 # Reshape interaction matrix
 reshape_array(vec) = reshape(vec, (
