@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#SBATCH --job-name=allo_d_completion
+#SBATCH --job-name=redo
 # Set number of iteration
 #SBATCH --array=1-34%20
 # Amount of RAM requested per job
@@ -28,4 +28,4 @@ END=$((${STEPSIZE} * ${SLURM_ARRAY_TASK_ID}))
 
 echo "Starting task from ${START} to ${END}"
 
-cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/ct_S_h_d_allometric_array.jl ${START} ${END}
+cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/repro_old_sim.jl ${START} ${END}
