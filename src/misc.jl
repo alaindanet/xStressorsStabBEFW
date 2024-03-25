@@ -23,6 +23,9 @@ function parse_commandline()
         "--c"
             help = "Predator interference"
             default = 0.0
+        "--h"
+            help = "Hill exponent of the functional response"
+            default = 2.0
         "--K_corrected"
             help = "an option without argument, i.e. a flag"
             default = true

@@ -26,12 +26,26 @@ pm = sample(param)
 println("Running warmup:σₑ = $(pm.sigma), ρ = $(pm.rho)")
 
 warmup = sim_int_mat_check_disconnected([0 0; 0 0];
-            ρ = pm.rho, alpha_ij = 0,
-            d = nothing,
-            da = (ap = .4, ai = .4, ae = .4),
-            σₑ = pm.sigma, Z = pm.Z, h = 2.0, c = 0.0, K = 5,
-            dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-            max = 50, last = 10, dt = 0.1, return_sol = false)
+                                        ρ = pm.rho,
+                                        alpha_ij = 0.5,
+                                        d = args["d"],
+                                        da = args["d_allometric_set"],
+                                        σₑ = pm.sigma,
+                                        Z = pm.Z,
+                                        c = pm.c,
+                                        h = args["h"],
+                                        K = args["K"],
+                                        dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                                        max = args["tmax"], last = 500,
+                                        K_alpha_corrected = args["K_corrected"],
+                                        dt = 0.1, gc_thre = .1,
+                                        dt_rescue = 0.05,
+                                        extinction_threshold = 1e-6,
+                                        return_sol = false,
+                                        remove_disconnected = args["rebuild_after_disconnected"],
+                                        re_run = args["re_run"], # works only if you get rid of disconnected species
+                                        digits = 5
+           )
 println("$(warmup)")
 
 
@@ -42,7 +56,7 @@ println("Running param sim from lines $first_sim to $last_sim")
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
-                               (sim_id = p.sim_id, fw_id = p.fw_id, h = p.h),
+                               (sim_id = p.sim_id, fw_id = p.fw_id, c = p.c),
                                sim_int_mat_check_disconnected(p.A;
                                            ρ = p.rho,
                                            alpha_ij = 0.5,
