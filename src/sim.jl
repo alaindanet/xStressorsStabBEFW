@@ -1,98 +1,3 @@
-function simCS(C, S;
-        Z = 100,
-        d = 0, σₑ = .5, ρ = 0.0,
-        h = 2.0, c = 0.0,
-        r = 1.0, K = 5.0, alpha_ij = 0.5,
-        max = 5000, last = 1000, dt = 0.1,
-        return_sol = false,
-        dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
-        K_alpha_corrected = true,
-        Ctol = .02,
-        gc_thre = .02
-    )
-
-    if rand(Distributions.Uniform(0, 1)) < gc_thre
-        println("")
-        GC.gc()
-        ccall(:malloc_trim, Cvoid, (Cint,), 0)
-        GC.safepoint()
-    end
-
-    # Generate a food-web with a given connectance
-    fw = try
-        FoodWeb(nichemodel, S, C = C, Z = Z, tol_C = Ctol,
-                check_cycle = true,
-                check_disconnected = true)
-    catch
-        missing
-    end
-
-    if ismissing(fw)
-        println("FoodWeb generation has failed with C = $(C), S = $(S)")
-        A = missing
-    else
-        A = fw.A
-    end
-
-    # If the generation of the food-web worked
-    if !ismissing(fw)
-        # Parameters of the functional response
-        funcrep = BioenergeticResponse(fw; h = h, c = c)
-        # Carrying capacity
-        env = Environment(fw,
-                          K = if K_alpha_corrected
-                              nprod = length(producers(fw))
-                              # Loreau & de Mazancourt (2008), Ives et al. (1999)
-                              K * (1 + (alpha_ij * (nprod - 1))) / nprod
-                          else
-                              K
-                          end
-                         )
-        # generate the model parameters
-        p = ModelParameters(fw;
-                            biorates = BioRates(fw; r = r, d = d),
-                            functional_response = funcrep,
-                            environment = env,
-                            producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
-                            env_stoch = EnvStoch(σₑ))
-        ω = p.functional_response.ω
-    B0 = rand(S)
-    # Simulate
-    timing = @elapsed m = try
-        simulate(p, B0;
-                 rho = ρ,
-                 dt = dt,
-                 tmax = max,
-                 extinction_threshold = 1e-5,
-                 diff_code_data = (dbdt, p),
-                 verbose = false
-                );
-        catch
-            (t = 0, x = missing)
-        end
-
-    else
-        m = (t = 0, x = missing)
-        timing = missing
-        ω = missing
-    end
-
-    if return_sol
-        return m
-    end
-
-    out = get_stab_fw(m; last = last)
-    # Collect timeseries
-    time_series = get_time_series(m; last = last)
-
-    out = merge(
-                (S = S, ct = C, omega = ω, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
-                out,
-                time_series
-               )
-    out
-end
-
 function sim_int_mat_check_disconnected(A;
         d = nothing,
         da = (ap = .4, ai = .4, ae = .4),
@@ -104,7 +9,7 @@ function sim_int_mat_check_disconnected(A;
         dt = 0.1,
         K_alpha_corrected = true,
         dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
-        extinction_threshold = 1e-5,
+        extinction_threshold = 1e-6,
         gc_thre = .02,
         return_sol = false,
         re_run = true,
@@ -116,6 +21,7 @@ function sim_int_mat_check_disconnected(A;
     ti = false
     i = 1
     starting_bm = nothing
+    p = nothing
     println("Re-run until no more disconnected species \
             over the last $(last) timesteps.")
     while ti != true
@@ -141,12 +47,13 @@ function sim_int_mat_check_disconnected(A;
                         extinction_threshold = extinction_threshold,
                         gc_thre = gc_thre,
                         return_sol = false,
+                        return_param = true,
                         re_run = re_run,
                         dt_rescue = dt_rescue,
                         digits = digits)
         if ismissing(output.omega) || ismissing(output.alive_species)
             println("No more species or problem in starting biomass.")
-            return output
+            return Base.structdiff(output, NamedTuple{(:param,)})
             break
         end
         # Retrieve network
@@ -157,7 +64,8 @@ function sim_int_mat_check_disconnected(A;
         ti = length(disconnected_species) == 0
         if ti == true
             println("No disconnected species, all fine.")
-            return output
+            # Remove model parameters from output
+            return Base.structdiff(output, NamedTuple{(:param,)})
         end
 
         # Build the vector of biomasses
@@ -166,16 +74,21 @@ function sim_int_mat_check_disconnected(A;
         killed_species = kill_disconnected_species(old_A;
                                                     alive_species = alive_species,
                                                     bm = biomass_vector)
+        mask_sp_to_keep = killed_species .!= 0.0
+        idxs = 1:dim(old_A)
+        idxs_to_keep = idxs[mask_sp_to_keep]
         # Rebuilding network or set disconnected species to 0
         if remove_disconnected == true
-            A = remove_disconnected_species(old_A, alive_species)
-            mask = killed_species .!= 0
-            starting_bm = biomass_vector[mask]
+            A = old_A[mask_sp_to_keep, mask_sp_to_keep]
+            starting_bm = biomass_vector[mask_sp_to_keep]
             println("Rebuilding model without disconnected species.")
         else
-            starting_bm = killed_species
-            A = A
-            println("Rebuilding model with disconnected species having a biomass of 0.")
+            starting_bm = biomass_vector[mask_sp_to_keep]
+            p = filter_model_parameters(output.param, idxs = idxs_to_keep)
+            A = p.network.A
+            #starting_bm = killed_species
+            #A = A
+            println("Keep the same model without disconnected species.")
         end
 
 
@@ -186,7 +99,7 @@ function sim_int_mat_check_disconnected(A;
         end
         i = i + 1
     end
-    output
+    Base.structdiff(output, NamedTuple{(:param,)})
 end
 
 """
@@ -326,6 +239,7 @@ function sim_int_mat(A;
         extinction_threshold = 1e-5,
         gc_thre = .02,
         return_sol = false,
+        return_param = false,
         re_run = false,
         dt_rescue = 0.05,
         digits = nothing)
@@ -486,6 +400,14 @@ function sim_int_mat(A;
                 out,
                 time_series
                )
+    if return_param
+        param = try
+            get_parameters(m)
+        catch
+            missing
+        end
+        out = merge(out, (param = param,))
+    end
 
     out
 end
@@ -541,7 +463,7 @@ function get_stab_fw(m; last = 10, digits = nothing, kwargs...)
                     :avg_omnivory
                    )
 
-    if length(m.t) >= last
+    if length(m.t) >= last && maximum(m.t) != 0
         p = get_parameters(m)
         fw = p.network
         bm_cv = coefficient_of_variation(m; last = last, kwargs...)
@@ -857,3 +779,99 @@ function filter_model_parameters(p; idxs = nothing)
                     env_stoch = env_stoch
                    )
 end
+
+function simCS(C, S;
+        Z = 100,
+        d = 0, σₑ = .5, ρ = 0.0,
+        h = 2.0, c = 0.0,
+        r = 1.0, K = 5.0, alpha_ij = 0.5,
+        max = 5000, last = 1000, dt = 0.1,
+        return_sol = false,
+        dbdt = EcologicalNetworksDynamics.stoch_m_dBdt!,
+        K_alpha_corrected = true,
+        Ctol = .02,
+        gc_thre = .02
+    )
+
+    if rand(Distributions.Uniform(0, 1)) < gc_thre
+        println("")
+        GC.gc()
+        ccall(:malloc_trim, Cvoid, (Cint,), 0)
+        GC.safepoint()
+    end
+
+    # Generate a food-web with a given connectance
+    fw = try
+        FoodWeb(nichemodel, S, C = C, Z = Z, tol_C = Ctol,
+                check_cycle = true,
+                check_disconnected = true)
+    catch
+        missing
+    end
+
+    if ismissing(fw)
+        println("FoodWeb generation has failed with C = $(C), S = $(S)")
+        A = missing
+    else
+        A = fw.A
+    end
+
+    # If the generation of the food-web worked
+    if !ismissing(fw)
+        # Parameters of the functional response
+        funcrep = BioenergeticResponse(fw; h = h, c = c)
+        # Carrying capacity
+        env = Environment(fw,
+                          K = if K_alpha_corrected
+                              nprod = length(producers(fw))
+                              # Loreau & de Mazancourt (2008), Ives et al. (1999)
+                              K * (1 + (alpha_ij * (nprod - 1))) / nprod
+                          else
+                              K
+                          end
+                         )
+        # generate the model parameters
+        p = ModelParameters(fw;
+                            biorates = BioRates(fw; r = r, d = d),
+                            functional_response = funcrep,
+                            environment = env,
+                            producer_competition = ProducerCompetition(fw, αii = 1.0, αij = alpha_ij),
+                            env_stoch = EnvStoch(σₑ))
+        ω = p.functional_response.ω
+    B0 = rand(S)
+    # Simulate
+    timing = @elapsed m = try
+        simulate(p, B0;
+                 rho = ρ,
+                 dt = dt,
+                 tmax = max,
+                 extinction_threshold = 1e-5,
+                 diff_code_data = (dbdt, p),
+                 verbose = false
+                );
+        catch
+            (t = 0, x = missing)
+        end
+
+    else
+        m = (t = 0, x = missing)
+        timing = missing
+        ω = missing
+    end
+
+    if return_sol
+        return m
+    end
+
+    out = get_stab_fw(m; last = last)
+    # Collect timeseries
+    time_series = get_time_series(m; last = last)
+
+    out = merge(
+                (S = S, ct = C, omega = ω, rho = ρ, env_stoch = σₑ, Z = Z, timing = timing),
+                out,
+                time_series
+               )
+    out
+end
+
