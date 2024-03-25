@@ -83,11 +83,11 @@ function sim_int_mat_check_disconnected(A;
             starting_bm = biomass_vector[mask_sp_to_keep]
             println("Rebuilding model without disconnected species.")
         else
-            starting_bm = biomass_vector[mask_sp_to_keep]
-            p = filter_model_parameters(output.param, idxs = idxs_to_keep)
-            A = p.network.A
-            #starting_bm = killed_species
-            #A = A
+            #starting_bm = biomass_vector[mask_sp_to_keep]
+            #p = filter_model_parameters(output.param, idxs = idxs_to_keep)
+            #A = p.network.A
+            starting_bm = killed_species
+            A = A
             println("Keep the same model without disconnected species.")
         end
 

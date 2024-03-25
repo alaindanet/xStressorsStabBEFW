@@ -37,8 +37,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --h=2.0\
     --rebuild_after_disconnected=false\
     --re_run=true\
-    --d=nothing\
-    --d_allometric_set="(ap = 0.4, ai = 0.4, ae = 0.4)"
+    --d=nothing
 
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
@@ -49,8 +48,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --h=2.0\
     --rebuild_after_disconnected=false\
     --re_run=true\
-    --d=nothing\
-    --d_allometric_set="(ap = 0.4, ai = 0.4, ae = 0.4)"
+    --d=nothing
 
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
@@ -61,5 +59,5 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --h=2.0\
     --rebuild_after_disconnected=false\
     --re_run=true\
-    --d=.1\
+    --d=0.1\
     --d_allometric_set=nothing

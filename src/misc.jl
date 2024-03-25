@@ -20,19 +20,24 @@ function parse_commandline()
             help = "Carrying capacity"
             #arg_type = Float64
             default = 10.0
+            arg_type = Float64
         "--c"
             help = "Predator interference"
             default = 0.0
+            arg_type = Float64
         "--h"
             help = "Hill exponent of the functional response"
             default = 2.0
+            arg_type = Float64
         "--K_corrected"
             help = "an option without argument, i.e. a flag"
             default = true
+            arg_type = Bool
         "--d"
             default = nothing
         "--d_allometric_set"
             default = (ap = .4, ai = .4, ae = .4)
+            arg_type = NamedTuple 
         "--tmax"
             help = "Number of timesteps"
             arg_type = Int

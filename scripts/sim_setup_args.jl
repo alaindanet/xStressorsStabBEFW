@@ -10,6 +10,12 @@ args = parse_commandline()
 first_sim = args["first_sim"]
 last_sim = args["last_sim"]
 
+if args["d"] == "nothing" 
+    args["d"] = nothing
+else
+    args["d"] = parse(Float64, args["d"])
+end
+
 print_argument()
 
 #ncpu = maximum([length(Sys.cpu_info()), 15])
