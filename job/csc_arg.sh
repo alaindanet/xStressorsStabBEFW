@@ -34,6 +34,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d1/"\
     --tmax=2000\
     --K_corrected=true --K=10.0\
+    --h=2.0\
     --rebuild_after_disconnected=false\
     --re_run=true\
     --d=nothing\
@@ -45,6 +46,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d1_K_no_corrected/"\
     --tmax=2000\
     --K_corrected=false --K=1.0\
+    --h=2.0\
     --rebuild_after_disconnected=false\
     --re_run=true\
     --d=nothing\
@@ -56,6 +58,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d1_non_allo/"\
     --tmax=2000\
     --K_corrected=true --K=10.0\
+    --h=2.0\
     --rebuild_after_disconnected=false\
     --re_run=true\
     --d=.1\
