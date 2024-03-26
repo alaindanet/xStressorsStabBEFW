@@ -291,7 +291,7 @@ function sim_int_mat(A;
                                )
         end
 
-        ω = p.functional_response.ω
+        #ω = p.functional_response.ω
         if isnothing(B0)
             B0 = rand(S)
         end
@@ -384,12 +384,14 @@ function sim_int_mat(A;
     # Collect timeseries, only alive species
     time_series = get_time_series(m; last = last,
                                   idxs = out.alive_species,
-                                  digits = 5)
-    if !isnothing(digits)
-        if !isnothing(ω)
+                                  digits = digits)
+    if length(m.t) >= last
+        ω = get_parameters(m).functional_response.ω
+        #ω = ω[out.alive_species, out.alive_species]
+        d = get_parameters(m).biorates.d
+        d = d[out.alive_species]
+        if !isnothing(digits)
             ω = round.(ω, digits = digits)
-        end
-        if !isnothing(d)
             d = round.(d, digits = digits)
         end
     end

@@ -19,12 +19,19 @@ include("src/sim.jl")
 include("src/plot.jl")
 include("src/get_modules.jl")
 
+ti = missing
+isnothing(ti)
+
+fw = FoodWeb(nichemodel, 20, C = .2, Z = 10)
+p = ModelParameters(fw)
+filter_model_parameters(p; idxs=[1, 2, 20])
+
 fw_d3 = DataFrame(Arrow.Table("scripts/fw_comb_ct_S_h_d3.arrow"))
+fw_d4 = DataFrame(Arrow.Table("scripts/fw_comb_ct_S_h_d4.arrow"))
 fw_d2 = DataFrame(Arrow.Table("scripts/fw_comb_ct_S_h_d2.arrow"))
 
-
-params = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d2.arrow"))
-param = filter([:S, :sigma, :h, :Z, :rho] => (rich, s, h, z, r) -> h==2.0 && s == .3 && z == 100 && r ==0,
+params = DataFrame(Arrow.Table("scripts/param_comb_zc.arrow"))
+param = filter([:S, :sigma, :c, :Z, :rho] => (rich, s, c, z, r) -> c==0.0 && s == .3 && z == 100 && r ==0,
                params)
 unique(params[:, :sigma])
 unique(params[:, :Z])
@@ -34,11 +41,37 @@ reshape_array(vec) = reshape(vec, (
                                    round(Int, sqrt(length(vec))),
                                    round(Int, sqrt(length(vec)))
                                   )
-                            )
+param = DataFrame(Arrow.Table("scripts/param_comb_ct_S_h_d4.arrow"))
 param[!, :A] = map(x -> reshape_array(x), param[!, :A])
 
 # Make a tuple vector
 param = NamedTuple.(eachrow(param))
+p = sample(param)
+p = param[2]
+
+ti = sim_int_mat_check_disconnected(p.A;
+                               ρ = p.rho,
+                               alpha_ij = 0.5,
+                               d = nothing,
+                               da = (ap = .4, ai = .4, ae = .4),
+                               σₑ = p.sigma, Z = p.Z,
+                               h = p.h, c = 0, K = 10.0,
+                               dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
+                               max = 1000, last = 500,
+                               K_alpha_corrected = true,
+                               dt = 0.1, gc_thre = .1,
+                               extinction_threshold = 1e-6,
+                               dt_rescue = .05,
+                               remove_disconnected = false,
+                               return_sol = true,
+                               re_run = true,
+                               digits = 6
+                              )
+length(ti.d) == length(ti.alive_species) == length(ti.tlvl) == length(ti.bm_sp) == size(ti.species, 2)
+ti.d
+ti.tlvl
+
+
 
 timing = @elapsed sim = @showprogress pmap(p ->
                          merge(
@@ -757,8 +790,6 @@ sim_int_mat([0 0 0; 0 0 0; 1 1 0];
 #  Motif  #
 ###########
 
-fw = FoodWeb(nichemodel, 20, C = .2, Z = 10)
-p = ModelParameters(fw)
 p.biorates.x
 trophic_levels(fw)
 fw = FoodWeb(nichemodel, 80, C = .05)
