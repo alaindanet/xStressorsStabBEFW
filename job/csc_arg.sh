@@ -52,7 +52,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
 
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
-    --param_file="scripts/param_comb_ct_S_h_d4.arrow"\
+    --param_file="scripts/param_comb_zc.arrow"\
     --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d1_K_no_corrected/"\
     --tmax=2000\
     --K_corrected=false --K=1.0\
