@@ -291,7 +291,7 @@ function sim_int_mat(A;
                                )
         end
 
-        #ω = p.functional_response.ω
+        ω = p.functional_response.ω
         if isnothing(B0)
             B0 = rand(S)
         end

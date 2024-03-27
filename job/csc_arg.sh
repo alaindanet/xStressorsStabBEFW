@@ -31,7 +31,7 @@ echo "Starting task from ${START} to ${END}"
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
     --param_file="scripts/param_comb_zc.arrow"\
-    --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d1/"\
+    --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d2/"\
     --tmax=2000\
     --K_corrected=true --K=10.0\
     --h=2.0\
@@ -42,7 +42,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
     --param_file="scripts/param_comb_zc.arrow"\
-    --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d1_rebuild/"\
+    --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d2_rebuild/"\
     --tmax=2000\
     --K_corrected=true --K=10.0\
     --h=2.0\
@@ -53,9 +53,9 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
     --param_file="scripts/param_comb_zc.arrow"\
-    --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d1_K_no_corrected/"\
+    --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d2_K_no_corrected/"\
     --tmax=2000\
-    --K_corrected=false --K=1.0\
+    --K_corrected=false --K=10.0\
     --h=2.0\
     --rebuild_after_disconnected=false\
     --re_run=true\
@@ -64,11 +64,10 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
     --param_file="scripts/param_comb_zc.arrow"\
-    --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d1_non_allo/"\
+    --save_dir="/mnt/parscratch/users/bi1ahd/sim/sim_csc_allo_d2_non_allo/"\
     --tmax=2000\
     --K_corrected=true --K=10.0\
     --h=2.0\
     --rebuild_after_disconnected=false\
     --re_run=true\
-    --d=0.1\
-    --d_allometric_set=nothing
+    --d=0.1
