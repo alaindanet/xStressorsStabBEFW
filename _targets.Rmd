@@ -44,7 +44,7 @@ We first define some global options/functions common to all targets. The functio
 options(tidyverse.quiet = TRUE)
 tar_option_set(
   error = "null",
-  packages = c("tidyverse", "magrittr", "cowplot", "here", "arrow", "piecewiseSEM", "semEff", "easystats", "glmmTMB", "ggcorrplot", "kableExtra")
+  packages = c("tidyverse", "magrittr", "cowplot", "here", "arrow", "piecewiseSEM", "semEff", "easystats", "glmmTMB", "ggcorrplot", "kableExtra", "DHARMa")
 )
 # Load custom functions
 lapply(list.files(here::here("R"), full.names = TRUE), source)
@@ -83,16 +83,16 @@ list(
   tar_target(sem_rsquared, sem_main_text_rsquared_csc_rerun),
   tar_target(tab_sem_vif,
     sem_collinearity %>%
-      mutate(
-        response = var_replacement()[response],
-        Term = var_replacement()[Term]
-        ) %>%
+      mutate(across(c("response", "Term"), ~var_replacement()[.x])) %>%
+      mutate(VIF = round(VIF, 1)) %>%
+      select(Response = response, Term, VIF) %>%
       kable(
-        caption = "Variance Inflation Factors for the Structural Equation Model.") %>%
+        caption = "Variance Inflation Factor for the Structural Equation Model.") %>%
       kable_styling()
     ),
   tar_target(tab_sem_rsquared,
     sem_rsquared %>%
+      rename(`$R^2$` = R.squared) %>%
       kable(caption = "Rsquared for the Structural Equation Model.") %>%
       kable_styling()
   )
@@ -108,6 +108,10 @@ sim_fw_csc_rebuild
 sim_fw_csc_kno
 sim_fw_csc_non_allo
 sim_fw_csc_non_allo
+tar_read(sem_rsquared) %>%
+  rename(`$R^2$` = R.squared) %>%
+  kable(caption = "Rsquared for the Structural Equation Model.") %>%
+  kable_styling()
 ```
 
 
@@ -228,53 +232,6 @@ list(
 )
 ```
 
-```{r, eval = FALSE}
-tar_load(sem_main_text)
-tar_load(sim_fw_sem)
-
-m <- list(
-  pop_stab = lm(pop_stab ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + env_stoch + c + Z, sim_fw_sem),
-  evenness_sae = lm(evenness_sae ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + c + Z, sim_fw_sem),
-  sae_total = lm(sae_total ~ richness + evenness_sae, sim_fw_sem),
-  cpe = lm(cpe ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + resp_div + c + Z, sim_fw_sem),
-  async = lm(async ~ sae_total + cpe, sim_fw_sem),
-  stab_com = lm(stab_com ~ pop_stab + async, sim_fw_sem)
-)
-
-m2 <- list(
-  pop_stab = lm(pop_stab ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + env_stoch + c + Z + resp_div, sim_fw_sem),
-  evenness_sae = lm(evenness_sae ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + c + Z + env_stoch + resp_div, sim_fw_sem),
-  sae_total = lm(sae_total ~ richness + evenness_sae, sim_fw_sem),
-  cpe = lm(cpe ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + resp_div + c + Z + env_stoch, sim_fw_sem),
-  async = lm(async ~ sae_total + cpe, sim_fw_sem),
-  stab_com = lm(stab_com ~ pop_stab + async, sim_fw_sem)
-)
-
-
-ti <- as.psem(m)
-ti2 <- as.psem(m2)
-#update(ti, avg_omnivory %~~% w_avg_tlvl)
-summary(ti)
-summary(ti2)
-tar_load(sim_fw_sem)
-
-
-m3 <- list(
-  pop_stab = lm(pop_stab ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + env_stoch + c + Z + resp_div, sim_fw_sem),
-  evenness_sae = lm(evenness_sae ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + c + Z + env_stoch + resp_div, sim_fw_sem),
-  sae_total = lm(sae_total ~ richness + evenness_sae, sim_fw_sem),
-  cpe_int = lm(cpe_int ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + resp_div + c + Z + env_stoch, sim_fw_sem),
-  cpe_env = lm(cpe_env ~ richness + avg_int_strength + w_avg_tlvl + ct_alive + resp_div + c + Z + env_stoch, sim_fw_sem),
-  #cpe = lm(cpe ~ cpe_env + cpe_int, sim_fw_sem),
-  async = lm(async ~ sae_total + cpe, sim_fw_sem),
-  stab_com = lm(stab_com ~ pop_stab + async, sim_fw_sem)
-)
-summary(as.psem(m3))
-
-```
-
-
-
 ```{targets model-to-pred}
 list(
   tar_target(stab_com_part_var, c("stab_com", "pop_stab", "async")),
@@ -286,7 +243,7 @@ list(
       rand_effect = TRUE,
       term_to_del = "richness : resp_div : Z +"),
       data = mutate(sim_fw,
-      across(c(stab_com, pop_stab, async, richness), log)
+      across(c(stab_com, pop_stab, async), log)
       ))
         )),
         pattern = stab_com_part_var
@@ -300,7 +257,7 @@ list(
         term_to_del = "richness : resp_div : Z +"
         ),
       data = sim_fw %>%
-        mutate(across(c(stab_com, richness, pop_stab, async), log)) %>%
+        mutate(across(c(stab_com, pop_stab, async), log)) %>%
         mutate(across(c(sim_id, fw_id), as.factor)) %>%
         mutate(
           across(c(stab_com, pop_stab, async, richness,
@@ -342,6 +299,11 @@ list(
       "Z" = mean(sim_fw$Z)
     )
   ),
+  tar_target(pred_range_fw,
+    map(rlang::set_names(c("avg_int_strength", "ct_alive", "w_avg_tlvl")),
+      ~quantile(sim_fw[[.x]], probs = c(.05, .95))
+    )
+  ),
   tar_target(pred_stab_comp_resp_div,
     fixed_effect_fw_stab_comp %>%
       left_join(
@@ -354,9 +316,21 @@ list(
           tibble(
             variable = c("avg_int_strength", "w_avg_tlvl", "ct_alive"),
             values = list(
-              seq(quantile(sim_fw$avg_int_strength)["25%"], quantile(sim_fw$avg_int_strength)["75%"], length.out = 50),
-              seq(quantile(sim_fw$w_avg_tlvl)["25%"], quantile(sim_fw$w_avg_tlvl)["75%"], length.out = 50),
-              seq(quantile(sim_fw$ct_alive)["25%"], quantile(sim_fw$ct_alive)["75%"], length.out = 50)
+              seq(
+                min(pred_range_fw$avg_int_strength),
+                max(pred_range_fw$avg_int_strength),
+                length.out = 50
+                ),
+              seq(
+                min(pred_range_fw$w_avg_tlvl),
+                max(pred_range_fw$w_avg_tlvl),
+                length.out = 50
+              ),
+              seq(
+                min(pred_range_fw$ct_alive),
+                max(pred_range_fw$ct_alive),
+                length.out = 50
+              )
             )
           )
         )
@@ -401,7 +375,7 @@ list(
 # plot
 
 ```{r, eval = FALSE}
-tar_load(sem_simplified_tot)
+tar_load(sem_main_text_tot)
 sem_simplified_tot %>%
   select(sim_type, collinearity) %>%
   unnest(cols = c(collinearity)) %>%
@@ -411,6 +385,7 @@ sem_simplified_tot %>%
     max = max(VIF)
   )
 tar_read(sem_main_text_eff_rerun)
+tar_load(pred_stab_comp_resp_div)
 ```
 
 
@@ -460,17 +435,16 @@ list(
     ),
   tar_target(p_sem_tot_stab_leg,
     plot_grid(
-      print(p_sem_tot_stab +
+      p_sem_tot_stab +
         theme(
           legend.position = "none",
-        )
         ),
       get_legend(p_sem_tot_stab),
       nrow = 2,
       rel_heights = c(1, .05)
       )
   ),
-  tar_target(sem_file, here("report", "figures", "sem_stab_simplified_simple.pdf"), format = "file"),
+  tar_target(sem_file, here("report", "figures", "sem_stab_main_text.pdf"), format = "file"),
   tar_target(p_sem,
     ggdraw() +
       draw_image(magick::image_read_pdf(sem_file, density = 600),
@@ -482,9 +456,8 @@ list(
   tar_target(p_sem_fig,
     plot_grid(
       p_sem,
-      print(
-        tar_read(p_sem_tot_stab) +
-          guides(
+      p_sem_tot_stab +
+        guides(
             color = guide_legend(override.aes = list(linetype = 0, alpha = 1)),
             y = "none",
             y.sec = "axis"
@@ -493,18 +466,26 @@ list(
             legend.title = element_blank(),
             legend.position = c(.005, .995),
             legend.justification = c("left", "top"),
-
-          )
         ),
       nrow = 2, rel_heights = c(1, .8),
       labels = "auto"
   )
   ),
+  tar_target(p_sem_fig_file,
+    ggsave_multiple(
+      paste0("p_sem_fig", c(".png", ".pdf")),
+      plot = p_sem_fig,
+      path = here::here("report", "figures"),
+      scale = 3.4,
+      dpi = 400,
+      width = 80,
+      height = 80 * 1,
+      units = "mm")
+  ),
   tar_target(p_sem_tot_stab_file,
     ggsave_multiple(
   paste0("p_sem_tot_stab", c(".png", ".pdf")),
-  plot = print(
-    p_sem_tot_stab +
+  plot = p_sem_tot_stab +
       guides(
         color = guide_legend(override.aes = list(linetype = 0, alpha = 1))
       ) +
@@ -513,15 +494,13 @@ list(
         legend.position = c(.005, .995),
         legend.justification = c("left", "top"),
 
-      )
     ),
   path = here::here("report", "figures"),
   scale = 2.4,
   dpi = 400,
   width = 80,
   height = 80 * .4,
-  units = "mm"),
-  format = "file")
+  units = "mm"))
 )
 ```
 
@@ -529,33 +508,37 @@ list(
 list(
   tar_target(p_pred_sr_resp_div,
     pred_stab_comp_resp_div %>%
-      filter(response == "stab_com") %>%
-      mutate(
-        variable = var_replacement()[variable]
-        ) %>%
-      ggplot(aes(x = resp_div, y = variable_values, fill = slope)) +
-      geom_raster() +
-      facet_wrap(~variable, scales = "free_y") +
-      coord_cartesian(expand = FALSE) +
-      scale_fill_gradient2(
-        low = resp_div_cat_colors()["Low"],
-        mid = "white",
-        high = resp_div_cat_colors()["High"],
-        midpoint = 0,
-        space = "Lab",
-        na.value = "grey50",
-        guide = "colourbar",
-        aesthetics = "fill") +
-      labs(
-        x = var_replacement()["resp_div"],
-        y = "Food-web structure",
-        fill = "Slope community stability - Richness"
-        ) +
-      theme(
-        legend.position = "bottom",
-        legend.key.width = unit(2.5, "cm"),
-        plot.margin = margin(l = 10, r = 10, unit = "pt")
-      )
+  filter(response == "stab_com") %>%
+  mutate(
+    variable = var_replacement()[variable]
+    ) %>%
+  ggplot(aes(x = resp_div, y = variable_values, fill = slope)) +
+  geom_raster() +
+  facet_wrap(~variable, scales = "free_y", strip.position = "left") +
+  coord_cartesian(expand = FALSE) +
+  scale_fill_gradient2(
+    low = resp_div_cat_colors()["Low"],
+    mid = "white",
+    high = resp_div_cat_colors()["High"],
+    midpoint = 0,
+    space = "Lab",
+    na.value = "grey50",
+    guide = "colourbar",
+    aesthetics = "fill") +
+  labs(
+    x = var_replacement()["resp_div"],
+    y = "Food-web structure",
+    fill = "Slope community stability - Richness"
+    ) +
+  theme(
+    legend.position = "bottom",
+    legend.key.width = unit(2.5, "cm"),
+    plot.margin = margin(l = 10, r = 10, t = 5, unit = "pt"),
+    strip.placement = "outside",
+    strip.background = element_blank(),
+    strip.text = element_text(size = 11),
+    axis.title.y = element_blank()
+  )
     ),
   tar_target(p_pred_sr_resp_div_file,
     ggsave_multiple(
@@ -566,8 +549,7 @@ list(
       dpi = 400,
       width = 120,
       height = 120 * .45,
-      units = "mm"),
-    format = "file"),
+      units = "mm")),
   tar_target(p_pred_sr_resp_div_supp,
     pred_stab_comp_resp_div %>%
       mutate(
@@ -610,8 +592,120 @@ list(
       dpi = 400,
       width = 80,
       height = 80 * 1,
-      units = "mm"),
-    format = "file"
+      units = "mm")
+  )
+)
+```
+
+```{targets fig-stab-sr}
+tar_load(default_variable_values_pred)
+tar_load(model_fw_stab_comp)
+tar_load(p_pred_sr_resp_div)
+list(
+  tar_target(richness_gradient_pred_show, seq(1, 30, length.out = 20)),
+  tar_target(pred_data_show, {
+    low_resp_example <- rbind(default_variable_values_pred) %>%
+      as_tibble() %>%
+      mutate(resp_div = .1, w_avg_tlvl = 2.0, fw_id = "new") %>%
+      slice(rep(1, length(richness_gradient_pred_show))) %>%
+      mutate(richness = richness_gradient_pred_show)
+    high_resp_example <- rbind(default_variable_values_pred) %>%
+      as_tibble() %>%
+      mutate(resp_div = .9, w_avg_tlvl = 1.2, fw_id = "new") %>%
+      slice(rep(1, length(richness_gradient_pred_show))) %>%
+      mutate(richness = richness_gradient_pred_show)
+    out <- rbind(low_resp_example, high_resp_example)
+    out$stab_com <- predict(
+      model_fw_stab_comp[model_fw_stab_comp$response == "stab_com", ]$model[[1]],
+      out,
+      allow.new.levels = TRUE
+    )
+    out
+  }
+    ),
+  tar_target(p_pred_data_show_low_resp,
+    pred_data_show %>%
+      filter(resp_div == .1) %>%
+      ggplot(aes(x = richness, y = exp(stab_com))) +
+      geom_line(color = resp_div_cat_colors()["Low"]) +
+      ylim(10, 25) +
+      labs(x = "Species richness", y = "Community stability") +
+      theme_half_open()
+    ),
+  tar_target(p_pred_data_show_low_resp_file,
+    ggsave_multiple(
+      paste0("p_pred_data_show_low_resp", c(".png", ".pdf")),
+      plot = p_pred_data_show_low_resp,
+      path = here::here("report", "figures"),
+      scale = 1.4,
+      dpi = 400,
+      width = 80,
+      height = 80 * .9,
+      units = "mm")
+    ),
+  tar_target(p_pred_data_show_high_resp,
+    pred_data_show %>%
+      filter(resp_div == .9) %>%
+      ggplot(aes(x = richness, y = exp(stab_com))) +
+      geom_line(color = resp_div_cat_colors()["High"]) +
+      ylim(10, 25) +
+      labs(x = "Species richness", y = "Community stability") +
+      theme_half_open()
+    ),
+  tar_target(p_pred_data_show_high_resp_file,
+    ggsave_multiple(
+      paste0("p_pred_data_show_high_resp", c(".png", ".pdf")),
+      plot = p_pred_data_show_high_resp,
+      path = here::here("report", "figures"),
+      scale = 1.4,
+      dpi = 400,
+      width = 80,
+      height = 80 * .9,
+      units = "mm")
+    ),
+  tar_target(data_label_pred_show,
+    pred_data_show %>%
+      select(resp_div, richness, w_avg_tlvl) %>%
+      filter(richness == min(richness)) %>%
+      pivot_longer(c(w_avg_tlvl), names_to = "variable",
+        values_to = "variable_values") %>%
+      mutate(variable = var_replacement()[variable],
+        label = c("b", "c")
+      )
+    ),
+  tar_target(p_fig3,
+    plot_grid(
+      p_pred_sr_resp_div +
+        theme(
+          legend.position = "bottom",
+          legend.title = element_text(vjust = .75),
+          legend.key.width = unit(2.0, "cm")
+          ) +
+        geom_label(
+          data = data_label_pred_show,
+          aes(color = NULL, fill = NULL, label = label),
+          fontface = "bold"
+          ),
+        plot_grid(NULL,p_pred_data_show_low_resp,
+          p_pred_data_show_high_resp, NULL,
+          labels = c("", "b", "c", ""), nrow = 1,
+          rel_widths = c(.25, 1, 1, .25)
+          ),
+        labels = c("a"),
+        rel_heights = c(1, .75),
+        nrow = 2
+    )
+    ),
+  tar_target(p_fig3_file,
+    ggsave_multiple(
+      paste0("p_fig3", c(".png", ".pdf")),
+      plot = p_fig3,
+      path = here::here("report", "figures"),
+      scale = 2.6,
+      dpi = 400,
+      width = 80,
+      height = 80 * .8,
+      units = "mm")
   )
 )
 ```
@@ -630,10 +724,10 @@ list(
         ) +
       theme_bw()
     ),
-  tar_target(p_pop_stab_h,
+  tar_target(p_pop_stab_c,
     sim_fw %>%
       filter(env_stoch == .3) %>%
-      ggplot(aes(x = as.factor(h), y = log(pop_stab))) +
+      ggplot(aes(x = as.factor(c), y = log(pop_stab))) +
       geom_boxplot(alpha = .2) +
       labs(
         x = var_replacement()["h"],
@@ -768,9 +862,9 @@ list(
         ) +
       theme_bw()
     ),
-  tar_target(p_sem_bivariate_relations,
+  tar_target(p_raw_bivariate_relations,
     plot_grid(
-      p_pop_stab_w_avg_tlvl, p_pop_stab_h, p_pop_stab_env_stoch,
+      p_pop_stab_w_avg_tlvl, p_pop_stab_c, p_pop_stab_env_stoch,
       p_sae_total_richness, p_sae_total_ct_alive, p_sae_total_w_avg_tlvl,
       p_sae_total_avg_int, p_cpe_avg_int, p_cpe_resp_div
     )
@@ -889,7 +983,6 @@ list(
         p_stoch_pop_stab,
         labels = "auto"
       )
-
     )
 )
 ```
@@ -1077,7 +1170,7 @@ cor_var <- cor(
     method = "spearman")
 ggcorrplot(cor_var, type = "lower", lab = TRUE)
 ```
-```{targets p_cor_file, tar_simple = TRUE, format = "file"}
+```{targets p_cor_file, tar_simple = TRUE}
 ggsave_multiple(
   paste0("p_cor", c(".png", ".pdf")),
   plot = p_cor,
@@ -1089,9 +1182,117 @@ ggsave_multiple(
   units = "mm")
 ```
 
+```{targets p_model_fw_stab_comp_scaled_coeff, tar_simple=TRUE}
+pattern <- c(var_replacement(), get_term_replacement())
+names(pattern) <- paste0("\\b", names(pattern), "\\b")
+model_fw_stab_comp_scaled_coeff %>%
+  unnest(cols = c(coeff)) %>%
+  rename(lower_ci = `2.5 %`, upper_ci = `97.5 %`) %>%
+  rename_with(tolower) %>%
+  filter(!str_detect(term, "(Intercept)")) %>%
+  mutate(
+    type = ifelse(str_detect(term, ":"), "interaction", "single"),
+    term = str_replace_all(term, pattern),
+    response = recode_factor(response, !!!var_replacement(), .ordered = TRUE)
+    ) %>%
+  ggplot(aes(
+      y = term, x = estimate,
+      xmin = lower_ci, xmax = upper_ci,
+      color = response)) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_pointrange() +
+  scale_colour_manual(values = stab_color()) +
+  labs(x = "Standardised coefficients") +
+  theme_bw() +
+  theme(
+    axis.title.y = element_blank(),
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  )
+```
+
+```{targets p_model_fw_stab_comp_scaled_coeff_file, tar_simple = TRUE}
+ggsave_multiple(
+  paste0("p_model_fw_stab_comp_scaled_coeff", c(".png", ".pdf")),
+  plot = p_model_fw_stab_comp_scaled_coeff,
+  path = here::here("report", "figures"),
+  scale = 2.2,
+  dpi = 400,
+  width = 80,
+  height = 80 * 1.4,
+  units = "mm")
+```
+
+
 
 
 # Table
+
+```{targets sem_fig_coeff, tar_simple=TRUE}
+sem_main_text_eff_tab %>%
+  filter(effect_type == "direct",
+    predictor %in% c(
+      sem_tot_predictor(),
+      "async", "stab_com", "pop_stab", "sae_total", "cpe", "evenness_sae", "sae_even"
+      )) %>%
+select(response, predictor, effect) %>%
+mutate(effect = round(effect, 2)) %>%
+filter(abs(effect) >= .05)
+```
+
+
+```{targets check-model-pred-sr}
+list(
+  tar_target(model_fw_stab_comp_wo_int,
+    lm(stab_com ~ richness + resp_div + env_stoch + ct_alive + w_avg_tlvl + Z +
+      avg_int_strength + c, data = sim_fw_sem)),
+  tar_target(tab_model_fw_stab_comp_wo_int_vif,
+    model_fw_stab_comp_wo_int %>%
+      performance::check_collinearity() %>%
+      as_tibble() %>%
+      mutate(Term = var_replacement()[Term]) %>%
+      mutate(VIF = round(VIF, 1)) %>%
+      select(Term, VIF) %>%
+      kable(
+        caption = "Variance Inflation Factor for the linear model predicting the
+        relationship between stability and richness.") %>%
+        kable_styling()
+      ),
+    tar_target(sim_res_model_fw_stab_comp,
+      model_fw_stab_comp %>%
+        mutate(
+          res = map(model, DHARMa::simulateResiduals),
+          ) %>%
+      select(-model)
+    ),
+    tar_target(plot_diagnotisc_model_fw_stab_comp,
+    {
+      p <- map(sim_res_model_fw_stab_comp$res,
+            function(x) {
+              plot(x)
+              out <- recordPlot()
+              ggdraw(out)
+            }
+      )
+      plot_grid(plotlist = p,
+        nrow = 3,
+        labels = "auto")
+      }),
+  tar_target(p_diagnotisc_model_fw_stab_comp_file,
+    ggsave_multiple(
+      paste0("p_diagnotisc_model_fw_stab_comp", c(".png", ".pdf")),
+      plot = plot_diagnotisc_model_fw_stab_comp,
+      path = here::here("report", "figures"),
+      scale = 2.4,
+      dpi = 400,
+      width = 80,
+      height = 80 * 1.8,
+      units = "mm")
+  )
+)
+```
+
+
 
 ```{targets}
 list(
@@ -1192,36 +1393,33 @@ library(kableExtra)
 lapply(list.files(here::here("R"), full.names = TRUE), source)
 ```
 
-```{r, eval=FALSE}
-#tar_load_globals()
-tar_load(sem_main_text_eff_tab)
-sem_main_text_eff_tab %>%
-  filter(
-    effect_type == "direct",
-    predictor %in% c(sem_tot_predictor(), "async", "stab_com", "pop_stab", "sae_total", "cpe", "evenness_sae", "sae_even")
-    ) %>%
-select(response, predictor, effect) %>%
-mutate(effect = round(effect, 2)) %>%
-filter(abs(effect) > .02)
-```
-
-```{r}
-tar_load(sem_main_text_collinearity_csc_rerun)
-sem_main_text_collinearity_csc_rerun %>%
-  select(response, Term, VIF) %>%
-  filter(VIF > 3)
-```
-
 ```{r}
 tar_load(sim_fw_sem)
-ti <- lm(stab_com ~ richness + resp_div + env_stoch + ct_alive + w_avg_tlvl + Z +
-  avg_int_strength + c, data = sim_fw_sem)
-check_collinearity(ti)
+```
 
-library(DHARMa)
-tar_load(model_fw_stab_comp)
-tu <- simulateResiduals(model_fw_stab_comp$model[[3]])
-plot(tu)
+```{r}
+# Does not work in targets
+tar_load(sim_res_model_fw_stab_comp)
+tmp_diagnotisc_model_fw_stab_comp <- map(sim_res_model_fw_stab_comp$res,
+            function(x) {
+              plot(x)
+              out <- recordPlot()
+              ggdraw(out)
+            }
+      )
+plot_diagnotisc_model_fw_stab_comp <- plot_grid(
+  plotlist = tmp_diagnotisc_model_fw_stab_comp,
+  nrow = 3,
+  labels = "auto")
+ggsave_multiple(
+  paste0("p_diagnotisc_model_fw_stab_comp", c(".png", ".pdf")),
+  plot = plot_diagnotisc_model_fw_stab_comp,
+  path = here::here("report", "figures"),
+  scale = 2.6,
+  dpi = 400,
+  width = 80,
+  height = 80 * 1.3,
+  units = "mm")
 ```
 
 
@@ -1328,6 +1526,12 @@ mutate(
 ```
 
 ```{r}
+tar_meta(fields = error, complete_only = TRUE) %>%
+  print(n = 40)
+```
+
+
+```{r}
 label_sem <- as.character(as.roman(seq_len(nrow(sem_simplified_bivariate_relations))))
 p_sem_simplified_bivariate_relations <- plot_grid(
   plotlist = sem_simplified_bivariate_relations$plot,
@@ -1383,9 +1587,6 @@ ggsave_multiple(
 ```
 
 
-```{r}
-```
-
 ```{r, eval = FALSE}
 bivariate_rel_file <- here("report", "figures", "p_sem_simplified_bivariate_relations.jpg")
 p_bivariate_rel <- ggdraw() +
@@ -1394,27 +1595,6 @@ p_bivariate_rel <- ggdraw() +
     width = 1, height = 1,
     hjust = 0, halign = 0, valign = 0
   )
-```
-
-
-```{r}
-
-ggsave_multiple(
-  paste0("p_sem_fig", c(".png", ".pdf")),
-  plot = tar_read(p_sem_fig),
-  path = here::here("report", "figures"),
-  scale = 3.4,
-  dpi = 400,
-  width = 80,
-  height = 80 * 1,
-  units = "mm")
-```
-
-
-```{r}
-tar_load(fixed_effect_fw_stab)
-tar_load(fixed_effect_fw_stab_comp)
-tar_load(pred_stab_comp_rho)
 ```
 
 ```{r plot-sim}
@@ -1670,113 +1850,14 @@ ggsave_multiple(
 ```
 
 ```{r}
-tar_load(model_fw_stab_comp_scaled_coeff)
-
-pattern <- c(var_replacement(), get_term_replacement())
-names(pattern) <- paste0("\\b", names(pattern), "\\b")
-```
-
-```{r}
-model_fw_stab_comp_scaled_coeff %>%
-  unnest(cols = c(coeff)) %>%
-  rename(lower_ci = `2.5 %`, upper_ci = `97.5 %`) %>%
-  rename_with(tolower) %>%
-  filter(!str_detect(term, "(Intercept)")) %>%
-  mutate(
-    type = ifelse(str_detect(term, ":"), "interaction", "single"),
-    term = str_replace_all(term, pattern)
-    ) %>%
-  filter(type == "interaction") %>%
-  ggplot(aes(
-      y = term, x = estimate,
-      xmin = lower_ci, xmax = upper_ci,
-      color = response)) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  geom_pointrange() +
-  labs(x = "Standardised coefficients") +
-  theme_bw() +
-  theme(axis.title.y = element_blank())
-```
-
-```{r}
-p_model_fw_stab_com_int <- model_fw_stab_comp_scaled_coeff %>%
-  filter(response == "stab_com") %>%
-  unnest(cols = c(coeff)) %>%
-  rename(lower_ci = `2.5 %`, upper_ci = `97.5 %`) %>%
-  rename_with(tolower) %>%
-  filter(!str_detect(term, "(Intercept)")) %>%
-  mutate(
-    type = ifelse(str_detect(term, ":"), "interaction", "single"),
-    term = str_replace_all(term, pattern)
-    ) %>%
-  filter(type == "interaction") %>%
-  ggplot(aes(
-      y = term, x = estimate,
-      xmin = lower_ci, xmax = upper_ci
-      )) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  geom_pointrange() +
-  labs(x = "Standardised coefficients") +
-  theme_bw() +
-  theme(axis.title.y = element_blank())
-ggsave_multiple(
-  paste0("p_model_fw_stab_com_int", c(".png", ".pdf")),
-  plot = p_model_fw_stab_com_int,
-  path = here::here("report", "figures"),
-  scale = 1.8,
-  dpi = 400,
-  width = 80,
-  height = 80 * 1.3,
-  units = "mm")
-```
-
-```{r}
-p_model_fw_stab_com_single <- model_fw_stab_comp_scaled_coeff %>%
-  filter(response == "stab_com") %>%
-  unnest(cols = c(coeff)) %>%
-  rename(lower_ci = `2.5 %`, upper_ci = `97.5 %`) %>%
-  rename_with(tolower) %>%
-  filter(!str_detect(term, "(Intercept)")) %>%
-  mutate(
-    type = ifelse(str_detect(term, ":"), "interaction", "single"),
-    term = str_replace_all(term, pattern)
-    ) %>%
-  filter(type == "single") %>%
-  ggplot(aes(
-      y = term, x = estimate,
-      xmin = lower_ci, xmax = upper_ci
-      )) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  geom_pointrange() +
-  labs(x = "Standardised coefficients") +
-  theme_bw() +
-  theme(axis.title.y = element_blank())
-p_model_fw_stab_com <- plot_grid(
-  p_model_fw_stab_com_int,
-  plot_grid(p_model_fw_stab_com_single, NULL, nrow = 2),
-  ncol = 2,
-  labels = "auto"
-)
-ggsave_multiple(
-  paste0("p_model_fw_stab_com", c(".png", ".pdf")),
-  plot = p_model_fw_stab_com,
-  path = here::here("report", "figures"),
-  scale = 2.4,
-  dpi = 400,
-  width = 80,
-  height = 80 * 1,
-  units = "mm")
-```
-
-
-
-```{r}
 tar_load(fixed_effect_fw_stab)
 ```
 ```{r}
 tar_load_globals()
+tar_visnetwork()
 tar_load(pred_stab_comp_resp_div)
 ```
+
 
 
 
@@ -1789,13 +1870,14 @@ fw_values_bin <- list(
   resp_div = c(low = .25, high = 1)
 )
 
+tar_read(pred_data)
 pred_data_sr_fw <- pred_data %>%
   filter(
     ct_alive %in% fw_values_bin$ct_alive,
     resp_div %in% fw_values_bin$resp_div,
     richness >= 1,
     Z == 100,
-    h %in% c(2),
+    c %in% c(1),
     avg_int_strength %in% fw_values_bin$avg_int_strength,
     env_stoch == .1,
     w_avg_tlvl %in% fw_values_bin$w_avg_tlvl

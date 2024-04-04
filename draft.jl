@@ -22,6 +22,19 @@ include("src/get_modules.jl")
 ti = missing
 isnothing(ti)
 
+typeof([.1])
+tu = [missing, .1, [.1]]
+new = Vector{Union{Missing, Vector{Float64}}}(missing, length(tu))
+for i in 1:length(tu)
+    if (typeof(tu[i]) == Float64)
+        new[i] = [tu[i]]
+    else
+        new[i] = tu[i]
+    end
+end
+new
+convert(Vector{Union{Missing, Vector{Float64}}}, ti)
+
 fw = FoodWeb(nichemodel, 20, C = .2, Z = 10)
 p = ModelParameters(fw)
 filter_model_parameters(p; idxs=[1, 2, 20])

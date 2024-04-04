@@ -50,18 +50,12 @@ formula_stab_fw_model <- function(
   richness : env_stoch +
   richness : ct_alive +
   richness : avg_int_strength +
-  richness : c +
   richness : w_avg_tlvl +
-  richness : Z +
   richness : resp_div : ct_alive +
   richness : resp_div : w_avg_tlvl +
   richness : resp_div : avg_int_strength +
-  richness : resp_div : c +
-  richness : resp_div : Z +
   richness : env_stoch : ct_alive +
-  richness : env_stoch : Z +
   richness : env_stoch : avg_int_strength +
-  richness : env_stoch : c +
   richness : env_stoch : w_avg_tlvl"
 
   if (rand_effect) {
