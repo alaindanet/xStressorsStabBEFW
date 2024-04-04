@@ -99,11 +99,10 @@ latex_symbol_replacement <- function() {
 
 sim_type_replacement <- function() {
   c(
-    "no_rerun" = "Default (5000 timesteps)",
-    "rerun" = "Until no extinction",
-    "non_allo_no_rerun" = "Fixed death rate",
-    "no_rerun_short" = "2000 timesteps",
-    "no_rerun_no_disconnected" = "Disconnected species not removed"
+    "rerun" = "Default",
+    "non_allo" = "Fixed death rate",
+    "kno" = "K not standardised",
+    "rebuild" = "rebuild FW after removing\n disconnected species"
   )
 
 }

@@ -1,0 +1,183 @@
+---
+title: "Supplementary information"
+subtitle: ""
+author: ""
+date: ""
+output:
+  bookdown::pdf_document2:
+    latex_engine: xelatex
+    keep_tex: true
+    spacing: double
+    number_sections: false
+  officedown::rdocx_document:
+bibliography: "bibliography.bib"
+link-citations: true
+toc: false
+linestretch: 2.0
+header-includes:
+  - \usepackage{float}
+  - \renewcommand{\thefigure}{S\arabic{figure}}
+  - \renewcommand{\thetable}{S\arabic{table}}
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(magrittr)
+library(rmarkdown)
+library(officedown)
+knitr::opts_chunk$set(echo = FALSE,
+                      collapse = TRUE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = "#>",
+                      fig.path = "graphics/knitr-",
+                      fig.retina = 1.618, # Control using dpi
+                      fig.width = 6,  # generated images
+                      fig.pos = "H",  # pdf mode
+                      #fig.align = "center",
+                      dpi = if (knitr::is_latex_output()) 72 else 300,
+                      out.width = "100%",
+                      dev = "png",
+                      dev.args = list(png = list(type = "cairo-png")),
+                      optipng = "-o1 -quiet")
+
+library(here)
+library(cowplot)
+library(targets)
+library(kableExtra)
+library(coda)
+library(ggbreak)
+
+sapply(list.files(here("R"), full.names = TRUE), source)
+if (Sys.info()["login"] == "alain") {
+  file.copy(
+    from = "~/Documents/post-these/references.bib",
+    to = here("paper", "bibliography.bib"),
+    overwrite = TRUE
+  )
+}
+```
+
+# Figures
+
+(ref:sem-sens-cap) Total standardised effects for the sem displayed in main text
+according to different simulation set-ups. Default: simulations used in main
+text; Fixed death rate: non-allometric death rate, meaning that all species have
+the same death rate, here $d = 0.1$; K not standardised: carrying capacity not
+standardised; rebuild FW after removing disconnected species: instead of setting
+starting biomass of disconnected species to 0, we removed them from the
+food-webs, and then recompute species trophic level, species bodymass and then
+their metabolic rates, prey preferences, producer carrying capacity.
+
+```{r p-sem-sensibility, fig.cap="(ref:sem-sens-cap)"}
+knitr::include_graphics(here("report", "figures", "p_sem_main_text_eff_tab_tot.pdf"))
+```
+
+(ref:cor-cap) Spearman's correlation coeffients among stability components,
+food-web structure, and model parameters.
+
+```{r p-cor, fig.cap="(ref:cor-cap)"}
+knitr::include_graphics(here("report", "figures", "p_cor.pdf"))
+```
+
+(ref:dharma-lm-cap) Distribution of residuals for the linear models predicting the
+relationship between community stability and species richness (Fig. 3). a,b,c
+for respectively community stability, population stabilty and asynchrony. Left
+panels display the distribution of the quantiles, and indicate that residuals
+are quite well distributed. Right panels display the scaled residuals versus the
+predicted values. The slight U-shape might indicate the lack of a polynomial
+term in the model, but overall the model looks to have appropriate fitting.
+
+```{r dharma-lm, fig.cap="(ref:dharma-lm-cap)"}
+knitr::include_graphics(here("report", "figures", "p_diagnotisc_model_fw_stab_comp.jpg"))
+```
+
+
+(ref:coeff-lm-cap) Standardised coefficients for the linear model predicting the
+relationship between community stability and species richness (Fig. 3).
+
+```{r coeff-lm, fig.cap="(ref:coeff-lm-cap)"}
+knitr::include_graphics(here("report", "figures", "p_model_fw_stab_comp_scaled_coeff.pdf"))
+```
+
+
+```{r}
+tar_load(default_variable_values_pred)
+pv <- default_variable_values_pred
+
+pv_cap <- paste0(
+  "connectance = ", round(pv["ct_alive"], 2),
+  ", average interaction strength = ", round(pv["avg_int_strength"], 3),
+  ", average trophic level = ", round(pv["w_avg_tlvl"], 2),
+  ", predator interference = ", round(pv["c"], 1),
+  ", Predator-Prey Mass Ratio = ", round(pv["Z"]),
+  ", and environmental stochasticity = ", round(pv["env_stoch"], 1)
+)
+
+p_pred_stab_comp_rho_cap <- paste0("Prediction of the statistical model linking
+  the temporal stability of community biomass and species richness. Compared to
+  Fig.3, we added the prediction of the slope of the relation population
+  stability-species richness and asynchrony-species richness. Default
+  parameter values: ", pv_cap,
+  ".") %>%
+str_replace_all("\\s+", " ")
+```
+
+```{r stab-comp-pred, fig.cap = p_pred_stab_comp_rho_cap}
+knitr::include_graphics(here("report", "figures", "p_pred_sr_resp_div_supp.pdf"))
+```
+
+\pagebreak
+
+# Table
+
+```{r}
+tar_read(tab_sem_vif) %>%
+  kable(booktabs = TRUE,
+    format = "latex",
+    caption = "Variance Inflation Factors for the Structural Equation Model
+    displayed in main text (Fig. 2). All VIF were inferior to 3, indicating low
+    multicollinearity.",
+    label = "sem-vif"
+    ) %>%
+  column_spec(1, bold = TRUE) %>%
+  collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+```{r}
+tar_read(tab_model_fw_stab_comp_wo_int_vif) %>%
+  kable(booktabs = TRUE,
+    format = "latex",
+    caption = "Variance Inflation Factors for the linear model predicting the
+    relationship between community stability and species richness (Fig. 3). All
+    VIF were inferior to 3, indicating low multicollinearity.",
+    label = "lm-vif"
+    ) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+```{r}
+tar_read(tab_sem_coeff) %>%
+  kable(booktabs = TRUE,
+    format = "latex",
+    caption = "Standardised estimates from the Structural Equation Model
+    displayed in main text (Fig. 2).",
+    label = "sem-coeff"
+    ) %>%
+collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
+kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+```{r}
+tar_read(tab_sem_simplified_eff) %>%
+  kable(booktabs = TRUE,
+    format = "latex",
+    caption = "Standardised estimates from the supplementary Structural Equation
+    Model which includes the partition of compensatory effects rising from
+    environmental fluctuations and species interactions.",
+    label = "sem-supp-coeff") %>%
+collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
+kable_styling(latex_options = c("striped", "hold_position"))
+```
+

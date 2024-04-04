@@ -75,9 +75,11 @@ list(
   tar_target(sem_eff_coeff, sem_main_text_eff_tab_csc_rerun),
   tar_target(tab_sem_coeff,
     sem_main_text_coeff_csc_rerun %>%
-      kable(caption = "Standardized estimates for the Structural Equation Models.") %>%
-      collapse_rows(1, valign = "middle") %>%
-      kable_styling()
+      filter(!str_detect(Response, "~~")) %>% #Remove correlation w_avg_tlvl ~~ avg_omnivory
+      mutate(across(c("Response", "Predictor"), ~var_replacement()[.x])) %>%
+      mutate(Std.Estimate = round(Std.Estimate, 2)) %>%
+      rename(`Std estimate` = Std.Estimate) %>%
+      select(-Signif)
     ),
   tar_target(sem_collinearity, sem_main_text_collinearity_csc_rerun),
   tar_target(sem_rsquared, sem_main_text_rsquared_csc_rerun),
@@ -85,16 +87,24 @@ list(
     sem_collinearity %>%
       mutate(across(c("response", "Term"), ~var_replacement()[.x])) %>%
       mutate(VIF = round(VIF, 1)) %>%
-      select(Response = response, Term, VIF) %>%
-      kable(
-        caption = "Variance Inflation Factor for the Structural Equation Model.") %>%
-      kable_styling()
+      select(Response = response, Term, VIF)
     ),
   tar_target(tab_sem_rsquared,
     sem_rsquared %>%
       rename(`$R^2$` = R.squared) %>%
       kable(caption = "Rsquared for the Structural Equation Model.") %>%
       kable_styling()
+  ),
+  tar_target(tab_sem_simplified_eff,
+    sem_simplified_eff_tab %>%
+      filter(effect_type == "direct") %>%
+      mutate(across(c("response", "predictor"), ~var_replacement()[.x])) %>%
+      mutate(effect = round(effect, 2)) %>%
+      select(
+        Response = response,
+        Predictor = predictor,
+        `Std estimate` = effect
+      )
   )
 )
 ```
@@ -145,7 +155,7 @@ tar_map(
 )
 ```
 
-```{targets group-all-analysis, eval = FALSE}
+```{targets group-all-analysis}
 list(
   tar_target(sem_main_text_tot,
     tibble(
@@ -153,19 +163,12 @@ list(
         "rerun",
         "non_allo",
         "rebuild",
-        "no_rerun_short",
         "kno"),
       eff = list(
         sem_main_text_eff_tab_csc_rerun,
         sem_main_text_eff_tab_csc_non_allo,
         sem_main_text_eff_tab_csc_rebuild,
         sem_main_text_eff_tab_csc_kno
-        ),
-      rsq = list(
-        sem_main_text_rquared_csc_rerun,
-        sem_main_text_rquared_csc_non_allo,
-        sem_main_text_rquared_csc_rebuild,
-        sem_main_text_rquared_csc_kno
         ),
       collinearity = list(
         sem_main_text_collinearity_csc_rerun,
@@ -598,9 +601,6 @@ list(
 ```
 
 ```{targets fig-stab-sr}
-tar_load(default_variable_values_pred)
-tar_load(model_fw_stab_comp)
-tar_load(p_pred_sr_resp_div)
 list(
   tar_target(richness_gradient_pred_show, seq(1, 30, length.out = 20)),
   tar_target(pred_data_show, {
@@ -1223,6 +1223,20 @@ ggsave_multiple(
   units = "mm")
 ```
 
+```{targets p_sem_main_text_eff_tab_tot_file, tar_simple = TRUE}
+ggsave_multiple(
+  paste0("p_sem_main_text_eff_tab_tot", c(".png", ".pdf")),
+  plot = p_sem_main_text_eff_tab_tot,
+  path = here::here("report", "figures"),
+  scale = 2.4,
+  dpi = 400,
+  width = 80,
+  height = 80 * .5,
+  units = "mm"
+  )
+```
+
+
 
 
 
@@ -1252,11 +1266,7 @@ list(
       as_tibble() %>%
       mutate(Term = var_replacement()[Term]) %>%
       mutate(VIF = round(VIF, 1)) %>%
-      select(Term, VIF) %>%
-      kable(
-        caption = "Variance Inflation Factor for the linear model predicting the
-        relationship between stability and richness.") %>%
-        kable_styling()
+      select(Term, VIF)
       ),
     tar_target(sim_res_model_fw_stab_comp,
       model_fw_stab_comp %>%
@@ -1280,7 +1290,7 @@ list(
       }),
   tar_target(p_diagnotisc_model_fw_stab_comp_file,
     ggsave_multiple(
-      paste0("p_diagnotisc_model_fw_stab_comp", c(".png", ".pdf")),
+      paste0("p_diagnotisc_model_fw_stab_comp", c(".jpg", ".pdf")),
       plot = plot_diagnotisc_model_fw_stab_comp,
       path = here::here("report", "figures"),
       scale = 2.4,
@@ -1559,17 +1569,6 @@ ggsave_multiple(
   dpi = 400,
   width = 80,
   height = 80 * 1.6,
-  units = "mm")
-```
-```{r fig-sem-tot-sensibility}
-ggsave_multiple(
-  paste0("p_sem_simplified_eff_tab_tot", c(".jpg", ".png", ".pdf")),
-  plot = tar_read(p_sem_simplified_eff_tab_tot),
-  path = here::here("report", "figures"),
-  scale = 2.4,
-  dpi = 400,
-  width = 80,
-  height = 80 * .5,
   units = "mm")
 ```
 
