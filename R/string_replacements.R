@@ -88,12 +88,42 @@ latex_symbol_replacement <- function() {
     d0 = "d_0",
     r = "r",
     c = "c",
+    h = "h",
     K = "K",
     eij = "e_{ij}",
     ay = "y",
     ax = "a_x",
     allo_slope = "b",
-    prod_mass = "M_p"
+    prod_mass = "M_p",
+    S = "S",
+    ct = "C",
+    Z = "Z",
+    env_stoch = "\\sigma_{e}",
+    resp_div = "1 - \\rho",
+    rho = "\\rho"
+  )
+}
+
+parameter_name_replacement <- function() {
+  c(
+    alpha_ij = "Producer inter-competition",
+    B0 = "Half-saturation rate",
+    d0 = "Basal natural death rate",
+    r = "Producer maximum growth rate",
+    c = "Predator interference",
+    h = "Hill exponent",
+    K = "Carrying capacity",
+    eij = "Assimilation efficiency",
+    ay = "Maximum consumption rate",
+    ax = "Basal metabolic rate",
+    allo_slope = "Allometric slope",
+    prod_mass = "Producer body mass",
+    S = "Initial richness",
+    ct = "Initial connectance",
+    Z = "Predator-Prey Mass Ratio",
+    env_stoch = "Environmental stochasticity",
+    resp_div = "Response diversity",
+    rho = "Species environmental correlation"
   )
 }
 

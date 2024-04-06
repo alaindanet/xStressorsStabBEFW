@@ -1302,12 +1302,21 @@ list(
 )
 ```
 
+```{r, eval = FALSE}
+tar_load(sim_param)
+```
+
 
 
 ```{targets}
 list(
   tar_target(sim_param_file, here::here("data", "sim_param_csc_rerun"), format = "file"),
   tar_target(sim_param, {readRDS(sim_param_file)}),
+  tar_target(param_comb_nb,
+    sim_param %>%
+      group_by(Z, rho, env_stoch, c, S) %>%
+      summarise(n = n())
+  ),
   tar_target(sim_param_tab,
     sim_param %>%
       mutate(resp_div = 1 - rho) %>%
@@ -1333,13 +1342,18 @@ list(
             out
           }
           )) %>%
-      filter(!Parameter %in% c("sim_id", "fw_id", "rho")) %>%
+      filter(!Parameter %in% c("sim_id", "fw_id", "rho", "rep")) %>%
       select(Parameter, Values) %>%
-      mutate(Parameter = recode_factor(Parameter, !!!var_replacement()))
+      mutate(
+        parameter_name = parameter_name_replacement()[Parameter],
+        Parameter = latex_symbol_replacement()[Parameter],
+        Parameter = paste0(parameter_name, " (", surround_latex_math(Parameter), ")")
+        ) %>%
+      select(-parameter_name)
   ),
   tar_target(fix_parameter,
     tibble(
-      c = 0,
+      h = 2,
       B0 = 0.5,
       r = 1.0,
       K = 10,
@@ -1358,17 +1372,23 @@ list(
   ),
   tar_target(param_table,
     fix_parameter %>%
-      bind_cols(allometric_parameter) %>%
-      mutate(across(where(is.list), ~map_chr(.x, function(x) paste_named_vector(x)))) %>%
-      mutate(across(where(is.double), ~as.character(.x))) %>%
-      pivot_longer(everything(), names_to = "Parameter", values_to = "Values") %>%
-      mutate(
-        Parameter = latex_symbol_replacement()[Parameter],
-        Parameter = surround_latex_math(Parameter)
-      ) %>%
-      bind_rows(tab_sim_param)
+  bind_cols(allometric_parameter) %>%
+  mutate(across(where(is.list), ~map_chr(.x, function(x) paste_named_vector(x)))) %>%
+  mutate(across(where(is.double), ~as.character(.x))) %>%
+  pivot_longer(everything(), names_to = "Parameter", values_to = "Values") %>%
+  mutate(
+    parameter_name = parameter_name_replacement()[Parameter],
+    Parameter = latex_symbol_replacement()[Parameter],
+    Parameter = paste0(parameter_name, " (", surround_latex_math(Parameter), ")")
+    ) %>%
+  select(-parameter_name) %>%
+  bind_rows(tab_sim_param)
   )
 )
+```
+
+```{r}
+
 ```
 
 
@@ -1453,9 +1473,26 @@ tar_load(c(
 
 ```{r}
 tar_load(sim_param_tab)
+tar_load(sim_param)
 tar_load(tab_sim_param)
 tar_load(param_table)
 kable(param_table, "html", booktabs = T, escape = FALSE) %>%
+  kable_styling()
+tar_load(c(fix_parameter, allometric_parameter, tab_sim_param))
+ti <- fix_parameter %>%
+  bind_cols(allometric_parameter) %>%
+  mutate(across(where(is.list), ~map_chr(.x, function(x) paste_named_vector(x)))) %>%
+  mutate(across(where(is.double), ~as.character(.x))) %>%
+  pivot_longer(everything(), names_to = "Parameter", values_to = "Values") %>%
+  mutate(
+    parameter_name = parameter_name_replacement()[Parameter],
+    Parameter = latex_symbol_replacement()[Parameter],
+    Parameter = paste0(parameter_name, " (", surround_latex_math(Parameter), ")")
+    ) %>%
+  select(-parameter_name) %>%
+  bind_rows(tab_sim_param)
+ti %>%
+  kable("html", booktabs = T, escape = FALSE) %>%
   kable_styling()
 ```
 

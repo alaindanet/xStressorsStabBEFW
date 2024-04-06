@@ -129,11 +129,37 @@ knitr::include_graphics(here("report", "figures", "p_pred_sr_resp_div_supp.pdf")
 
 \pagebreak
 
-# Table
+# Tables
+
+```{r}
+tar_load(param_comb_nb)
+param_comb_chr <- paste0("$",
+  paste0(latex_symbol_replacement()[colnames(param_comb_nb)[colnames(param_comb_nb) != "n"]], collapse = " \\times "),
+  " =$ ", nrow(param_comb_nb), " parameter combinations."
+)
+nb_fw_per_comb <- unique(param_comb_nb$n)
+
+param_table_cap <- paste0(
+  "Parameter values used in the simulation experiment. N = ",
+  nrow(tar_read(sim_fw)), " simulations. ", param_comb_chr,
+  " We generated ", nb_fw_per_comb, " food-webs of varying connectance for each
+  parameter combination.") %>%
+  str_replace_all("\\s+", " ")
+
+tar_read(param_table) %>%
+  kable(
+    booktabs = TRUE,
+    format = "latex",
+    escape = FALSE,
+    caption = param_table_cap,
+    label = "param") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
 
 ```{r}
 tar_read(tab_sem_vif) %>%
-  kable(booktabs = TRUE,
+  kable(
+    booktabs = TRUE,
     format = "latex",
     caption = "Variance Inflation Factors for the Structural Equation Model
     displayed in main text (Fig. 2). All VIF were inferior to 3, indicating low
