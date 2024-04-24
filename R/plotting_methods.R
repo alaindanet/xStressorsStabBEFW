@@ -26,8 +26,8 @@ stab_alpha <- function () {
 }
 
 sem_tot_predictor <- function () {
-  c("resp_div", "avg_int_strength", "w_avg_tlvl", "ct_alive", "richness",
-    "env_stoch")
+  c("resp_div", "avg_int_strength", "w_avg_tlvl", "avg_omnivory", "ct_alive",
+    "richness", "env_stoch")
 }
 
 resp_div_cat_colors <- function() {

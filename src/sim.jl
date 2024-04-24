@@ -610,6 +610,15 @@ end
 """
 kill_disconnected_species(A; alive_species = nothing, bm = nothing)
 
+Returns a vector of species biomass, all the disconnected and extinct species being set to a
+biomass of 0.
+
+# Arguments:
+
+  - `A`: Adjacency matrix
+  - `alive_species`: vector of alive species indices. See [`living_species`](@ref)
+  - `bm`: vector of species biomass
+
 # Examples
 
 ti = [
@@ -627,12 +636,16 @@ kill_disconnected_species(ti, alive_species = [1, 3, 4], bm = bm) == [1, 0, 3, 0
 kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
 kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm) == [0, 1, 0, 4]
 
-# Filter network and biomass
+# Filter species biomass and then adjacency matrix
+
+## Case 1
 to = kill_disconnected_species(ti, alive_species = [1, 2, 3, 4], bm = bm)
 mask = to .== 0
 A = ti[mask, mask]
 new_bm = bm[mask]
 dim(A) == length(new_bm)
+
+## Case 2
 to = kill_disconnected_species(ti, alive_species = [1, 2, 4], bm = bm)
 mask = to .== 0
 A = ti[mask, mask]
@@ -641,6 +654,7 @@ dim(A) == length(new_bm)
 
 
 """
+
 
 function kill_disconnected_species(A; alive_species = nothing, bm = nothing)
     bm = deepcopy(bm)

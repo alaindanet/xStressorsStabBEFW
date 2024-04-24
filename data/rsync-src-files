@@ -53,6 +53,23 @@ sem_main_text_eff_csc_non_allo
 sem_main_text_eff_csc_rebuild
 
 
+sem_doak_csc_rerun
+sem_doak_csc_kno
+sem_doak_csc_non_allo
+sem_doak_csc_rebuild
+sem_doak_eff_csc_rerun
+sem_doak_eff_csc_kno
+sem_doak_eff_csc_non_allo
+sem_doak_eff_csc_rebuild
+sem_doak_collinearity_csc_rerun
+sem_doak_collinearity_csc_kno
+sem_doak_collinearity_csc_non_allo
+sem_doak_collinearity_csc_rebuild
+sem_doak_rsquared_csc_rerun
+sem_doak_rsquared_csc_kno
+sem_doak_rsquared_csc_non_allo
+sem_doak_rsquared_csc_rebuild
+
 sem_eff
 sem_simplified_eff_csc_*
 sem_simplified_eff

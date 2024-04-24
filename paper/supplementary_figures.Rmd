@@ -157,6 +157,24 @@ tar_read(param_table) %>%
 ```
 
 ```{r}
+sim_summary_stat_cap <- paste0(
+  "Summary statistics of the food-web and stability metrics.") %>%
+  str_replace_all("\\s+", " ")
+tar_read(tab_sim_summary_stat) %>%
+  rename_with(~str_replace_all(.x, "\\%", "\\\\%")) %>%
+  kable(
+    booktabs = TRUE,
+    format = "latex",
+    escape = FALSE,
+    caption = sim_summary_stat_cap,
+    label = "param") %>%
+  column_spec(1, bold = TRUE) %>%
+  collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+
+```{r}
 tar_read(tab_sem_vif) %>%
   kable(
     booktabs = TRUE,
@@ -184,7 +202,7 @@ tar_read(tab_model_fw_stab_comp_wo_int_vif) %>%
 ```
 
 ```{r}
-tar_read(tab_sem_coeff) %>%
+tar_read(tab_sem_doak_eff) %>%
   kable(booktabs = TRUE,
     format = "latex",
     caption = "Standardised estimates from the Structural Equation Model

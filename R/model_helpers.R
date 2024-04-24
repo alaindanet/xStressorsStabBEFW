@@ -39,13 +39,11 @@ formula_mod_rho_fixed_effect <- function() {
 formula_stab_fw_model <- function(
   resp = "stab_com",
   rand_effect = TRUE,
-  term_to_del = "richness : resp_div : Z +"
+  term_to_del = NULL
   ) {
 
   fixed_part <- "richness + resp_div + env_stoch +
-  ct_alive + w_avg_tlvl + Z +
-  avg_int_strength +
-  c +
+  ct_alive + w_avg_tlvl + Z + avg_int_strength + c +
   richness : resp_div +
   richness : env_stoch +
   richness : ct_alive +
@@ -57,6 +55,35 @@ formula_stab_fw_model <- function(
   richness : env_stoch : ct_alive +
   richness : env_stoch : avg_int_strength +
   richness : env_stoch : w_avg_tlvl"
+
+  if (rand_effect) {
+   rand_part <- "+\n (1|fw_id)"
+  } else {
+   rand_part <- ""
+  }
+
+  form <- paste0(resp, " ~\n", fixed_part, rand_part)
+  if (!is.null(term_to_del)) {
+    form <- str_remove(form, term_to_del)
+  }
+  as.formula(form)
+
+}
+
+formula_stab_fw_model_full <- function(
+  resp = "stab_com",
+  rand_effect = TRUE,
+  term_to_del = NULL
+  ) {
+
+  fixed_part <- "richness + resp_div + env_stoch +
+  ct_alive + w_avg_tlvl + Z + avg_int_strength + c +
+  richness * resp_div * ct_alive +
+  richness * resp_div * w_avg_tlvl +
+  richness * resp_div * avg_int_strength +
+  richness * env_stoch * ct_alive +
+  richness * env_stoch * avg_int_strength +
+  richness * env_stoch * w_avg_tlvl"
 
   if (rand_effect) {
    rand_part <- "+\n (1|fw_id)"

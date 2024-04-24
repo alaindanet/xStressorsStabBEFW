@@ -73,14 +73,6 @@ list(
   tar_target(sem_eff,  sem_main_text_eff_csc_rerun),
   tar_target(sem_eff_tab, sem_main_text_eff_tab_csc_rerun),
   tar_target(sem_eff_coeff, sem_main_text_eff_tab_csc_rerun),
-  tar_target(tab_sem_coeff,
-    sem_main_text_coeff_csc_rerun %>%
-      filter(!str_detect(Response, "~~")) %>% #Remove correlation w_avg_tlvl ~~ avg_omnivory
-      mutate(across(c("Response", "Predictor"), ~var_replacement()[.x])) %>%
-      mutate(Std.Estimate = round(Std.Estimate, 2)) %>%
-      rename(`Std estimate` = Std.Estimate) %>%
-      select(-Signif)
-    ),
   tar_target(sem_collinearity, sem_main_text_collinearity_csc_rerun),
   tar_target(sem_rsquared, sem_main_text_rsquared_csc_rerun),
   tar_target(tab_sem_vif,
@@ -97,6 +89,17 @@ list(
   ),
   tar_target(tab_sem_simplified_eff,
     sem_simplified_eff_tab %>%
+      filter(effect_type == "direct") %>%
+      mutate(across(c("response", "predictor"), ~var_replacement()[.x])) %>%
+      mutate(effect = round(effect, 2)) %>%
+      select(
+        Response = response,
+        Predictor = predictor,
+        `Std estimate` = effect
+      )
+  ),
+  tar_target(tab_sem_doak_eff,
+    sem_doak_eff_tab %>%
       filter(effect_type == "direct") %>%
       mutate(across(c("response", "predictor"), ~var_replacement()[.x])) %>%
       mutate(effect = round(effect, 2)) %>%
@@ -150,8 +153,17 @@ tar_map(
   tar_target(sem_main_text_rsquared_file, here::here("data", paste0("sem_main_text_rsquared_", names)), format = "file"),
   tar_target(sem_main_text_rsquared, { readRDS(sem_main_text_rsquared_file) }),
   tar_target(sem_main_text_coeff_file, here::here("data", paste0("sem_main_text_coeff_", names)), format = "file"),
-  tar_target(sem_main_text_coeff, { readRDS(sem_main_text_coeff_file) }),
-  tar_target(sem_main_text_eff_tab, from_semEff_to_table(sem_main_text_eff))
+  tar_target(sem_main_text_eff_tab, from_semEff_to_table(sem_main_text_eff)),
+
+  tar_target(sem_doak_file, here::here("data", paste0("sem_doak_", names)), format = "file"),
+  tar_target(sem_doak, { readRDS(sem_doak_file) }),
+  tar_target(sem_doak_eff_file, here::here("data", paste0("sem_doak_eff_", names)), format = "file"),
+  tar_target(sem_doak_eff, { readRDS(sem_doak_eff_file) }),
+  tar_target(sem_doak_eff_tab, from_semEff_to_table(sem_doak_eff)),
+  tar_target(sem_doak_collinearity_file, here::here("data", paste0("sem_doak_collinearity_", names)), format = "file"),
+  tar_target(sem_doak_collinearity, { readRDS(sem_doak_collinearity_file) }),
+  tar_target(sem_doak_rsquared_file, here::here("data", paste0("sem_doak_rsquared_", names)), format = "file"),
+  tar_target(sem_doak_rsquared, { readRDS(sem_doak_rsquared_file) })
 )
 ```
 
@@ -175,6 +187,27 @@ list(
         sem_main_text_collinearity_csc_non_allo,
         sem_main_text_collinearity_csc_rebuild,
         sem_main_text_collinearity_csc_kno
+        ),
+    )
+  ),
+  tar_target(sem_doak_tot,
+    tibble(
+      sim_type = c(
+        "rerun",
+        "non_allo",
+        "rebuild",
+        "kno"),
+      eff = list(
+        sem_doak_eff_tab_csc_rerun,
+        sem_doak_eff_tab_csc_non_allo,
+        sem_doak_eff_tab_csc_rebuild,
+        sem_doak_eff_tab_csc_kno
+        ),
+      collinearity = list(
+        sem_doak_collinearity_csc_rerun,
+        sem_doak_collinearity_csc_non_allo,
+        sem_doak_collinearity_csc_rebuild,
+        sem_doak_collinearity_csc_kno
         ),
     )
   ),
@@ -223,6 +256,52 @@ list(
         legend.position = "bottom",
         legend.justification = c("left", "top")
       )
+  ),
+  tar_target(sem_doak_eff_tab_tot,
+    sem_doak_tot %>%
+      select(sim_type, eff) %>%
+      unnest(cols = eff)),
+  tar_target(p_sem_doak_eff_tab_tot,
+    sem_doak_eff_tab_tot %>%
+      filter(effect_type == "total") %>%
+      filter(response %in% c("async", "pop_stab", "stab_com")) %>%
+      filter(predictor %in% sem_tot_predictor()) %>%
+      mutate(
+        response = recode_factor(response, !!!var_replacement(), .ordered = TRUE),
+        predictor = recode_factor(predictor, !!!var_replacement()[rev(sem_tot_predictor())], .ordered = TRUE),
+        sim_type = recode_factor(sim_type, !!!sim_type_replacement(), .ordered = TRUE)
+        ) %>%
+      ggplot(aes(
+          y = predictor,
+          x = effect,
+          color = response,
+          shape = sim_type
+        )
+        ) +
+      geom_point(alpha = .5) +
+      scale_colour_manual(values = stab_color()) +
+      scale_alpha_manual(values = stab_alpha()) +
+      #  geom_hline(yintercept = 0, linetype = "dashed") +
+      geom_vline(xintercept = 0, linetype = "dashed") +
+      facet_grid(cols = vars(response)) +
+      labs(
+        x = "Total standardised effects",
+        color = "Stability component",
+        alpha = "Stability component"
+        ) +
+      theme_bw() +
+      theme(
+        axis.title.y = element_blank(),
+        #legend.justification = "right",
+        legend.position = "bottom") +
+      guides(
+        color = FALSE
+        ) +
+      theme(
+        legend.title = element_blank(),
+        legend.position = "bottom",
+        legend.justification = c("left", "top")
+      )
   )
 )
 ```
@@ -231,7 +310,8 @@ list(
 ```{targets simplified-sem}
 list(
   tar_target(sem_simplified_eff_tab, sem_simplified_eff_tab_csc_rerun),
-  tar_target(sem_main_text_eff_tab, sem_main_text_eff_tab_csc_rerun)
+  tar_target(sem_main_text_eff_tab, sem_main_text_eff_tab_csc_rerun),
+  tar_target(sem_doak_eff_tab, sem_doak_eff_tab_csc_rerun)
 )
 ```
 
@@ -265,7 +345,7 @@ list(
         mutate(
           across(c(stab_com, pop_stab, async, richness,
               env_stoch, resp_div, Z, c,
-              ct_alive, w_avg_tlvl, avg_int_strength, avg_omnivory),
+              ct_alive, w_avg_tlvl, avg_int_strength),
             ~scale(.x)[, 1])
         )
         ))),
@@ -375,6 +455,164 @@ list(
 )
 ```
 
+```{targets full-model-pred}
+list(
+  tar_target(model_fw_stab_comp_full,
+    tibble(
+      response = stab_com_part_var,
+      model = list(glmmTMB(formula_stab_fw_model(
+      resp = stab_com_part_var,
+      rand_effect = TRUE,
+      term_to_del = "richness : resp_div : Z +"),
+      data = mutate(sim_fw,
+      across(c(stab_com, pop_stab, async), log)
+      ))
+        )),
+        pattern = stab_com_part_var
+  ),
+  tar_target(model_fw_stab_comp_full_scaled,
+    tibble(
+      response = stab_com_part_var,
+      model = list(glmmTMB(formula_stab_fw_model(
+        resp = stab_com_part_var,
+        rand_effect = TRUE,
+        term_to_del = "richness : resp_div : Z +"
+        ),
+      data = sim_fw %>%
+        mutate(across(c(stab_com, pop_stab, async), log)) %>%
+        mutate(across(c(sim_id, fw_id), as.factor)) %>%
+        mutate(
+          across(c(stab_com, pop_stab, async, richness,
+              env_stoch, resp_div, Z, c,
+              ct_alive, w_avg_tlvl, avg_int_strength),
+            ~scale(.x)[, 1])
+        )
+        ))),
+        pattern = stab_com_part_var
+  ),
+  tar_target(model_fw_stab_comp_full_scaled_coeff,
+    model_fw_stab_comp_full_scaled %>%
+      mutate(
+        coeff = map(model, function(x) {
+          confint(x, level = 0.95) %>%
+          as.data.frame() %>%
+          rownames_to_column("term") %>%
+          as_tibble() %>%
+          mutate(term = str_replace(term, "cond\\.", ""))
+        })
+      ) %>%
+      select(-model)
+  ),
+  tar_target(fixed_effect_fw_stab_comp_full,
+    model_fw_stab_comp_full %>%
+      mutate(
+      fix_effect = map(model, ~fixef(.x)$cond)
+      ) %>%
+      select(-model)
+  ),
+  tar_target(pred_stab_comp_full_resp_div,
+    fixed_effect_fw_stab_comp_full %>%
+      left_join(
+        list(
+          response = fixed_effect_fw_stab_comp_full$response,
+          variable = c("avg_int_strength", "w_avg_tlvl", "ct_alive")
+          ) %>%
+        expand.grid() %>%
+        left_join(
+          tibble(
+            variable = c("avg_int_strength", "w_avg_tlvl", "ct_alive"),
+            values = list(
+              seq(
+                min(pred_range_fw$avg_int_strength),
+                max(pred_range_fw$avg_int_strength),
+                length.out = 50
+                ),
+              seq(
+                min(pred_range_fw$w_avg_tlvl),
+                max(pred_range_fw$w_avg_tlvl),
+                length.out = 50
+              ),
+              seq(
+                min(pred_range_fw$ct_alive),
+                max(pred_range_fw$ct_alive),
+                length.out = 50
+              )
+            )
+          )
+        )
+        ) %>%
+    mutate(slope = pmap(
+        list(
+          param_name = variable,
+          param_values = values,
+          coeff = fix_effect
+          ),
+        function(param_name, param_values, coeff) {
+          param <- list(
+            seq(0, 1, length.out = length(param_values)),
+            param_values
+          )
+          names(param) <- c("resp_div", param_name)
+
+          encaps_get_slope_change(
+            param_list = param,
+            coeff_data = coeff,
+            slope_term = "richness",
+            default_variable_values = default_variable_values_pred
+          )
+        }
+        )
+    ) %>%
+    select(-fix_effect, -values) %>%
+    select(-variable) %>%
+    mutate(slope = map(slope,
+      ~pivot_longer(.x,
+        -c(resp_div, slope),
+        names_to = "variable",
+        values_to = "variable_values"
+      )
+    )
+  ) %>%
+  unnest(cols = slope)
+  ),
+  tar_target(p_pred_stab_comp_full_resp_div,
+    pred_stab_comp_full_resp_div %>%
+  filter(response == "stab_com") %>%
+  mutate(
+    variable = var_replacement()[variable]
+    ) %>%
+  ggplot(aes(x = resp_div, y = variable_values, fill = slope)) +
+  geom_raster() +
+  facet_wrap(~variable, scales = "free_y", strip.position = "left") +
+  coord_cartesian(expand = FALSE) +
+  scale_fill_gradient2(
+    low = resp_div_cat_colors()["Low"],
+    mid = "white",
+    high = resp_div_cat_colors()["High"],
+    midpoint = 0,
+    space = "Lab",
+    na.value = "grey50",
+    guide = "colourbar",
+    aesthetics = "fill") +
+  labs(
+    x = var_replacement()["resp_div"],
+    y = "Food-web structure",
+    fill = "Slope community stability - Richness"
+    ) +
+  theme(
+    legend.position = "bottom",
+    legend.key.width = unit(2.5, "cm"),
+    plot.margin = margin(l = 10, r = 10, t = 5, unit = "pt"),
+    strip.placement = "outside",
+    strip.background = element_blank(),
+    strip.text = element_text(size = 11),
+    axis.title.y = element_blank()
+  )
+    )
+)
+```
+
+
 # plot
 
 ```{r, eval = FALSE}
@@ -389,13 +627,22 @@ sem_simplified_tot %>%
   )
 tar_read(sem_main_text_eff_rerun)
 tar_load(pred_stab_comp_resp_div)
+library(targets)
+tar_load(sem_doak_eff_tab_csc_rerun)
+sem_doak_eff_tab_csc_rerun %>%
+  filter(effect_type == "direct", abs(effect) > .05) %>%
+  print(n = 40)
+
+sem_doak_eff_tab_csc_rerun %>%
+  filter(effect_type == "direct") %>%
+  print(n = 40)
 ```
 
 
 ```{targets plot-sem-tot}
 list(
   tar_target(p_sem_tot_stab,
-    sem_main_text_eff_tab_csc_rerun %>%
+    sem_doak_eff_tab_csc_rerun %>%
       filter(effect_type == "total") %>%
       filter(response %in% c("async", "pop_stab", "stab_com")) %>%
       filter(predictor %in% sem_tot_predictor()) %>%
@@ -447,7 +694,7 @@ list(
       rel_heights = c(1, .05)
       )
   ),
-  tar_target(sem_file, here("report", "figures", "sem_stab_main_text.pdf"), format = "file"),
+  tar_target(sem_file, here("report", "figures", "sem_stab_doak.pdf"), format = "file"),
   tar_target(p_sem,
     ggdraw() +
       draw_image(magick::image_read_pdf(sem_file, density = 600),
@@ -709,6 +956,81 @@ list(
   )
 )
 ```
+```{targets pred_show_full}
+list(
+  tar_target(pred_data_show_full, {
+    low_resp_example_full <- rbind(default_variable_values_pred) %>%
+      as_tibble() %>%
+      mutate(resp_div = .1, w_avg_tlvl = 2.0, fw_id = "new") %>%
+      slice(rep(1, length(richness_gradient_pred_show))) %>%
+      mutate(richness = richness_gradient_pred_show)
+    high_resp_example_full <- rbind(default_variable_values_pred) %>%
+      as_tibble() %>%
+      mutate(resp_div = .9, w_avg_tlvl = 1.2, fw_id = "new") %>%
+      slice(rep(1, length(richness_gradient_pred_show))) %>%
+      mutate(richness = richness_gradient_pred_show)
+    out <- rbind(low_resp_example_full, high_resp_example_full)
+    out$stab_com <- predict(
+      model_fw_stab_comp[model_fw_stab_comp_full$response == "stab_com", ]$model[[1]],
+      out,
+      allow.new.levels = TRUE
+    )
+    out
+  }
+    ),
+  tar_target(p_pred_data_show_low_resp_full,
+    pred_data_show_full %>%
+      filter(resp_div == .1) %>%
+      ggplot(aes(x = richness, y = exp(stab_com))) +
+      geom_line(color = resp_div_cat_colors()["Low"]) +
+      ylim(10, 25) +
+      labs(x = "Species richness", y = "Community stability") +
+      theme_half_open()
+    ),
+  tar_target(p_pred_data_show_low_resp_file_full,
+    ggsave_multiple(
+      paste0("p_pred_data_show_low_resp_full", c(".png", ".pdf")),
+      plot = p_pred_data_show_low_resp_full,
+      path = here::here("report", "figures"),
+      scale = 1.4,
+      dpi = 400,
+      width = 80,
+      height = 80 * .9,
+      units = "mm")
+    ),
+  tar_target(p_pred_data_show_high_resp_full,
+    pred_data_show_full %>%
+      filter(resp_div == .9) %>%
+      ggplot(aes(x = richness, y = exp(stab_com))) +
+      geom_line(color = resp_div_cat_colors()["High"]) +
+      ylim(10, 25) +
+      labs(x = "Species richness", y = "Community stability") +
+      theme_half_open()
+    ),
+  tar_target(p_pred_data_show_high_resp_file_full,
+    ggsave_multiple(
+      paste0("p_pred_data_show_high_resp_full", c(".png", ".pdf")),
+      plot = p_pred_data_show_high_resp_full,
+      path = here::here("report", "figures"),
+      scale = 1.4,
+      dpi = 400,
+      width = 80,
+      height = 80 * .9,
+      units = "mm")
+    ),
+  tar_target(data_label_pred_show_full,
+    pred_data_show_full %>%
+      select(resp_div, richness, w_avg_tlvl) %>%
+      filter(richness == min(richness)) %>%
+      pivot_longer(c(w_avg_tlvl), names_to = "variable",
+        values_to = "variable_values") %>%
+      mutate(variable = var_replacement()[variable],
+        label = c("b", "c")
+      )
+      )
+)
+```
+
 
 ```{targets r}
 list(
@@ -1159,11 +1481,9 @@ plot_grid(p1, p2, p3, ncol = 2)
 cor_var <- cor(
   sim_fw %>%
     select(c(
-        bm_total, stab_com, pop_stab, async, sae_total, sae_even,
-        evenness_sae, cpe, cpe_int, cpe_env,
+        bm_total, stab_com, pop_stab, async, sae_total, sae_doak, cpe, cpe_int, cpe_env,
         richness, ct_alive, avg_int_strength, avg_omnivory, max_tlvl,
-        w_avg_tlvl,
-        Z, resp_div, env_stoch, c
+        w_avg_tlvl, Z, resp_div, env_stoch, c
         )) %>%
   na.omit() %>%
   rename(any_of(get_rev_vec_name_val(var_replacement()))),
@@ -1236,6 +1556,18 @@ ggsave_multiple(
   )
 ```
 
+```{targets p_sem_doak_eff_tab_tot_file, tar_simple = TRUE}
+ggsave_multiple(
+  paste0("p_sem_doak_eff_tab_tot", c(".png", ".pdf")),
+  plot = p_sem_doak_eff_tab_tot,
+  path = here::here("report", "figures"),
+  scale = 2.4,
+  dpi = 400,
+  width = 80,
+  height = 80 * .5,
+  units = "mm"
+  )
+```
 
 
 
@@ -1243,12 +1575,11 @@ ggsave_multiple(
 # Table
 
 ```{targets sem_fig_coeff, tar_simple=TRUE}
-sem_main_text_eff_tab %>%
+sem_doak_eff_tab %>%
   filter(effect_type == "direct",
     predictor %in% c(
-      sem_tot_predictor(),
-      "async", "stab_com", "pop_stab", "sae_total", "cpe", "evenness_sae", "sae_even"
-      )) %>%
+      sem_tot_predictor(), "async", "stab_com", "pop_stab", "sae_doak",
+      "cpe_int")) %>%
 select(response, predictor, effect) %>%
 mutate(effect = round(effect, 2)) %>%
 filter(abs(effect) >= .05)
@@ -1301,12 +1632,6 @@ list(
   )
 )
 ```
-
-```{r, eval = FALSE}
-tar_load(sim_param)
-```
-
-
 
 ```{targets}
 list(
@@ -1383,12 +1708,22 @@ list(
     ) %>%
   select(-parameter_name) %>%
   bind_rows(tab_sim_param)
+  ),
+  tar_target(sim_summary_stat, get_sim_summary_stat(x = sim_fw)),
+  tar_target(tab_sim_summary_stat,
+  sim_summary_stat %>%
+    mutate(
+      var = var_replacement()[var],
+      type = str_to_sentence(type)
+      ) %>%
+    select(Type = type, `Metric` = var, N = n, `Median (5%, 95%)`)
   )
 )
 ```
 
-```{r}
-
+```{r, eval = FALSE}
+tar_load(sim_summary_stat)
+tar_load(sim_fw)
 ```
 
 
@@ -1574,7 +1909,7 @@ mutate(
 
 ```{r}
 tar_meta(fields = error, complete_only = TRUE) %>%
-  print(n = 40)
+  print(n = 100)
 ```
 
 
@@ -1888,12 +2223,6 @@ ggsave_multiple(
 ```{r}
 tar_load(fixed_effect_fw_stab)
 ```
-```{r}
-tar_load_globals()
-tar_visnetwork()
-tar_load(pred_stab_comp_resp_div)
-```
-
 
 
 
@@ -2134,7 +2463,6 @@ sim_fw %>%
   geom_point() +
   labs(x = "Species richness", y = "Comp. effects (Environment)") +
   theme_bw()
-
 ```
 
 ```{r}
@@ -2215,7 +2543,6 @@ pred_data_show <- pred_stab_comp_resp_div %>%
   filter(!is.na(w_avg_tlvl))
 unique(pred_data_show$w_avg_tlvl) %>% round(., 3)
 unique(pred_data_show$resp_div) %>% round(., 2)
-
 ```
 
 
