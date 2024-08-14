@@ -713,12 +713,13 @@ list(
             y.sec = "axis"
           ) +
           theme(
+            text = element_text(size = 20),
             legend.title = element_blank(),
             legend.position = c(.005, .995),
             legend.justification = c("left", "top"),
         ),
       nrow = 2, rel_heights = c(1, .8),
-      labels = "auto"
+      labels = "auto", hjust = -.7, vjust = 1.7
   )
   ),
   tar_target(p_sem_fig_file,
@@ -1789,7 +1790,6 @@ ggsave_multiple(
 
 
 
-
 ```{r debug, eval = FALSE}
 tar_load(sim_fw)
 tar_load(c(sim_fw_no_rerun,
@@ -1969,11 +1969,11 @@ p_bivariate_rel <- ggdraw() +
 ```
 
 ```{r plot-sim}
-load(here("data", "sim_for_plot"))
+sim_for_plot <- readRDS(here("data", "sim_for_plot"))
 length(unique(sim_for_plot$sim_id))
 sim_for_plot %<>%
   left_join(
-    tar_read(sim_fw)
+    tar_read(sim_fw_csc_rerun)
   )
 stoch <- 0.3
 hill <- 2

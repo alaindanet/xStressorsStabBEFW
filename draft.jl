@@ -22,6 +22,76 @@ include("src/get_modules.jl")
 ti = missing
 isnothing(ti)
 
+function gen_adj_matrix_plant_herbivore_carnivore(nprod;
+        herbivores = false,
+        carnivores = false
+    )
+    if carnivores
+        nspecies = 3 * nprod
+        # If there are carnivores, herbivores are present
+        herbivores = true
+    elseif herbivores
+        nspecies = 2 * nprod
+    else
+        nspecies = nprod
+    end
+
+    mat = zeros(Int64, nspecies, nspecies)
+
+    if herbivores & !carnivores
+        mat[nprod+1 : 2*nprod, 1:nprod] .= 1
+    elseif carnivores
+        mat[nprod+1 : 2*nprod, 1:nprod] .= 1
+        mat[2*nprod+1 : 3*nprod, nprod+1 : 2*nprod] .= 1
+    end
+
+    mat
+
+end
+ti = gen_adj_matrix_plant_herbivore_carnivore(3, herbivores = false)
+gen_adj_matrix_plant_herbivore_carnivore(3, carnivores = true)
+
+function set_pref_matrix_plant_herbivore_carnivore(mat;
+        pref_herbivores = 1,
+        pref_carnivores = 1)
+    nspecies = size(mat, 1)
+    nprod = sum([sum(mat[i,:]) == 0 for i in 1:nspecies])
+    pref_mat = zeros(Float64, nspecies, nspecies)
+
+    secondary_pref_herb = (1 - pref_herbivores) / nprod
+    secondary_pref_carn = (1 - pref_carnivores) / nprod
+
+    if pref_herbivores < secondary_pref_herb
+        println("oups! Main pref ($pref_herbivores) lower than secondary pref ($secondary_pref_herb)")
+    end
+    if pref_carnivores < secondary_pref_carn
+        println("oups! Main pref ($pref_herbivores) lower than secondary pref ($secondary_pref_herb)")
+    end
+
+    if nprod == nspecies
+        # nothing zeros
+    elseif nspecies == 2*nprod # herbivores
+        for i in 1:nprod
+            pref_mat[nprod + i, 1:nprod] .= secondary_pref_herb
+            pref_mat[nprod + i, i] = pref_herbivores
+        end
+    elseif nspecies == 3*nprod # herbivores-carnivores
+        for i in 1:nprod
+            pref_mat[nprod + i, 1:nprod] .= secondary_pref_herb
+            pref_mat[nprod + i, i] = pref_herbivores
+
+            pref_mat[2 * nprod + i, nprod+1 : 2*nprod] .= secondary_pref_carn
+            pref_mat[2 * nprod + i, nprod+i] = pref_carnivores
+        end
+    else
+        println("a problem with nprod")
+    end
+    pref_mat
+end
+
+ti = gen_adj_matrix_plant_herbivore_carnivore(3, herbivores = true, carnivores = true)
+set_pref_matrix_plant_herbivore_carnivore(ti, pref_herbivores = 1)
+
 typeof([.1])
 tu = [missing, .1, [.1]]
 new = Vector{Union{Missing, Vector{Float64}}}(missing, length(tu))
