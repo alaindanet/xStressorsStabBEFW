@@ -9,6 +9,15 @@ when the density of a given resource approaches 0.
 McCann, K., Hastings, A., & Huxel, G. R. (1998). Weak trophic interactions and the balance
 of nature. Nature, 395(6704), Art. 6704. https://doi.org/10.1038/27427
 """
+function max_interaction_strength(p::ModelParameters;)
+    max_interaction_strength(p.functional_response.ω,
+                             p.biorates.x,
+                             p.biorates.y,
+                             p.functional_response.B0,
+                             p.functional_response.h
+                            )
+end
+
 function max_interaction_strength(ω, x, y, B0, h;)
     S = size(ω, 2)
     int = zeros(S, S)
@@ -20,12 +29,33 @@ function max_interaction_strength(ω, x, y, B0, h;)
     int
 end
 
-function max_interaction_strength(p::ModelParameters;)
-    max_interaction_strength(p.functional_response.ω,
-                             p.biorates.x,
-                             p.biorates.y,
-                             p.functional_response.B0,
-                             p.functional_response.h
+
+"""
+    max_interaction_strength_classic_response(p::ModelParameters;)
+
+Returns the theoretical maximum interaction strengths from consumers to resources, realized
+when the density of a given resource approaches 0 and there is no predator interference.
+
+# References
+
+McCann, K., Hastings, A., & Huxel, G. R. (1998). Weak trophic interactions and the balance
+of nature. Nature, 395(6704), Art. 6704. https://doi.org/10.1038/27427
+"""
+function max_interaction_strength_classic_response(ω, aᵣ)
+    S = size(ω, 2)
+    int = zeros(S, S)
+
+    for i in 1:S
+        int[i, :] = [ω[i, j] * aᵣ[i, j] for j in 1:S]
+    end
+
+    int
+
+end
+function max_interaction_strength_classic_response(p::ModelParameters;)
+    max_interaction_strength_classic_response(
+                                              p.functional_response.ω,
+                                              p.functional_response.aᵣ,
                             )
 end
 
@@ -92,6 +122,47 @@ function empirical_interaction_strength(B::Vector{Float64}, params::ModelParamet
         int[i, :] = [
                      ( x[i] * y[i] * B[i] * ω[i, j] * (B[j])^h ) /
                      ( (B0[i])^h + c[i] * B[i] * (B0[i])^h  + sum(ω[i,:] .* (B .^h)))
+                     for j in 1:S
+                    ]
+    end
+    sparse(int)
+end
+
+function empirical_interaction_strength_classic_response(solution, params::ModelParameters; kwargs...)
+
+    measure_on = extract_last_timesteps(solution; kwargs...)
+
+    S = richness(params.network)
+    ntimestep = size(measure_on, 2)
+    out = zeros(S, S, ntimestep)
+    for i in 1:ntimestep
+        out[:, :, i] = empirical_interaction_strength_classic_response(measure_on[:, i], params)
+    end
+
+    (
+     mean = mean(out, dims = 3)[:, :, 1],
+     max = maximum(out, dims = 3)[:, :, 1],
+     min = minimum(out, dims = 3)[:, :, 1],
+     std = std(out, dims = 3)[:,:, 1],
+     all = out
+   )
+
+end
+function empirical_interaction_strength_classic_response(B::Vector{Float64}, params::ModelParameters)
+
+    S = size(params.network.species, 1)
+    int = zeros(S, S)
+    h = params.functional_response.h
+    ht = params.functional_response.hₜ
+    ar = params.functional_response.aᵣ
+    ω = params.functional_response.ω
+    c = params.functional_response.c
+    B = sanatize_biomass(B)
+
+    for i in 1:S
+        int[i, :] = [
+                     ( ar[i, j] .* ω[i, j] * (B[j])^h ) /
+                     (1 +  c[i] * B[i] + sum(ω[i,:] .* ht[i,:] .* (B .^h)))
                      for j in 1:S
                     ]
     end

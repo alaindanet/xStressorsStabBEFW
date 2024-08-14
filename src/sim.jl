@@ -654,8 +654,6 @@ dim(A) == length(new_bm)
 
 
 """
-
-
 function kill_disconnected_species(A; alive_species = nothing, bm = nothing)
     bm = deepcopy(bm)
     disconnected_alive_species = check_disconnected_species(A, alive_species)
