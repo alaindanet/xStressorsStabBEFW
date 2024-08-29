@@ -34,8 +34,8 @@ function get_parameters_two_species_kuramoto(;
     pref = [
             0 0 0 0;
             0 0 0 0;
-            1 B 0 0;
-            B 1 0 0;
+            1-B B 0 0;
+            B 1-B 0 0;
            ]
     # Foodweb
     foodweb = FoodWeb(A)
@@ -90,12 +90,13 @@ p1 = plot(m, idxs = [3, 4], legend = false, title = "Trophic coupling")
 coefficient_of_variation(m, idxs = [3, 4])
 
 # Resource coupling
-p = get_parameters_two_species_kuramoto(B = 0.00, α = .1)
+p = get_parameters_two_species_kuramoto(B = 0.00, α = .95)
 m = simulate(p, [.1, .3, .1, .3],
              tmax = 600,
              callback = nothing
             );
 p2 = plot(m, idxs = [3, 4], legend = false, title = "Resource coupling")
+coefficient_of_variation(m, idxs = [3, 4], last = 500)
 
 # No Ressource  nor trophic coupling
 p = get_parameters_two_species_kuramoto(B = 0.00, α = 0)

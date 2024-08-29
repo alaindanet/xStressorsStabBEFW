@@ -28,6 +28,7 @@ END=$((${STEPSIZE} * ${SLURM_ARRAY_TASK_ID}))
 
 echo "Starting task from ${START} to ${END}"
 
+# Default simulation
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
     --param_file="scripts/param_comb_zc.arrow"\
@@ -39,6 +40,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --re_run=true\
     --d=nothing
 
+# Rebuild food-web after removing disconnected species
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
     --param_file="scripts/param_comb_zc.arrow"\
@@ -50,6 +52,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --re_run=true\
     --d=nothing
 
+# Do not standardise carrying capacity according the number of primary producers
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
     --param_file="scripts/param_comb_zc.arrow"\
@@ -61,6 +64,7 @@ cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulati
     --re_run=true\
     --d=nothing
 
+# Death rates are fixed, i.e. are not allometric
 cd ${DIR_ENV} && ${JULIA} --project=${DIR_ENV} ${DIR_ENV}/${DIR_SCRIPT}/simulation_args.jl \
     --first_sim=${START} --last_sim=${END}\
     --param_file="scripts/param_comb_zc.arrow"\

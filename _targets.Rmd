@@ -23,13 +23,14 @@ install.packages(c("biglm", "dplyr", "ggplot2", "readr", "targets", "tidyr"))
 
 # Setup
 
-If you are using old versions of `targets` (<= 0.7.0) and/or `knitr` (<= 1.33), you will need to load the `targets` package in the R Markdown document in order for Target Markdown code chunks to work.
 
 ```{r}
 library(targets)
 ```
 
-Near the top of the document, you may also wish to remove the `_targets_r` directory previously written by non-interactive runs of the report. Otherwise, your pipeline may contain superfluous targets.
+Near the top of the document, you may also wish to remove the `_targets_r` directory
+previously written by non-interactive runs of the report. Otherwise, your pipeline may
+contain superfluous targets.
 
 ```{r}
 library(targets)
@@ -76,13 +77,13 @@ list(
   tar_target(sem_collinearity, sem_main_text_collinearity_csc_rerun),
   tar_target(sem_rsquared, sem_main_text_rsquared_csc_rerun),
   tar_target(tab_sem_vif,
-    sem_collinearity %>%
+    sem_doak_collinearity_csc_rerun %>%
       mutate(across(c("response", "Term"), ~var_replacement()[.x])) %>%
       mutate(VIF = round(VIF, 1)) %>%
       select(Response = response, Term, VIF)
     ),
   tar_target(tab_sem_rsquared,
-    sem_rsquared %>%
+    sem_doak_rsquared_csc_rerun %>%
       rename(`$R^2$` = R.squared) %>%
       kable(caption = "Rsquared for the Structural Equation Model.") %>%
       kable_styling()
@@ -110,21 +111,6 @@ list(
       )
   )
 )
-```
-
-```{r, eval = FALSE}
-library(targets)
-tar_load_globals()
-tar_load(starts_with("sim_fw_csc"))
-sim_fw_csc_rerun
-sim_fw_csc_rebuild
-sim_fw_csc_kno
-sim_fw_csc_non_allo
-sim_fw_csc_non_allo
-tar_read(sem_rsquared) %>%
-  rename(`$R^2$` = R.squared) %>%
-  kable(caption = "Rsquared for the Structural Equation Model.") %>%
-  kable_styling()
 ```
 
 
@@ -305,7 +291,6 @@ list(
   )
 )
 ```
-
 
 ```{targets simplified-sem}
 list(
@@ -614,30 +599,6 @@ list(
 
 
 # plot
-
-```{r, eval = FALSE}
-tar_load(sem_main_text_tot)
-sem_simplified_tot %>%
-  select(sim_type, collinearity) %>%
-  unnest(cols = c(collinearity)) %>%
-  group_by(sim_type) %>%
-  summarise(
-    med = median(VIF),
-    max = max(VIF)
-  )
-tar_read(sem_main_text_eff_rerun)
-tar_load(pred_stab_comp_resp_div)
-library(targets)
-tar_load(sem_doak_eff_tab_csc_rerun)
-sem_doak_eff_tab_csc_rerun %>%
-  filter(effect_type == "direct", abs(effect) > .05) %>%
-  print(n = 40)
-
-sem_doak_eff_tab_csc_rerun %>%
-  filter(effect_type == "direct") %>%
-  print(n = 40)
-```
-
 
 ```{targets plot-sem-tot}
 list(
@@ -1195,120 +1156,6 @@ list(
 )
 ```
 
-## Partial residuals SEM
-
-```{targets partial_sem_relations, eval = FALSE}
-list(
-  tar_target(scaled_sim_fw_sem,
-    sim_fw_sem %>%
-      mutate(across(where(is.numeric), ~scale(.x)[, 1]))
-    ),
-  tar_target(scaled_sem_simplified_model_list,
-    map(sem_simplified_model_list,
-      ~update(.x, data = scaled_sim_fw_sem)
-      )),
-  tar_target(scaled_sem_simplified,
-    as.psem(scaled_sem_simplified_model_list)
-    ),
-  tar_target(formula_sem_bivariate_relations,
-    c(
-      "pop_stab ~ w_avg_tlvl",
-      "pop_stab ~ c",
-      "pop_stab ~ env_stoch",
-      "sae_total ~ richness",
-      "sae_total ~ ct_alive",
-      "sae_total ~ w_avg_tlvl",
-      "sae_total ~ avg_int_strength",
-      "cpe ~ avg_int_strength",
-      "cpe ~ resp_div"
-    )
-    )#,
-  #tar_target(partial_resid_sem_simplified, {
-  #  partialResid(as.formula(formula_sem_bivariate_relations),
-  #          modelList = scaled_sem_simplified,
-  #          data = scaled_sim_fw_sem
-  #        )},
-  #        pattern = map(formula_sem_bivariate_relations)
-  #),
-  #tar_target(sem_simplified_bivariate_relations,
-  #  tibble(sem_formula = formula_sem_bivariate_relations) %>%
-  #    separate(
-  #      col = sem_formula,
-  #      into = c("response", "predictor"),
-  #      sep = " ~ ", remove = FALSE) %>%
-  #  mutate(
-  #    data = partial_resid_sem_simplified,
-  #    coefs = map2(response, predictor,
-  #      ~coefficients(scaled_sem_simplified[[.x]])[c("(Intercept)", .y)]
-  #      ),
-    #  plot = pmap(list(
-    #      data = data,
-    #      response = response,
-    #      predictor = predictor,
-    #      coef = coefs
-    #      ),
-    #    function (data, response, predictor, coef, ext_data) {
-    #      if (predictor %in% c("h", "env_stoch", "resp_div")) {
-    #        p <- data %>%
-    #          ggplot(aes(
-    #              y = yresid, x = xresid,
-    #              group = cut(round(xresid, 1),
-    #                breaks = length(unique(ext_data[[predictor]]))
-    #              )
-    #              )) +
-    #          geom_boxplot(alpha = .1)
-    #      } else {
-    #        p <- data %>%
-    #          ggplot(aes(y = yresid, x = xresid)) +
-    #          geom_point(alpha = .1)
-    #      }
-    #      p +
-    #        geom_abline(
-    #          intercept = coef["(Intercept)"],
-    #          slope = coef[2],
-    #          linewidth = 1
-    #          ) +
-    #        labs(
-    #          x = var_replacement()[predictor],
-    #          y = var_replacement()[response]
-    #          ) +
-    #        coord_cartesian(expand = FALSE) +
-    #        theme_half_open()
-
-    #    }, ext_data = scaled_sim_fw_sem)
-    #)
-  #)
-)
-```
-
-
-
-
-
-```{targets p-stab}
-list(
-  tar_target(p_cpe_env_rho, sim_fw %>%
-    ggplot(aes(x = as.factor(1 - rho), y = cpe_env)) +
-    geom_hline(yintercept = 1, linetype = "dashed") +
-    geom_hline(yintercept = .5, linetype = "dashed", color = "red") +
-    geom_boxplot() +
-    labs(x = "Response diversity", y = "Env. Compensatory effect") +
-    theme_bw()),
-  tar_target(p_stoch_pop_stab,
-    sim_fw %>%
-      ggplot(aes(x = as.factor(env_stoch), y = pop_stab)) +
-      geom_boxplot() +
-      labs(x = "Environmental stochasticity", y = "Population stability") +
-      theme_bw()),
-    tar_target(p_stab_comp_stress,
-      plot_grid(
-        p_cpe_env_rho,
-        p_stoch_pop_stab,
-        labels = "auto"
-      )
-    )
-)
-```
 
 ## Stability-diversity relationship
 
@@ -1339,142 +1186,6 @@ list(
          )
       )
 )
-```
-
-```{targets p_stab_rich_env_rho, tar_simple = TRUE}
-sim_fw %>%
-  filter(env_stoch %in% c(.1, .6), rho %in% c(0, .75), c == 1, Z == 100) %>%
-  ggplot(aes(x = log(richness), y = log(stab_com), color = as.factor(rho))) +
-  geom_point(alpha = .3) +
-  geom_smooth(method = "lm") +
-  facet_grid(cols = vars(env_stoch), labeller = label_both) +
-  labs(
-    x = "Species richness (Log)", y = "Community stability (Log)",
-    color = "Environmental correlation"
-  ) +
-  theme_bw() +
-  theme(legend.position = "bottom")
-```
-
-
-## Interaction strength effect
-
-
-```{targets p_int_stab, tar_simple = TRUE}
-sim_fw %>%
-  filter(rho %in% c(0), env_stoch == .5) %>%
-  pivot_longer(c(stab_com, async, sae_total, cpe,
-      sae_even, evenness_sae,
-      cpe_int, cpe_env, pop_stab
-      ), names_to = "async_decomp", values_to = "values") %>%
-  mutate(async_decomp = var_replacement()[async_decomp]) %>%
-  ggplot(aes(x = avg_int_strength, y = values)) +
-  geom_point() +
-  geom_smooth() +
-  labs(x = "Avg feeding rate", y = "Asynchrony component") +
-  facet_wrap(~async_decomp, ncol = 3, scales = "free_y") +
-  theme_bw()
-```
-
-```{targets p_int_fw, tar_simple = TRUE}
-sim_fw %>%
-  filter(rho %in% c(0), env_stoch == .5) %>%
-  pivot_longer(c(richness, ct_alive, max_tlvl, avg_omnivory, w_avg_tlvl
-      ), names_to = "fw_str", values_to = "values") %>%
-  mutate(fw_str = var_replacement()[fw_str]) %>%
-  ggplot(aes(x = avg_int_strength, y = values)) +
-  geom_point() +
-  geom_smooth() +
-  labs(x = "Avg feeding rate", y = "Food-web structure") +
-  facet_wrap(~fw_str, ncol = 3, scales = "free_y") +
-  theme_bw()
-```
-
-## Avg Omnivory
-
-```{targets p-omn}
-list(
-  tar_target(p_omn_stab,
-    sim_fw %>%
-      filter(rho %in% c(0), env_stoch == .5) %>%
-      pivot_longer(c(stab_com, pop_stab, async
-          ), names_to = "stab_comp", values_to = "values") %>%
-      mutate(stab_comp = var_replacement()[stab_comp]) %>%
-      ggplot(aes(x = avg_omnivory, y = values)) +
-      geom_point() +
-      geom_smooth() +
-      labs(x = "Avg omnivory", y = "Stability component") +
-      facet_wrap(~stab_comp, ncol = 3, scales = "free_y") +
-      theme_bw()),
-  tar_target(p_omn_fw,
-    sim_fw %>%
-      filter(rho %in% c(0), env_stoch == .5) %>%
-      pivot_longer(c(richness, ct_alive, w_avg_tlvl, max_tlvl
-          ), names_to = "fw_str", values_to = "values") %>%
-      mutate(fw_str = var_replacement()[fw_str]) %>%
-      ggplot(aes(x = avg_omnivory, y = values)) +
-      geom_point() +
-      geom_smooth() +
-      labs(x = "Avg. Omnivory", y = "Food-web structure") +
-      facet_wrap(~fw_str, ncol = 3, scales = "free_y") +
-      theme_bw()
-  )
-)
-```
-
-```{targets p-ct-rich-stab}
-list(
-  tar_target(p_ct_stab,
-    sim_fw %>%
-      filter(rho %in% c(0), env_stoch == .1) %>%
-      pivot_longer(c(stab_com, async, sae_total, cpe,
-          sae_even, evenness_sae,
-          cpe_int, cpe_env, pop_stab
-          ), names_to = "async_decomp", values_to = "values") %>%
-      mutate(async_decomp = var_replacement()[async_decomp]) %>%
-      ggplot(aes(x = ct_alive, y = values)) +
-      geom_point() +
-      geom_smooth() +
-      labs(x = "Connectance", y = "Asynchrony component") +
-      facet_wrap(~async_decomp, ncol = 3, scales = "free_y") +
-      theme_bw()
-    ),
-  tar_target(p_rich_stab,
-    sim_fw %>%
-      filter(rho %in% c(0), env_stoch == .1) %>%
-      pivot_longer(c(stab_com, async, sae_total, cpe,
-          sae_even, evenness_sae,
-          cpe_int, cpe_env, pop_stab
-          ), names_to = "async_decomp", values_to = "values") %>%
-      mutate(async_decomp = var_replacement()[async_decomp]) %>%
-      ggplot(aes(x = richness, y = values)) +
-      geom_point() +
-      geom_smooth() +
-      labs(x = "Species richness", y = "Asynchrony component") +
-      facet_wrap(~async_decomp, ncol = 3, scales = "free_y") +
-      theme_bw()
-    )
-)
-```
-
-```{targets p_int_fw_str, tar_simple = TRUE}
-p1 <- sim_fw %>%
-  ggplot(aes(x = as.factor(richness), y = avg_int_strength)) +
-  geom_point() +
-  labs(x = "Species richness", y = "Avg. Interaction strength") +
-  theme_bw()
-p2 <- sim_fw %>%
-  ggplot(aes(x = as.factor(Z), y = avg_int_strength)) +
-  geom_boxplot() +
-  labs(x = "PPBR", y = "Avg. Interaction strength") +
-  theme_bw()
-p3 <- sim_fw %>%
-  filter(Z == 100) %>%
-  ggplot(aes(x = as.factor(c), y = avg_int_strength)) +
-  geom_boxplot() +
-  labs(x = "Hill exponent", y = "Avg. Interaction strength") +
-  theme_bw()
-plot_grid(p1, p2, p3, ncol = 2)
 ```
 
 
@@ -1713,8 +1424,9 @@ list(
   tar_target(sim_summary_stat, get_sim_summary_stat(x = sim_fw)),
   tar_target(tab_sim_summary_stat,
   sim_summary_stat %>%
+    ungroup() %>%
     mutate(
-      var = var_replacement()[var],
+      var = recode_factor(var, !!!var_replacement(), .ordered = TRUE),
       type = str_to_sentence(type)
       ) %>%
     select(Type = type, `Metric` = var, N = n, `Median (5%, 95%)`)
@@ -1727,6 +1439,14 @@ tar_load(sim_summary_stat)
 tar_load(sim_fw)
 ```
 
+```{targets render, eval = FALSE}
+# does not work properly, have to run it by hand
+list(
+  tar_render(manuscript, here::here("paper","manuscript.Rmd")),
+  tar_render(supp, here::here("paper","supplementary_figures.Rmd"))
+)
+```
+
 
 
 # Pipeline
@@ -1735,8 +1455,6 @@ If you ran all the `{targets}` chunks in non-interactive mode, then your R scrip
 
 ```{r tar-make}
 tar_make()
-tar_visnetwork()
-tar_make_future(workers = 3)
 ```
 
 # Output

@@ -4,7 +4,8 @@
 
 
 import Pkg
-using DifferentialEquations, BEFWM2, ProgressMeter, SparseArrays, LinearAlgebra, DataFrames, CSV, Arrow
+using DifferentialEquations, EcologicalNetworksDynamics, ProgressMeter, SparseArrays, LinearAlgebra, DataFrames, CSV, Arrow
+using Distributions
 include("src/stochastic_mortality_model.jl")
 include("src/sim.jl")
 include("src/interaction_strength.jl")
@@ -67,21 +68,23 @@ param = ModelParameters(foodweb,
 #sim_int_mat(A; σₑ = .5, alpha_ij = 0, Z = 100, h = 2.0, c = 1.0, K = 1.0, max = 50000, last = 25000, dt = 0.1, return_sol = false)
 #
 #
-alphaij = 0.8
+alphaij = 0.0
 sim = map(x -> sim_int_mat(x;
                            ρ = 0, alpha_ij = alphaij,
-                           σₑ = 0.9,
-                           d = 0.1,
-                           Z = 10, h = 2.0, c = 1.0,
-                           r = 1.8, K = 20.0,
+                           σₑ = 0.1,
+                           d = 0.05,
+                           Z = 100, h = 2.0, c = 1.0,
+                           r = 1.0, K = 10.0,
                            K_alpha_corrected = true,
-                           fun = stoch_d_dBdt!,
+                           dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
                            max = 2000, last = 100, dt = 0.1,
                            return_sol = false),
           fw_module);
 
 df = DataFrame(sim)
 df[:, :name] = collect(keys(fw_module))
+
+df[:, [:name,:richness, :stab_com, :avg_cv_sp, :sync]]
 
 rep = 1:10
 fw_module_names = keys(fw_module)
@@ -98,7 +101,7 @@ sim = @showprogress pmap(p -> merge(
                                  σₑ = p.sigma,
                                  d = 0.1,
                                  Z = 100, h = 2.0, c = 1.0, K = 3.0,
-                                 fun = stoch_d_dBdt!,
+                                 dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
                                  max = 1000, last = 100, dt = 0.1, return_sol = false)
                     ),
                          param
@@ -131,15 +134,18 @@ sim = @showprogress pmap(p -> merge(
                          param
                         )
 sim_competition = map(x -> sim_int_mat(zeros(x, x);
-                           ρ = 1, alpha_ij = alphaij,
-                           σₑ = 1.0,
+                           ρ = 0, alpha_ij = .2,
+                           σₑ = .1,
                            d = 0.1,
                            Z = 10, h = 2.0, c = 1.0,
-                           r = 1.8, K = 20.0,
+                           r = 1.0, K = 10.0,
                            K_alpha_corrected = true,
-                           fun = stoch_d_dBdt!,
+                           dbdt = EcologicalNetworksDynamics.stoch_d_dBdt!,
                            max = 2000, last = 100, dt = 0.1,
                            return_sol = false),
-          1:8);
+          1:15);
+
+sim_compet_df = DataFrame(sim_competition)
+sim_compet_df[:, [:richness, :stab_com, :avg_cv_sp, :sync]]
 
 df = DataFrame(sim)
