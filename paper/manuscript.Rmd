@@ -984,4 +984,10 @@ values of the other variables were set to the values indicated in the Fig.
 `DHARMa` R package. The model was implemented using the R package
 `glmmTMB`[@brooks_glmmtmb_2017].
 
+# Code availability
+
+The code used to run the simulations, analyse the data and write the manuscript
+is available on Github (https://github.com/alaindanet/xStressorsStabBEFW) and
+archived on Zenodo (https://zenodo.org/records/13454946).
+
 # References {-}
