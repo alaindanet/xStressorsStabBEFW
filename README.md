@@ -23,6 +23,10 @@ to complex food-webs and with all species having stochastic mortality rates.
 The simulations were thus run in `Julia`, but the statistical analysis were done
 in `R`.
 
+The simulations are quite computationnally intense and takes several days to run
+on an HPC if using 20 cores. If using array jobs (using aroung 150 cores), the
+simulations should be completed within a day.
+
 # The steps and organisation
 
 ## The simulations

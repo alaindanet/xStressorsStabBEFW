@@ -3,14 +3,14 @@ title: Response diversity is a major driver of temporal stability in complex foo
 author: "Alain Danet (1), Sonia Kéfi (2,3), Thomas F. Johnson (1), Andrew P. Beckerman (1)"
 date: ""
 output:
+  officedown::rdocx_document:
+    number_sections: false
+    base_format: "bookdown::word_document2"
   bookdown::pdf_document2:
     latex_engine: xelatex
     keep_tex: true
     spacing: double
     number_sections: false
-  officedown::rdocx_document:
-    number_sections: false
-    base_format: "bookdown::word_document2"
 always_allow_html: true
 bibliography: references.bib
 link-citations: true
@@ -322,7 +322,7 @@ population stability has twice the effect of asynchrony (resp. $r_\delta$=
 We further found that asynchrony is driven more by portfolio effects than by
 compensatory dynamics (resp. $r_\delta$= `r ras` and `r rac`). In more details, response
 diversity has strong positive effects on asynchrony, mainly through portfolio
-effects ($r_\delta$= `r rsd`), but also through a weaker positive effect on compensatory
+effects ($r_\delta$= `r rsd`), at the expense of compensatory
 dynamics ($r_\delta$= `r rcd`). All other studied properties were found to have relatively
 much weaker effects on asynchrony. Food web structural properties – namely
 average trophic level, connectance and average interaction strength – have
@@ -331,7 +331,7 @@ compensatory effects (Fig. \@ref(fig:sem)a). Indeed, as average trophic level an
 increase compensatory effects are reduced (resp. $r_\delta$= `r rct` and `r rcc`, Fig.
 \@ref(fig:sem)a), while average interaction strength has a small negative effect
 on portfolio effects ($r_\delta$= `r rsi`). Species richness has a positive
-effect on both portfolio and compensatory effects (resp. $r_\delta$=`r rsr` and
+effect on both portfolio and compensatory effects (resp. $r_\delta$= `r rsr` and
 `r rcr`). Finally, as expected, environmental stochasticity has little effect on
 asynchrony.
 
@@ -373,19 +373,19 @@ structural equation model (See Method), we showed that both environmental
 stochasticity and species response diversity have by far the strongest total
 effects on community stability (resp. $r_\delta$= `r rtsenv` and `r rtsdiv`,
 Fig. \@ref(fig:sem)b). Species richness and average trophic level have similar
-small but positive total effects on community stability ($r_\delta$=`r rtsr`),
+small but positive total effects on community stability ($r_\delta$= `r rtsr`),
 but through opposite pathways. While species richness increases community
-stability through a strong positive effect on asynchrony ($r_\delta$=`r rtar`),
-it also weakly decreases population stability ($r_\delta$=`r rtpr`). In
+stability through a strong positive effect on asynchrony ($r_\delta$= `r rtar`),
+it also weakly decreases population stability ($r_\delta$= `r rtpr`). In
 contrast, average trophic level increases community stability through strong
-positive effect on population stability ($r_\delta$=`r rtpt`), but is dampened
-by a negative total effect on asynchrony ($r_\delta$=`r rtat`). Interestingly,
+positive effect on population stability ($r_\delta$= `r rtpt`), but is dampened
+by a negative total effect on asynchrony ($r_\delta$= `r rtat`). Interestingly,
 average interaction strength also has a positive effect on population stability
 and a negative one on asynchrony (resp. $r_\delta$= `r rtpi` and `r rtai`). This
 results in a total negative effect on community stability ($r_\delta$=
 `r rtsi`). Connectance, instead, has a negative effect on community stability
 ($r_\delta$= `r rtsct`) through negative effects on both asynchrony and
-population stability (resp. $r_\delta$=`r rtact` and `r rtpct`).
+population stability (resp. $r_\delta$= `r rtact` and `r rtpct`).
 
 ```{r}
 tar_load(default_variable_values_pred)
@@ -614,7 +614,7 @@ communities.
 We simulated the dynamics of complex food-webs using the allometric bioenergetic
 model [@yodzis_body_1992; @brose_allometric_2006; @delmas_simulations_2017]. This model
 is widely used to simulate the dynamics of complex ecological communities
-because of the simplicity  and because it can be parametrized using  the
+because of the simplicity of its parametrisation, using the
 metabolic theory of ecology [@brown_toward_2004]. The model describes species
 biomass dynamics over time with two master equations, one for the primary
 producers (eq. \@ref(eq:prod)) and one for the consumers (eq.\@ref(eq:cons)):
@@ -638,12 +638,12 @@ producers (eq. \@ref(eq:prod)) and one for the consumers (eq.\@ref(eq:cons)):
 
 The consumers gain biomass by consuming resources (i.e. their preys) at a rate
 that depends on their mass specific metabolic rate ($x_i$),  maximum consumption
-rate ($y_i$) and on the functional response ($F_ij$) describing how the rate of
-consumption of a consumer $i$ on a resource $j$ vary with the biomass of this resource.
-Consumers then lose biomass by being consumed, $e_ij$ being the assimilation
-efficiency of the consumer $j$ on the resource $i$. Consumers also lose biomass
-over time through metabolic losses ($-x_iB_i$) and by natural mortality due to
-environment ($-d_iB_i$). The primary producers gain biomass over time with a
+rate ($y_i$) and on the functional response ($F_{ij}$) describing how the rate
+of consumption of a consumer $i$ on a resource $j$ vary with the biomass of this
+resource. Consumers then lose biomass by being consumed, $e_{ij}$ being the
+assimilation efficiency of the consumer $j$ on the resource $i$. Consumers also
+lose biomass over time through metabolic losses ($-x_iB_i$) and natural
+mortality ($-d_iB_i$). The primary producers gain biomass over time with a
 growth rate ($r_i$, eq. \@ref(eq:prod)) and a functional response ($G_i$)
 describing how the growth of the producers vary with their biomass. They lose
 biomass by being consumed by consumers and by natural mortality.
@@ -678,21 +678,20 @@ controls the shape of the functional response from a saturating function
 
 We added a stochastic natural mortality rate to the species dynamics,
 representing a fluctuating environment. Based on the literature and previous
-models [@vasseur_environmental_2007], we assumed that natural mortality rates
+models[@vasseur_environmental_2007; @hatton_linking_2019], we assumed that natural mortality rates
 scales inversely with the species body mass ($d_i = d_0M_i^{-1/4}$), as all
 other physiological parameters. We used a basal natural mortality rate of $d_0 =
-.4$, as done in previous studies[@vasseur_environmental_2007].
+0.4$, as a previous study[@vasseur_environmental_2007].
 
-We introduced environmental stochasticity by considering stochastic variation of
+We introduced environmental stochasticity by considering stochastic variation in
 mortality rates. Doing so allows to consider stochasticity without modifying
-species interactions themselves
-[@vasseur_environmental_2007]. The stochastic part of the mortality rates
+species interactions themselves[@vasseur_environmental_2007]. The stochastic part of the mortality rates
 ($\epsilon_{i, t}$) follow a normal distribution 0 centered
 ($\epsilon_{i, t} \sim N(0,\sigma^2_e)$) with a variance ($\sigma^2_e$). The
 mortality rates of each species at the time $t$ equals to $d_{i,t} = d_i
 e^{\epsilon_{i, t}}$, which ensured that the mortality rates never become
-negative [@vasseur_environmental_2007]. We
-simulated $\epsilon$ using an Ornstein-Uhlenbeck process, which is a modified
+negative[@vasseur_environmental_2007]. We
+simulated $\epsilon$ using an Ornstein-Uhlenbeck process, a modified
 Brownian motion where the stochastic values tend to come back to the central
 value (i.e. $\epsilon = 0$) such as $\epsilon_t$ varies according to this
 stochastic differential equation: $d\epsilon_t = (0 - \epsilon_t)d_t + \sigma_e
@@ -701,11 +700,13 @@ stochasticity was then controlled by $\sigma_e$.
 
 Response diversity was controlled by the correlation among species stochastic
 mortality rates ($\rho_{ij, i \neq j}$) such as response diversity is maximal
-when species mortality rates are uncorrelated ($\rho = 0$) and null when species
-mortality rates are perfectly correlated ($\rho = 1$) [@ripa_food_2003;
-@vasseur_environmental_2007; @gouhier_synchrony_2010]. So the species mortality
-rates were a product of the stochastic mortality rates generated by the
-Ornstein-Uhlenbeck process and a variance-covariance matrix such as:
+when the stochastic component of species mortality rates ($\epsilon_{i, t}$)
+are uncorrelated ($\rho = 0$), and response diversity is null when the
+stochastic component of species mortality rates are perfectly
+correlated[@ripa_food_2003; @vasseur_environmental_2007; @gouhier_synchrony_2010] ($\rho = 1$).
+So the species mortality rates were a product of the stochastic mortality rates
+generated by the Ornstein-Uhlenbeck process and a variance-covariance matrix
+such as:
 
 
 \begin{equation}
@@ -779,12 +780,13 @@ standardised $K'$ such as $K_i = \frac{1 + \alpha_{ij} (S - 1)}{S}K'$
 [@ives_stability_2000]. However, we found that our results were not affected
 when removing the standardisation of carrying capacity (Fig. S1).
 
-We numerically solved the stochastic differential equation systems during 2000
-timesteps and collected the last 500 timesteps, similarly to previous studies
-[@brose_allometric_2006]. We set $d_t = .1$, and $d_t = .05$ when instability
-was detected during the simulations due to stiff changes in biomass. We set
-extinction threshold to $10^{-6}$ and if an extinction happened in the last 500
-timesteps, we continued to run the simulation for another 1000 timesteps until
+We numerically solved the stochastic differential equation systems during at
+least 2000 timesteps and collected the last 500 timesteps, similarly to previous
+studies [@brose_allometric_2006]. We numerically solve the system with $\Delta t
+= 0.1$ or $\Delta t = 0.05$ when instability was detected during the simulations
+due to stiff changes in biomass. We set extinction threshold to $10^{-6}$ and if
+an extinction happened in the last 500 timesteps, we continued to run the
+simulation for another 1000 timesteps until
 there was no extinction events during the last 500 timesteps. When we found
 disconnected species at the end of the simulation (i.e. a primary producer
 without consumer or a consumer without prey), we set their biomass to 0 and
@@ -795,7 +797,7 @@ analysis showed that alternative choices of simulation processes, such as longer
 simulations, rebuilding food-webs (i.e. resetting consumer preferences,
 recomputing species bodymass according to the new food-web) after removing
 disconnected species did not affect our results (Fig. S1). The food-web
-generation and simulations were done using the `Julia` package
+generation and simulations were done in Julia by developing an extension of the package
 `EcologicalNetworkDynamics.jl`[@lajaaiti_ecologicalnetworksdynamicsjl_2024].
 
 In sum, we generated `r format(m_sim(col = "n"), scientific = FALSE)`
@@ -807,8 +809,8 @@ level: `r m_sim("max_tlvl")`) (Table S3).
 ## Simulation analysis
 
 We measured food-web properties that have been linked with stability in the
-literature.  We measured total biomass, species richness, connectance, average
-trophic level weighted by biomass, average omnivory and average interaction
+literature. We measured total biomass, species richness, connectance, average
+trophic level weighted by biomass, and average interaction
 strength. Food-web properties were measured at each of the 500 timesteps and
 then averaged, except connectance and trophic level that were static.
 Connectance was computed as $C = L / S(S-1)$, $L$ being the number of trophic
@@ -818,11 +820,7 @@ trophic level of a consumer was equal to the average trophic level of its
 resources added to 1, the trophic level of primary producers being set to 1
 [@christensen_ecopath_1992]. Average trophic level was then equal to:
 $1/\hat{B}_i\sum_{i}\mathrm{TL}_i$, $\mathrm{TL}_i$ being the trophic level and
-$\hat{B}_i$ the average biomass of the species $i$. The degree of omnivory of a
-consumer was computed  such as the sum of squares of its resource trophic levels
-weighted by the relative preference of the consumer for each resource: $\sum_i
-(\mathrm{TL}_i - \hat{\mathrm{TL}})^2 \omega_i/ \sum \omega_i$
-[@christensen_ecopath_1992]. Interaction strength was computed was quantified as
+$\hat{B}_i$ the average biomass of the species $i$. Interaction strength was computed was quantified as
 the biomass fluxes going from a resource to a consumer, such as: $I = x_i y_i
 B_k F_{ij}$ (eq. \@ref(eq:cons)), and averaged over time. Our way of measuring
 interaction strength is very similar to previous metrics used in previous
@@ -833,9 +831,10 @@ strength at the exclusion of null interaction strengths (i.e. excluding absence
 of trophic interactions).
 
 We assessed the effects of food-web structure, environmental stochasticity and
-response diversity on temporal stability of biomass. We measured temporal stability of biomass
-as the inverse of the coefficient of variation. We further partitioned stability
-into population stability ($S_{pop}$) and asynchrony ($\phi$) such as:
+response diversity on temporal stability of biomass. We measured temporal
+stability of biomass as the inverse of the coefficient of variation. We further
+partitioned stability into population stability ($S_{pop}$) and asynchrony
+($\phi$) such as:
 
 \begin{equation}
 \begin{aligned}
@@ -845,14 +844,12 @@ S_{com} = S_{pop} \times \phi
 \end{equation}
 
 with $S_{com} = \mu_{tot} / \sigma_{tot}$, $S_{pop} = \mu_{tot} / \sum_i \sigma_i$,
-$\phi = \sum_i \sigma_i / \sigma_{tot}$.
-
-$\mu_{tot}$ and $\sigma_{tot}$ being respectively average total biomass and standard
-deviation of total biomass.
+$\phi = \sum_i \sigma_i / \sigma_{tot}$; $\mu_{tot}$ and $\sigma_{tot}$ being
+respectively average total biomass and standard deviation of total biomass.
 
 To further get a mechanistic insight about the effects of stressors and food-web
 structure on stability, we partitioned asynchrony into portfolio effects and
-compensatory dynamics stemming from species interaction[@zhao_biodiversity_2022]
+compensatory dynamics stemming from species interactions[@zhao_biodiversity_2022]
 ($CPE_{int}$). The measurement of portfolio effects has been a topic of
 debate[@loreau_biodiversity_2021;@zhao_biodiversity_2022]. Doak's
 definition[@doak_statistical_1998] defines portfolio effects as the product of
@@ -862,7 +859,7 @@ response diversity[@zhao_biodiversity_2022; @doak_statistical_1998]
 CPE_{env}$) emerging from independent species fluctuations, i.e. the statistical
 averaging effect ($SAE$), weighted by the effects of response diversity of
 species to environmental fluctuations, such as portfolio effects are dampened if
-species have correlated responses.
+species have correlated responses to environmental fluctuations.
 
 \begin{equation}
 \begin{aligned}
@@ -934,7 +931,7 @@ connectance result in higher population stability and lower asynchrony[@mccann_w
 @mccann_diversitystability_2000; @fahimipour_compensation_2017]. We further
 added simulation parameters as control
 variables because higher Predator-Prey Mass Ratio and predator interference were
-also expected to increase population stability [@brose_allometric_2006].
+also expected to increase population stability[@brose_allometric_2006].
 Finally, we tested the effects of environmental stochasticity and response
 diversity on population stability and asynchrony partitions, although there were
 predicted to mainly affect to population stability (i.e. by increasing amplitude
@@ -951,14 +948,13 @@ components to transform their relation from multiplicative to additive (eq.
 equation model presented low multicollinearity (Variance Inflation Factor < 3,
 Table S4), although interaction strength and species richness were highly
 correlated (Fig. S5). The structural equation model using the R package
-`PiecewiseSEM`[@lefcheck_piecewisesem_2016]. We then bootstrapped (N = 100) the
-SEM to obtain confidence intervals on the estimated effects and computed the sum
+`PiecewiseSEM`[@lefcheck_piecewisesem_2016]. We computed the sum
 of the direct and indirect effects using `semEff` R
 package[@murphy_semeff_2021]. In the main text, we reported standardised
 coefficients which were obtained by scaling the coefficients by the standard
 deviation of the response and predictor variable. Finally, we reported only the
-direct standardised coefficients that had an absolute value above $0.05$,
-because almost all linked were statistically significant given the high numbers
+direct standardised coefficients with an absolute value equal or above $0.05$,
+because almost all effects were statistically significant given the high numbers
 of simulations.
 
 In a second analysis, we tested how food-web structure, response diversity, and
@@ -979,10 +975,10 @@ stability and species richness according to a gradient of response diversity and
 of food-web structure. To do so, we summed all the coefficients involving
 species richness in the model, i.e. the one, two, and three-way terms. The
 values of the other variables were set to the values indicated in the Fig.
-\@ref(fig:pred). The VIF were inferior to 3, indicating low multicollinearity
-(Table S5), we checked the distribution of the residuals (Fig. S6) using
-`DHARMa` R package. The model was implemented using the R package
-`glmmTMB`[@brooks_glmmtmb_2017].
+\@ref(fig:pred). The coefficients of the models are displayed in Fig. S3. The
+VIF were inferior to 3, indicating low multicollinearity (Table S5), we checked
+the distribution of the residuals (Fig. S6) using `DHARMa` R package. The model
+was implemented using the R package `glmmTMB`[@brooks_glmmtmb_2017].
 
 # Code availability
 
