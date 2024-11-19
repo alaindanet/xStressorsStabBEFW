@@ -57,7 +57,7 @@ biorate = BioRates(foodweb,
 
 
 # define the starting values
-S = BEFWM2.richness(foodweb)
+S = EcologicalNetworksDynamics.richness(foodweb)
 stoch_starting_val = [0; 0; 0; 0]
 u0 = [rand(S); stoch_starting_val]
 tspan = (0, 50000)
@@ -75,7 +75,7 @@ corr_mat = vc
 
 function simulate_stoch(foodweb, bioener, biorate, s, p, corr_mat; tmax = 1000, dt = .1)
 
-    S = BEFWM2.richness(foodweb)
+    S = EcologicalNetworksDynamics.richness(foodweb)
     stoch_starting_val = [0; 0; 0; 0]
     B0 = [rand(S); stoch_starting_val]
     params_tmp = ModelParameters(foodweb,
@@ -117,19 +117,25 @@ end
 
 sol.prob.p.env_stoch.σₑ
 
-sol = simulate_stoch(foodweb, bioener, biorate, 0, 0, vc, tmax = 500)
+sol = simulate_stoch(foodweb, bioener, biorate, 0, 0, vc, tmax = 1000)
 df_no_stoch = get_ts(sol, last = 400, rho = 0, sigma = 0)
-plot(sol, idxs = [1, 2, 3, 4])
+plot(sol, idxs = [1, 2, 3, 4], tspan = (200, 600))
 foodweb_cv(sol, last=400, idxs = [1, 2, 3, 4])
 
-sol_stoch_cor0 = simulate_stoch(foodweb, bioener, biorate, .3, 0, vc, tmax = 500)
+
+sol_stoch_cor0 = simulate_stoch(foodweb, bioener, biorate, .3, 0, vc, tmax = 1000)
 df_stoch_cor0 = get_ts(sol_stoch_cor0, last = 400, rho = 0, sigma = 0.3)
-plot(sol, idxs = [1, 2, 3, 4])
+plot(sol_stoch_cor0, idxs = [1, 2, 3, 4])
 foodweb_cv(sol, last=400, idxs = [1, 2, 3, 4])
 
-sol_stoch_cor1 = simulate_stoch(foodweb, bioener, biorate, .3, 1, vc, tmax = 500)
+sol_stoch_cor05 = simulate_stoch(foodweb, bioener, biorate, .3, .5, vc, tmax = 500)
+df_stoch_cor05 = get_ts(sol_stoch_cor05, last = 400, rho = 1, sigma = 0.3)
+plot(sol_stoch_cor05, idxs = [1, 2, 3, 4])
+foodweb_cv(sol, last=400, idxs = [1, 2, 3, 4])
+
+sol_stoch_cor1 = simulate_stoch(foodweb, bioener, biorate, .3, 1, vc, tmax = 1000)
 df_stoch_cor1 = get_ts(sol_stoch_cor1, last = 400, rho = 1, sigma = 0.3)
-plot(sol, idxs = [1, 2, 3, 4])
+plot(sol_stoch_cor1, idxs = [1, 2, 3, 4], tspan = (600, 1000))
 foodweb_cv(sol, last=400, idxs = [1, 2, 3, 4])
 
 

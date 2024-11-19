@@ -128,46 +128,6 @@ function empirical_interaction_strength(B::Vector{Float64}, params::ModelParamet
     sparse(int)
 end
 
-function empirical_interaction_strength_classic_response(solution, params::ModelParameters; kwargs...)
-
-    measure_on = extract_last_timesteps(solution; kwargs...)
-
-    S = richness(params.network)
-    ntimestep = size(measure_on, 2)
-    out = zeros(S, S, ntimestep)
-    for i in 1:ntimestep
-        out[:, :, i] = empirical_interaction_strength_classic_response(measure_on[:, i], params)
-    end
-
-    (
-     mean = mean(out, dims = 3)[:, :, 1],
-     max = maximum(out, dims = 3)[:, :, 1],
-     min = minimum(out, dims = 3)[:, :, 1],
-     std = std(out, dims = 3)[:,:, 1],
-     all = out
-   )
-
-end
-function empirical_interaction_strength_classic_response(B::Vector{Float64}, params::ModelParameters)
-
-    S = size(params.network.species, 1)
-    int = zeros(S, S)
-    h = params.functional_response.h
-    ht = params.functional_response.hₜ
-    ar = params.functional_response.aᵣ
-    ω = params.functional_response.ω
-    c = params.functional_response.c
-    B = sanatize_biomass(B)
-
-    for i in 1:S
-        int[i, :] = [
-                     ( ar[i, j] .* ω[i, j] * (B[j])^h ) /
-                     (1 +  c[i] * B[i] + sum(ω[i,:] .* ht[i,:] .* (B .^h)))
-                     for j in 1:S
-                    ]
-    end
-    sparse(int)
-end
 
 """
 ```jldoctest

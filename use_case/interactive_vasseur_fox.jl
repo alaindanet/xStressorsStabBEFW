@@ -1,5 +1,6 @@
 using Revise
-using BEFWM2
+#using BEFWM2
+using EcologicalNetworksDynamics
 using Plots
 using LinearAlgebra
 using DifferentialEquations
@@ -78,8 +79,8 @@ function mydBdt!(dB, B, params::ModelParameters, t)
 
     # Compute ODE terms for each species
     for i in 1:S
-        growth = BEFWM2.logisticgrowth(i, B[1:S], r[i], K[i], network)
-        eating, being_eaten = BEFWM2.consumption(i, B[1:S], params, response_matrix)
+        growth = EcologicalNetworksDynamics.logisticgrowth(i, B[1:S], r[i], K[i], network)
+        eating, being_eaten = EcologicalNetworksDynamics.consumption(i, B[1:S], params, response_matrix)
         # Metabolic loss as basal mortality times exponentional stochastic noise
         metabolism_loss = params.biorates.x[i] * exp(B[i+S]) * B[i]
         net_growth_rate = growth + eating - metabolism_loss
@@ -116,7 +117,7 @@ end
 ρₑ = 0
 
 # Build the covariance matrix of the size of two times the number of species
-S = BEFWM2.richness(foodweb)
+S = EcologicalNetworksDynamics.richness(foodweb)
 vc = zeros(S * 2, S * 2)
 # Only the consumer have a variance
 # vc[diagind(vc)][S+2:S+3] .= σₑ
