@@ -47,7 +47,7 @@ without dividing carrying capacity by the number of primary producers
 - Simulations with fixed death rates instead of allometric
 
 The timeseries of the simulations were used to compute stability and food-web
-metrics in a separated repository using R: [alaindanet/pre_process_xStressorsStabBEFW](https://github.com/alaindanet/pre_process_xStressorsStabBEFW)
+metrics in a separated repository using R: [pre_process_xStressorsStabBEFW](https://github.com/alaindanet/pre_process_xStressorsStabBEFW)
 
 ## Analysis and manuscript
 
