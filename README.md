@@ -1,7 +1,7 @@
 # xStressorsStabBEFW
 
 This repo contains the simulation, the code, analysis and the manuscript of the
-study: "Danet, A, Kéfi, S, Johnson, T, F & Beckerman, A, P. Response diversity is a major driver of temporal stability in
+study: "Response diversity is a major driver of temporal stability in
 complex food webs."
 
 This work relies on simulations the dynamics of complex food-webs using the
@@ -13,8 +13,7 @@ julia package and presented in [Lajaaiti et al. (2024)](https://www.biorxiv.org/
 
 For this study, we developped a stochastic extension of this model by allowing
 species mortality rates to have a stochastic component. This extension has been
-developped in a fork of the original package [in my
-repo](https://github.com/alaindanet/BEFWM2/tree/vasseur_fox).
+developped in a fork of the original package [here](https://github.com/alaindanet/BEFWM2/tree/vasseur_fox).
 
 This model is basically an extension of the model of [Vasseur & Fox
 (2007)](https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1461-0248.2007.01099.x)
