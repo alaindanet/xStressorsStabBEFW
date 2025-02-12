@@ -1,0 +1,110 @@
+---
+title: Response diversity is a major driver of temporal stability in complex food webs
+author: "Alain Danet (1), Sonia Kéfi (2,3), Thomas F. Johnson (1), Andrew P. Beckerman (1)"
+date: ""
+output:
+  bookdown::pdf_document2:
+    latex_engine: xelatex
+    keep_tex: true
+    spacing: double
+    number_sections: false
+  officedown::rdocx_document:
+    number_sections: false
+    base_format: "bookdown::word_document2"
+always_allow_html: true
+bibliography: references.bib
+link-citations: true
+csl: ecology-letters.csl
+#csl: ecology-letters.csl
+toc: false
+linestretch: 2.0
+header-includes:
+  - \usepackage[left]{lineno}
+  - \linenumbers
+  - \usepackage{hyperref}
+  - \hypersetup{backref=true}
+  - \usepackage{setspace}\doublespacing
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  cache = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  fig.pos = "H",  # pdf mode
+  #fig.dim = c(7, 7),
+  fig.fullwidth = TRUE,
+  fig.show = "hold",
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  results = TRUE,
+  fig.path="figures/"
+)
+```
+
+```{r, results = FALSE}
+sapply(c("targets", "tidyverse", "magrittr", "cowplot", "here", "piecewiseSEM",
+    "semEff", "ggcorrplot", "kableExtra", "rmarkdown", "officedown"),
+  require,
+  character.only = TRUE)
+mytheme <- theme_cowplot(font_size = 8) +
+background_grid() +
+theme(legend.position = "bottom")
+theme_set(mytheme)
+sapply(list.files(here("R"), full.names = TRUE), source)
+```
+
+```{=latex}
+\begin{singlespace}
+```
+- 1 School of Biosciences, Ecology and Evolutionary Biology, University of Sheffield, Western Bank, Sheffield, S10 2TN, UK
+- 2 ISEM, CNRS, Univ. Montpellier, IRD, EPHE, Montpellier, France
+- 3 Santa Fe Institute, 1399 Hyde Park Road, Santa Fe, NM 87501, USA
+
+- Email address:
+  - Alain Danet (corresponding author): a.h.danet@sheffield.ac.uk
+  - Sonia Kéfi: sonia.kefi@umontpellier.fr
+  - Thomas F Johnson: t.f.johnson@sheffield.ac.uk
+  - Andrew P Beckerman: a.beckerman@sheffield.ac.uk
+
+- Short running title: Response diversity drives food-web stability
+
+- Keywords: food webs, temporal stability, theoretical modelling, response
+  diversity
+
+- Type of article: Letter
+
+- Number of words: Abstract: 150, Main text: 4843
+
+---
+word count:
+intro: 746
+result: 648
+discussion: 1281
+methods: 2168
+---
+
+- Number of references: 61, Number of figures: 2, Number of tables: 0
+
+- Corresponding author: Alain Danet, School of Biosciences, Ecology and
+  Evolutionary Biology, University of Sheffield, Western Bank, Sheffield, S10
+  2TN, UK; e-mail address: a.h.danet@sheffield.ac.uk
+
+Statement of authorship: AD and APB designed the research, AD performed the
+research. AD wrote the first draft of the manuscript. All authors all authors
+contributed substantially to revisions.
+
+Data accessibility statement: The code used to run the simulations, analyse them
+and to write the manuscript is archived anonymously on Zenodo:
+https://zenodo.org/records/14333268.
+
+# Acknowledgements
+
+We thank Owen Petchey and Tanya Strydom for their constructive feedback on the
+study. AD, TFJ and APB have received support from the Natural Environment
+Research Council under grant agreement no. NE/T003502/1 awarded to APB.
+
+```{=latex}
+\end{singlespace}
+```

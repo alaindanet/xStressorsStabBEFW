@@ -46,7 +46,6 @@ library(cowplot)
 library(targets)
 library(kableExtra)
 library(coda)
-library(ggbreak)
 
 sapply(list.files(here("R"), full.names = TRUE), source)
 if (Sys.info()["login"] == "alain") {
