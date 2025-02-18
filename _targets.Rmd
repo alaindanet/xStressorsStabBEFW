@@ -1282,6 +1282,104 @@ ggsave_multiple(
 ```
 
 
+```{targets p-resp-div-async-decomp}
+list(
+  tar_target(resp_div_async_decomp_fw,
+    sim_fw %>%
+      select(richness, resp_div, cpe_env, sae_doak) %>%
+      pivot_longer(cpe_env:sae_doak, names_to = "async_decomp", values_to = "values") %>%
+      mutate(async_decomp = recode_factor(async_decomp, !!!var_replacement()))
+    ),
+  tar_target(resp_div_async_decomp_prod,
+    tar_read(sim) %>%
+      filter(max_tlvl == 1) %>%
+      mutate(
+        resp_div = 1 - rho,
+        sae_doak = cpe_env * sae_total
+        ) %>%
+      select(richness, resp_div, cpe_env, sae_doak) %>%
+      pivot_longer(cpe_env:sae_doak, names_to = "async_decomp", values_to = "values") %>%
+      mutate(async_decomp = recode_factor(async_decomp, !!!var_replacement()))
+    ),
+  tar_target(p_resp_div_async_decomp_fw,
+    resp_div_async_decomp_fw %>%
+      ggplot(aes(x = as.factor(resp_div), y = values)) +
+      geom_boxplot() +
+      geom_hline(yintercept = 1) +
+      facet_wrap(~async_decomp) +
+      theme_bw() +
+      labs(
+        y = "Asynchrony partition",
+        x = var_replacement()["resp_div"]
+      )
+    ),
+  tar_target(p_resp_div_async_decomp_prod,
+    resp_div_async_decomp_prod %>%
+      ggplot(aes(x = as.factor(resp_div), y = values)) +
+      geom_boxplot() +
+      geom_hline(yintercept = 1) +
+      ylim(c(min(resp_div_async_decomp_fw$values), max(resp_div_async_decomp_fw$values))) +
+      facet_wrap(~async_decomp) +
+      theme_bw() +
+      labs(
+        y = "Asynchrony partition",
+        x = var_replacement()["resp_div"]
+      )
+    ),
+  tar_target(p_resp_div_async_decomp,
+    plot_grid(
+      p_resp_div_async_decomp_fw,
+      p_resp_div_async_decomp_prod,
+      labels = "auto"
+    )
+    ),
+  tar_target(p_resp_div_async_decomp_file,
+    ggsave_multiple(
+      paste0("p_resp_div_async_decomp", c(".png", ".pdf")),
+      plot = p_resp_div_async_decomp,
+      path = here::here("report", "figures"),
+      scale = 2.4,
+      dpi = 400,
+      width = 80,
+      height = 80 * .40,
+      units = "mm")
+  )
+)
+```
+
+```{r, eval = FALSE}
+tar_read(sim) %>%
+      filter(max_tlvl == 1) %>%
+      mutate(
+        resp_div = 1 - rho,
+        sae_doak = cpe_env * sae_total
+        ) %>%
+      select(richness, resp_div, cpe, cpe_int, cpe_env, sae_doak) %>%
+      pivot_longer(cpe:sae_doak, names_to = "async_decomp", values_to = "values") %>%
+      mutate(async_decomp = recode_factor(async_decomp, !!!var_replacement()))
+tar_read(resp_div_async_decomp_prod) %>%
+      ggplot(aes(x = as.factor(resp_div), y = values)) +
+      geom_boxplot() +
+      geom_hline(yintercept = 1) +
+      ylim(c(min(resp_div_async_decomp_fw$values), max(resp_div_async_decomp_fw$values))) +
+      facet_wrap(~async_decomp) +
+      labs(
+        y = "Asynchrony partition",
+        x = var_replacement()["resp_div"]
+      )
+tar_read(p_resp_div_async_decomp)
+
+    ggsave_multiple(
+      paste0("p_resp_div_async_decomp_ok", c(".png", ".pdf")),
+      plot = tar_read(p_resp_div_async_decomp),
+      path = here::here("report", "figures"),
+      scale = 2.4,
+      dpi = 400,
+      width = 80,
+      height = 80 * .6,
+      units = "mm")
+```
+
 
 
 # Table
@@ -1509,7 +1607,12 @@ ggsave_multiple(
 
 
 ```{r debug, eval = FALSE}
-tar_load(sim_fw)
+tar_load(sim_fw_sem)
+colnames(sim_fw_sem)
+
+sd(sim_fw_sem$rho) / sd(sim_fw_sem$env_stoch)
+sd(sim_fw_sem$pop_stab) / sd(sim_fw_sem$async)
+
 tar_load(c(sim_fw_no_rerun,
     sim_fw_rerun,
     sim_fw_no_rerun_short,
@@ -1524,30 +1627,6 @@ tar_load(c(
     ))
 ```
 
-```{r}
-tar_load(sim_param_tab)
-tar_load(sim_param)
-tar_load(tab_sim_param)
-tar_load(param_table)
-kable(param_table, "html", booktabs = T, escape = FALSE) %>%
-  kable_styling()
-tar_load(c(fix_parameter, allometric_parameter, tab_sim_param))
-ti <- fix_parameter %>%
-  bind_cols(allometric_parameter) %>%
-  mutate(across(where(is.list), ~map_chr(.x, function(x) paste_named_vector(x)))) %>%
-  mutate(across(where(is.double), ~as.character(.x))) %>%
-  pivot_longer(everything(), names_to = "Parameter", values_to = "Values") %>%
-  mutate(
-    parameter_name = parameter_name_replacement()[Parameter],
-    Parameter = latex_symbol_replacement()[Parameter],
-    Parameter = paste0(parameter_name, " (", surround_latex_math(Parameter), ")")
-    ) %>%
-  select(-parameter_name) %>%
-  bind_rows(tab_sim_param)
-ti %>%
-  kable("html", booktabs = T, escape = FALSE) %>%
-  kable_styling()
-```
 
 ```{r}
 ```
