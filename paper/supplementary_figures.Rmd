@@ -59,6 +59,23 @@ if (Sys.info()["login"] == "alain") {
 
 # Figures
 
+```{r}
+met_cap <- "Examples of stochastic food-web simulations. a, Simulations with low
+and high response diversity. b, simulations with low and high predator-prey mass
+ratio (upper and bottom panels), low and high species richness (left and right
+  panels). The food-webs are displayed on the side with the node size
+being proportional to the average species biomass across the simulation. We
+also display the food-web structure and the stability metrics. Across all
+simulations, $h = 2$, $\\sigma_e = .3$. Low and high response diversity were
+respectively $\\rho = 1$ and $\\rho = 0$. Low and high PPMR were respectively 1
+and 100." %>%
+str_replace_all("\\s+", " ")
+```
+
+```{r met, fig.cap = met_cap}
+knitr::include_graphics(here("report", "figures", "p_methods.pdf"))
+```
+
 (ref:sem-sens-cap) Total standardised effects for the sem displayed in main text
 according to different simulation set-ups. Default: simulations used in main
 text; Fixed death rate: non-allometric death rate, meaning that all species have
@@ -70,6 +87,49 @@ their metabolic rates, prey preferences, producer carrying capacity.
 
 ```{r p-sem-sensibility, fig.cap="(ref:sem-sens-cap)"}
 knitr::include_graphics(here("report", "figures", "p_sem_main_text_eff_tab_tot.pdf"))
+```
+
+(ref:resp-cap) Effects of response diversity on compensatory effects and
+portfolio effects in food web (a) and primary producer communities (b). Comp:
+compensatory; Doak: Computation of portfolio effects according to Doak et al.
+(1998) (reference in the main text). Black horizontal lines display the value of
+1, i.e. when those asynchrony partitions have no effects on asynchrony and
+therefore on community stability. As expected in pure competitive communities
+(b) where all species are the same and so that community biomass are evenly
+distributed, the compensatory effect due to the environmental stochasticity is
+one when response diversity is one, i.e. when all species have independent
+stochastic mortality rate. When stochastic mortality rates are correlated
+(response diversity < 1), compensatory effects due to environmental
+stochasticity and portfolio effects decrease.
+
+```{r p-resp, fig.cap="(ref:resp-cap)"}
+knitr::include_graphics(here("report", "figures", "p_resp_div_async_decomp.pdf"))
+```
+
+(ref:cor-cap) Spearman's correlation coeffients among stability components,
+food web structure, and model parameters.
+
+```{r p-cor, fig.cap="(ref:cor-cap)"}
+knitr::include_graphics(here("report", "figures", "p_cor.pdf"))
+```
+
+(ref:coeff-lm-cap) Standardised coefficients for the linear model predicting the
+relationship between community stability and species richness (Fig. 3).
+
+```{r coeff-lm, fig.cap="(ref:coeff-lm-cap)"}
+knitr::include_graphics(here("report", "figures", "p_model_fw_stab_comp_scaled_coeff.pdf"))
+```
+
+(ref:dharma-lm-cap) Distribution of residuals for the linear models predicting the
+relationship between community stability and species richness (Fig. 3). a,b,c
+for respectively community stability, population stabilty and asynchrony. Left
+panels display the distribution of the quantiles, and indicate that residuals
+are quite well distributed. Right panels display the scaled residuals versus the
+predicted values. The slight U-shape might indicate the lack of a polynomial
+term in the model, but overall the model looks to have appropriate fitting.
+
+```{r dharma-lm, fig.cap="(ref:dharma-lm-cap)", out.width = "80%"}
+knitr::include_graphics(here("report", "figures", "p_diagnotisc_model_fw_stab_comp.jpg"))
 ```
 
 ```{r}
@@ -98,51 +158,7 @@ str_replace_all("\\s+", " ")
 knitr::include_graphics(here("report", "figures", "p_pred_sr_resp_div_supp.pdf"))
 ```
 
-(ref:coeff-lm-cap) Standardised coefficients for the linear model predicting the
-relationship between community stability and species richness (Fig. 3).
-
-```{r coeff-lm, fig.cap="(ref:coeff-lm-cap)"}
-knitr::include_graphics(here("report", "figures", "p_model_fw_stab_comp_scaled_coeff.pdf"))
-```
-
-```{r}
-met_cap <- "Examples of stochastic food-web simulations. a, Simulations with low
-and high response diversity. b, simulations with low and high predator-prey mass
-ratio (upper and bottom panels), low and high species richness (left and right
-  panels). The food-webs are displayed on the side with the node size
-being proportional to the average species biomass across the simulation. We
-also display the food-web structure and the stability metrics. Across all
-simulations, $h = 2$, $\\sigma_e = .3$. Low and high response diversity were
-respectively $\\rho = 1$ and $\\rho = 0$. Low and high PPMR were respectively 1
-and 100." %>%
-str_replace_all("\\s+", " ")
-```
-
-```{r met, fig.cap = met_cap}
-knitr::include_graphics(here("report", "figures", "p_methods.pdf"))
-```
-
-(ref:cor-cap) Spearman's correlation coeffients among stability components,
-food-web structure, and model parameters.
-
-```{r p-cor, fig.cap="(ref:cor-cap)"}
-knitr::include_graphics(here("report", "figures", "p_cor.pdf"))
-```
-
-(ref:dharma-lm-cap) Distribution of residuals for the linear models predicting the
-relationship between community stability and species richness (Fig. 3). a,b,c
-for respectively community stability, population stabilty and asynchrony. Left
-panels display the distribution of the quantiles, and indicate that residuals
-are quite well distributed. Right panels display the scaled residuals versus the
-predicted values. The slight U-shape might indicate the lack of a polynomial
-term in the model, but overall the model looks to have appropriate fitting.
-
-```{r dharma-lm, fig.cap="(ref:dharma-lm-cap)", out.width = "80%"}
-knitr::include_graphics(here("report", "figures", "p_diagnotisc_model_fw_stab_comp.jpg"))
-```
-
 \pagebreak
-
 
 # Tables
 
@@ -173,31 +189,6 @@ tar_read(param_table) %>%
 ```
 
 ```{r}
-tar_read(tab_sem_doak_eff) %>%
-  kable(booktabs = TRUE,
-    format = "latex",
-    caption = "Standardised estimates from the Structural Equation Model
-    displayed in main text (Fig. 2).",
-    label = "sem-coeff"
-    ) %>%
-collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
-kable_styling(latex_options = c("striped", "hold_position"))
-```
-
-```{r, eval = FALSE}
-tar_read(tab_sem_simplified_eff) %>%
-  kable(booktabs = TRUE,
-    format = "latex",
-    caption = "Standardised estimates from the supplementary Structural Equation
-    Model which includes the partition of compensatory effects rising from
-    environmental fluctuations and species interactions, and partition of
-    statistical averaging effects (portfolio effects).", label =
-    "sem-supp-coeff") %>%
-  collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
-  kable_styling(latex_options = c("striped", "hold_position"))
-```
-
-```{r}
 sim_summary_stat_cap <- paste0(
   "Summary statistics of the food-web and stability metrics.") %>%
   str_replace_all("\\s+", " ")
@@ -208,12 +199,11 @@ tar_read(tab_sim_summary_stat) %>%
     format = "latex",
     escape = FALSE,
     caption = sim_summary_stat_cap,
-    label = "param") %>%
+    label = "summarystat") %>%
   column_spec(1, bold = TRUE) %>%
   collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 ```
-
 
 ```{r}
 tar_read(tab_sem_vif) %>%
@@ -241,5 +231,21 @@ tar_read(tab_model_fw_stab_comp_wo_int_vif) %>%
     ) %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 ```
+
+```{r}
+tar_read(tab_sem_doak_eff) %>%
+  kable(booktabs = TRUE,
+    format = "latex",
+    caption = "Standardised estimates from the Structural Equation Model
+    displayed in main text (Fig. 2).",
+    label = "sem-coeff"
+    ) %>%
+collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
+kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+
+
+
 
 

@@ -68,24 +68,16 @@ sapply(list.files(here("R"), full.names = TRUE), source)
   - Thomas F Johnson: t.f.johnson@sheffield.ac.uk
   - Andrew P Beckerman: a.beckerman@sheffield.ac.uk
 
-- Short running title: Response diversity drives food-web stability
+- Short running title: Response diversity drives food web stability
 
 - Keywords: food webs, temporal stability, theoretical modelling, response
   diversity
 
-- Type of article: Letter
+- Type of article: Research
 
-- Number of words: Abstract: 150, Main text: 4843
+- Number of words: Abstract: 170, Main text: 6712
 
----
-word count:
-intro: 746
-result: 648
-discussion: 1281
-methods: 2168
----
-
-- Number of references: 61, Number of figures: 2, Number of tables: 0
+- Number of references: 65, Number of figures: 2, Number of tables: 0
 
 - Corresponding author: Alain Danet, School of Biosciences, Ecology and
   Evolutionary Biology, University of Sheffield, Western Bank, Sheffield, S10
