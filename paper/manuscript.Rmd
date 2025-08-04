@@ -221,15 +221,16 @@ p_mm("ct")
 
 ## Bioenergenetic model
 
-We simulated the dynamics of complex food webs using the allometric bioenergetic
-model [@yodzis_body_1992; @rooney_homage_2006; @brose_allometric_2006;
-@lajaaiti_ecologicalnetworksdynamicsjl_nodate]. This model is widely used to
-simulate the dynamics of complex ecological communities because of the
-simplicity of its parametrisation, where metabolic parameters are set based on
+We simulated the dynamics of complex food webs using the allometric,
+bioenergetic model [@yodzis_body_1992; @rooney_homage_2006; @brose_allometric_2006;
+@lajaaiti_ecologicalnetworksdynamicsjl_2025]. This model is widely used to simulate the
+dynamics of complex ecological communities because of the simplicity of its
+parametrisation, where metabolism, growth and foraging rates are based on
 species body mass and metabolic types using the metabolic theory of ecology
-[@brown_toward_2004]. The model describes species biomass ($B_i$) dynamics over time
-of the primary producers ($B_{i \in \{\mathrm{prod.}\}}$, eq. \@ref(eq:prod)) and
-the consumers ($B_{i \in \{\mathrm{cons.}\}}$, eq.\@ref(eq:cons)):
+[@brown_toward_2004]. The model describes species biomass ($B_i$) dynamics over
+time of the primary producers ($B_{i \in \{\mathrm{prod.}\}}$, eq.
+\@ref(eq:prod)) and the consumers ($B_{i \in \{\mathrm{cons.}\}}$,
+eq.\@ref(eq:cons)):
 
 \begin{equation}
     (\#eq:cons)
@@ -247,25 +248,25 @@ the consumers ($B_{i \in \{\mathrm{cons.}\}}$, eq.\@ref(eq:cons)):
     - d_i B_i
 \end{equation}
 
-The consumers gain biomass by consuming their resources, where $j \in\{\mathrm{res.}\}_i$
-are the resources of the consumer $i$, at a rate
-that depends on their metabolic rate ($x_i$), maximum consumption
-rate ($y_i$) and on the functional response ($F_{ij}$) describing how the rate
-of consumption of a consumer $i$ on one of its resources $j$ vary with the biomass of this
-resource. The consumer metabolic rate was derived from ectotherm mass specific
-metabolic rate ($a_x = 0.88$, Table S1) and species body masses ($M_i$):
-$x_i=a_xM_i^b$, with $b=-1/4$ as defined in the allometric theory of metabolism
-[@brown_toward_2004; @brose_allometric_2006].
+The consumers gain biomass by consuming their resources, where $j\in\{\mathrm{res.}\}_i$
+are the resources of the consumer $i$, at a rate that depends on their
+metabolic rate ($x_i$), maximum consumption rate ($y_i$) and on the functional
+response ($F_{ij}$) describing how the rate of consumption of a consumer $i$ on
+one of its resources $j$ vary with the biomass of this resource. The consumer
+metabolic rate was derived from ectotherm mass specific metabolic rate ($a_x =
+0.88$, Table S1) and species body masses ($M_i$): $x_i=a_xM_i^b$, with $b=-1/4$
+as defined in the allometric theory of metabolism [@brown_toward_2004;
+@brose_allometric_2006].
 
-Species then lose biomass by being consumed, where $j \in \{\mathrm{cons.}\}_i$
-are the consumers of the species $i$, $e_{ij}$ is the assimilation efficiency
-of the consumer $j$ on the resource $i$ [@rooney_homage_2006;
-@brose_allometric_2006; @lajaaiti_ecologicalnetworksdynamicsjl_nodate].
-Consumers also lose biomass over time through metabolic losses ($-x_iB_i$) and
-natural mortality ($-d_iB_i$). The primary producers gain biomass over time with
-a growth rate ($r_i$, eq. \@ref(eq:prod)) and a functional response ($G_i$)
-describing how the growth of the producers vary with their biomass. They lose
-biomass by being consumed by consumers and by natural mortality.
+Species then lose biomass by being consumed, where $j \in \{\mathrm{cons.}\}_i$ are the consumers
+of the species $i$, $e_{ij}$ is the assimilation efficiency of the consumer $j$ on the
+resource $i$ [@rooney_homage_2006; @brose_allometric_2006;
+@lajaaiti_ecologicalnetworksdynamicsjl_2025]. Consumers also lose biomass over
+time through metabolic losses ($-x_iB_i$) and natural mortality ($-d_iB_i$). The
+primary producers gain biomass over time with a growth rate ($r_i$, eq. \@ref(eq:prod)) and a
+functional response ($G_i$) describing how the growth of the producers vary with
+their biomass. They lose biomass by being consumed by consumers and by natural
+mortality.
 
 The growth of the primary producers (eq. \@ref(eq:growth)) is logistic,
 
@@ -300,32 +301,33 @@ We added a stochastic natural mortality rate to the species dynamics,
 representing a fluctuating environment. Based on the literature and previous
 models [@vasseur_environmental_2007; @hatton_linking_2019], we assumed that natural mortality rates
 scales inversely with the species body mass ($d_i = d_0M_i^{-1/4}$), as all
-other physiological parameters. We used a basal natural mortality rate of $d_0 =
-0.4$, as a previous study [@vasseur_environmental_2007].
+other physiological parameters. Following previous work, we used a basal
+natural mortality rate of $d_0 = 0.4$ [@vasseur_environmental_2007].
 
-We introduced environmental stochasticity by considering stochastic variation in
-mortality rates. Doing so allows to consider stochasticity without modifying
-species interactions themselves [@vasseur_environmental_2007]. The stochastic
-part of the mortality rates ($\epsilon_{i, t}$) follow a normal distribution 0
-centered ($\epsilon_{i, t} \sim N(0,\sigma^2_e)$) with a variance
-($\sigma^2_e$). The mortality rates of each species at the time $t$ equals to
-$d_{i,t} = d_i e^{\epsilon_{i, t}}$, which ensured that the mortality rates
-never become negative [@vasseur_environmental_2007]. We simulated $\epsilon$ in
-two steps: we first simulated a temporally correlated Ornstein-Uhlenbeck process
-to generate the stochastic part of species mortality rates ($a_{i, t}$) and then
-we multiplied those values by a correlation matrix to control the level of
-response diversity. The Ornstein-Uhlenbeck process is a modified Brownian motion
-where the stochastic values tend to come back to the central value (i.e. $a_i =
-0$) such as $a_{i, t}$ varies according to this stochastic differential
-equation: $da_{i} = (0 - a_i)d_t + \sigma_e dW_i$, where $dW_i$ is a Brownian
-motion. The strength of environmental stochasticity was then controlled by
-$\sigma_e$. Response diversity was controlled by the correlation among species
-stochastic mortality rates ($\rho_{ij, i \neq j}$) such as response diversity is
+Introducing  environmental stochasticity via mortality rates allows to consider
+stochasticity without modifying species interactions themselves
+[@vasseur_environmental_2007]. The stochastic part of the mortality rates
+($\epsilon_{i, t}$) follow a normal distribution 0 centered ($\epsilon_{i, t}
+\sim N(0,\sigma^2_e)$) with a variance ($\sigma^2_e$). The mortality rates of
+each species at the time $t$ equals to $d_{i,t} = d_i e^{\epsilon_{i, t}}$,
+which ensured that the mortality rates never become negative
+[@vasseur_environmental_2007]. We simulated $\epsilon$ in two steps: we first
+simulated a temporally correlated Ornstein-Uhlenbeck process to generate the
+stochastic part of species mortality rates ($a_{i, t}$) and then we multiplied
+those values by a correlation matrix to control the level of response
+diversity. The Ornstein-Uhlenbeck process is a modified Brownian motion where
+the stochastic values tend to come back to the central value (i.e. $a_i = 0$)
+such as $a_{i, t}$ varies according to this stochastic differential equation:
+$da_{i} = (0 - a_i)d_t + \sigma_e dW_i$, where $dW_i$ is a Brownian motion. The
+strength of environmental stochasticity was then controlled by $\sigma_e$. 
+
+Response diversity was controlled by the correlation among species
+stochastic mortality rates ($\rho_{ij, i \neq j}$) such that response diversity is
 maximal when the stochastic component of species mortality rates ($\epsilon_{i,
 t}$) are uncorrelated ($\rho = 0$), and response diversity is null when the
 stochastic component of species mortality rates are perfectly correlated ($\rho
 = 1$) [@ripa_food_2003; @vasseur_environmental_2007; @gouhier_synchrony_2010].
-So the species mortality rates were a product of the stochastic mortality rates
+Formally, the species mortality rates were a product of the stochastic mortality rates
 generated by the Ornstein-Uhlenbeck process and a variance-covariance matrix
 such as:
 
@@ -404,16 +406,18 @@ protists [@vasseur_environmental_2007]. We decreased response diversity by
 increasing $\rho$ from $`r pr["min"]`$ to $`r pr["max"]`$ (i.e. response
 diversity is $1 - \rho$) (Fig. S1).
 
-We varied the body mass structure of the food web to vary trophic interaction
-strength and mortality rates, because metabolic and mortality rates ($x_i$ &
-$d_i$) scale with species body mass. To do so, we varied the predator-prey mass
-ratio ($Z$) from $`r pZ["min"]`$ to $`r pZ["max"]`$ (Fig. S1b). Species body
-masses ($M_i$) were computed as: $M_i = Z^{TL_i - 1}$, where $TL_i$ is the
-trophic level of species $i$. We set $h = 2$, i.e. a functional response of type
-III (eq. \@ref(eq:holling)), and varied predator interference (i.e. from $c =
-`r pc["min"]`$ to $c = `r pc["max"]`$, eq. \@ref(eq:holling)), as predator
-interference was shown to have a tremendous role on population stability
-[@brose_allometric_2006]. In the absence of environmental stochasticity and with
+We varied the body mass structure of the food web to drive variation in trophic
+interaction strength and mortality rates, because metabolic and mortality rates
+($x_i$ & $d_i$) scale with species body mass. To do so, we varied the
+predator-prey mass ratio ($Z$) from $`r pZ["min"]`$ to $`r pZ["max"]`$ (Fig.
+S1b). Species body masses ($M_i$) were computed as: $M_i = Z^{TL_i - 1}$, where
+$TL_i$ is the trophic level of species $i$. We set $h = 2$, i.e. a functional
+response of type III (eq. \@ref(eq:holling)), and varied predator interference
+(i.e. from $c = `r pc["min"]`$ to $c = `r pc["max"]`$, eq. \@ref(eq:holling)),
+as predator interference has been shown to have a tremendous role on population
+stability [@brose_allometric_2006]. 
+
+In the absence of environmental stochasticity and with
 a type III functional response, species dynamics reach a steady state without
 visible oscillations. We set uniform consumer preferences for their $n$
 resources such as: $\omega_{ij} = 1 / n$, half-saturation rate to $B_0=0.5$,
@@ -450,7 +454,7 @@ rebuilding food webs (i.e. resetting consumer preferences, recomputing species
 body mass according to the new food web) after removing disconnected species did
 not affect our results (Fig. S2). The food web generation and simulations were
 done in Julia by developing an extension of the package
-`EcologicalNetworksDynamics.jl` [@lajaaiti_ecologicalnetworksdynamicsjl_2024].
+`EcologicalNetworksDynamics.jl` [@lajaaiti_ecologicalnetworksdynamicsjl_2025].
 
 In sum, we generated `r format(m_sim(col = "n"), scientific = FALSE)`
 simulations over a wide range of food web structure (Median (5%, 95%),
@@ -458,7 +462,7 @@ species richness: `r m_sim("richness")`, connectance: `r m_sim("ct_alive")`,
 average interaction strength: `r m_sim("avg_int_strength")`, maximum trophic
 level: `r m_sim("max_tlvl")`) (Table S2).
 
-## Simulation output generation
+## Simulation outputs
 
 We measured food web properties that have been linked with stability in the
 literature. We measured total biomass, species richness, connectance, average
@@ -476,21 +480,21 @@ $\hat{B_i}$ the average biomass of the species $i$. The degree of omnivory of a
 consumer was computed such as the sum of squares of its resource trophic levels
 weighted by the relative preference of the consumer for each resource: $\sum_i
 (\mathrm{TL}_i - \hat{\mathrm{TL}})^2 \omega_i/ \sum \omega_i$
- [@christensen_ecopath_1992]. Interaction strength was computed was quantified as
+ [@christensen_ecopath_1992]. Interaction strength was quantified as
 the biomass fluxes going from every consumer/resource pair, such as: $I_{ij} = x_i y_i
 B_i F_{ij}$ (eq. \@ref(eq:cons)), and averaged over time. Our way of measuring
 interaction strength is very similar to previous metrics used in previous
-studies, at the difference here that we average fluxes over time and not the
+studies with the difference here that we average fluxes over time and not the
 maximal interaction strength [@mccann_weak_1998]. Finally, the average
 interaction strength of a community was computed as the average of the
-$S \times S$ interaction strength matrix at the exclusion of null interaction strengths
-(i.e. excluding absence of trophic interactions).
+$S \times S$ interaction strength matrix at the exclusion of null interaction
+strengths (i.e. excluding absence of trophic interactions).
 
 We assessed the effects of food web structure, environmental stochasticity and
 response diversity on the temporal stability of community biomass ($S_{com}$).
 We measured temporal stability of biomass as the inverse of the coefficient of
 variation. We further partitioned stability into population stability
-($S_{pop}$) and asynchrony ($\phi$) such as:
+($S_{pop}$) and asynchrony ($\phi$) as:
 
 \begin{equation}
 \begin{aligned}
@@ -501,14 +505,15 @@ S_{com} = S_{pop} \times \phi
 
 with $S_{com} = \mu_{tot} / \sigma_{tot}$, $S_{pop} = \mu_{tot} / \sum_i \sigma_i$,
 $\phi = \sum_i \sigma_i / \sigma_{tot}$; where $\mu_{tot}$ and $\sigma_{tot}$
-are respectively average total biomass and standard deviation of total biomass.
+are respectively average total biomass and standard deviation of total biomass
+[@thibaut_understanding_2013; @zhao_biodiversity_2022].
 
-To further get a mechanistic insight about the effects of environmental
+To obtain further mechanistic insight about the effects of environmental
 stochasticity, response diversity, and food web structure on stability, we
 partitioned asynchrony into portfolio effects ($PFE$) and compensatory dynamics
 stemming from species interactions [@zhao_biodiversity_2022] ($CPE_{int}$). The
 measurement of portfolio effects has been a topic of debate
-[@loreau_biodiversity_2021;@zhao_biodiversity_2022]. Doak's definition
+[@loreau_biodiversity_2021; @zhao_biodiversity_2022]. Doak's definition
 [@doak_statistical_1998] defines portfolio effects as the product of statistical
 averaging effects ($SAE$) and compensatory effects arising from response
 diversity [@zhao_biodiversity_2022; @doak_statistical_1998] ($CPE_{env}$). It
@@ -531,10 +536,11 @@ S_{com} &= S_{pop} \times SAE \times CPE_{int} \times CPE_{env}
 \end{aligned}
 \end{equation}
 
-Statistical averaging effect ($SAE$) is the share of asynchrony assuming that species are
-independent, meaning that the variance total of the community is equal to the
-sum of species variances only (i.e. species covariances are null). We can
-define community stability ($S_{com, IP}$) in that scenario and then derive $SAE$:
+Statistical averaging effect ($SAE$) is the share of asynchrony assuming that
+species are independent, meaning that the total variance of the community is
+equal to the sum of species variances only (i.e. species covariances are null).
+We can define community stability ($S_{com, IP}$) in that scenario and then
+derive $SAE$:
 
 \begin{equation}
 \begin{aligned}
@@ -572,9 +578,9 @@ rates $\mathbf{E}$:
 We computed $CPE_{env}$ using the equation \@ref(eq:cpe) with the time x species
 matrix ($\mathbf{B_{d, i}}$), so that compensatory effects due to environmental
 fluctuations are mainly determined by response diversity (Fig. S3). Then
-compensatory effects raising from species interactions were computed as:
+compensatory effects due to species interactions were computed as:
 $CPE_{int} = CPE / CPE_{env}$. Finally, portfolio effects ($PFE$) were computed
-as: $PFE = SAE \times CPE_{env}$ and compensatory effects raising from species
+as: $PFE = SAE \times CPE_{env}$ and compensatory effects due to species
 interactions as $CPE_{int}$. The final stability decomposition reads as follows:
 
 \begin{equation}
@@ -586,86 +592,99 @@ S_{com} = S_{pop} \times PFE \times CPE_{int}
 
 ## Statistical analysis
 
-Using a structural equation model, we disentangled the complex effects of food
-web structure, environmental stochasticity and response diversity on the
-different facets of temporal stability of biomass (i.e. population stability,
-asynchrony, portfolio effects and compensatory dynamic effects). We tested the
-effects of food web structure (average interaction strength, average trophic
-level, connectance) on population stability and asynchrony partitions (portfolio
-and compensatory effects). The structure of the structural equation model was
-defined a priori based on expectations from previous theoretical studies. Then, we
-expected that higher average trophic level, lower interaction strength, lower
-connectance result in higher population stability and lower asynchrony
+
+Using a structural equation model, we estimate the contribution to temporal
+community stability of the numerous processes reviewed in the introduction
+across the multiple ecological scales at which they occur (Fig 1). 
+
+The arrangement of the structural equation model was defined a priori based on
+the logic of what ecological scales each process operates on and on
+expectations from previous theoretical studies. Working from right to left in
+Fig. \@ref(fig:sem), we first specify response diversity and environmental stochasticity
+which operate across all species in a community. Richness, average interaction
+strength, connectance and average trophic level then represent structural
+properties of the community (food web).  Moving further left, the portfolio
+effect and compensatory effects due to species interactions represent
+aggregated species specific contributions to processes that underpin
+asynchrony.  Here, asynchrony is paired with population stability,
+also an aggregated process at the species scale.
+
+The flow from right to left represents expectations from theory. Theory
+suggests a strong influence of average trophic level, average interaction
+strength, and connectance on  population stability and asynchrony
 [@mccann_weak_1998; @mccann_reevaluating_1997; @mccann_diversitystability_2000;
-@fahimipour_compensation_2017]. We further added simulation parameters as
-control variables because higher Predator-Prey Mass Ratio and predator
-interference were also expected to increase population stability
-[@brose_allometric_2006]. Average omnivory was not included because the
-collinearity (i.e. measured by the Variance Inflation Factor) with average
-trophic level was too high. Finally, we tested the effects of environmental
-stochasticity and response diversity on population stability and asynchrony
-partitions, although there were predicted to mainly affect population stability
-(i.e. by increasing amplitude of population fluctuations) and asynchrony (i.e.
-by generating independent population fluctuations) respectively. We completed
-the structural equation model with the mathematical relationship linking
-compensatory dynamics due to species interactions ($CPE_{int}$) and statistical
-averaging effects ($SAE \times CPE_{env}$) to asynchrony, and from asynchrony
-and population stability to community stability.
+@fahimipour_compensation_2017], directly for population stability but mediated by portfolio and
+compensatory effects for asynchrony [@zhao_biodiversity_2022]. The SEM then reflects expected
+impacts of Environmental stochasticity and Response diversity on Population
+stability and Asynchrony partitions.  Furthest left, our SEM also captures the
+core partition of asynchrony into compensatory effects generated by species
+interactions ($CPE_{int}$) and portfolio effects stemming from statistical averaging
+and compensatory effects due to response diversity ($SAE \times CPE_{env}$), and from
+asynchrony and population stability to community stability.
 
-Prior testing the structural equation model, we logged all the stability
-components to transform their relation from multiplicative to additive (eq.
-\@ref(eq:scom2)). We ensured that all the linear models composing the structural
-equation model presented low multicollinearity (Variance Inflation Factor < 3,
-Table S3), although interaction strength and species richness were highly
-correlated (Fig. S4). The structural equation model was evaluated using the R package
-`PiecewiseSEM` [@lefcheck_piecewisesem_2016]. We computed the sum
-of the direct and indirect effects using `semEff` R
-package [@murphy_semeff_2021]. In the main text, we reported standardised
-coefficients which were obtained by scaling the coefficients by the standard
-deviation of the response and predictor variable. Finally, we reported only the
-direct standardised coefficients with an absolute value equal or above $0.05$,
-because almost all effects were statistically significant given the high numbers
-of simulations. These direct standardised coefficients reflect partial
-correlation coefficients, while total standardised coefficients reflect
-correlation coefficients [@grace_structural_2006].
+Though not shown in Fig. \@ref(fig:sem), we included the predator-prey mass ratio and
+predator interference values as control variables as they have been shown to
+influence  population stability [@brose_allometric_2006]. And while average omnivory is also
+expected to increase population stability [@mccann_reevaluating_1997], it was
+not included because of strong  collinearity (i.e. measured by the Variance
+Inflation Factor) with average trophic level. 
 
-In a second analysis, we tested how food web structure, response diversity, and
-environmental stochasticity modulate stability-species richness relationships.
-We modelled temporal stability of community biomass according to food web
-structure: species richness, weighted average trophic level, connectance and
-average interaction strength, as well as environmental stochasticity and
-response diversity. We further included the two-way interactions between species
-richness and food web structure, between species richness and response
-diversity, between species richness and environmental stochasticity. Finally, we
-added the three-way interactions between species richness, food web structure
-and response diversity, between species richness, food web structure and
-environmental stochasticity. We added predator interference, predator-prey mass
-ratio as control variables. We further added the ID of the food web as a random
-intercept. We then used the linear equation of the model and associated slope
-coefficients to predict the shape of the relationship between community
-stability and species richness according to a gradient of response diversity and
-of food web structure. To do so, we summed all the coefficients involving
-species richness in the model, i.e. the one, two, and three-way terms. The
-values of the other variables were set to the values indicated in the Fig.
-\@ref(fig:pred). The coefficients of the models are displayed in Fig. S5. The
-VIFs were inferior to 3, indicating low multicollinearity (Table S4), we checked
-the distribution of the residuals (Fig. S6) using `DHARMa` R package. The model
-was implemented using the R package `glmmTMB` [@brooks_glmmtmb_2017].
+Prior to evaluating hypotheses in the structural equation model, we logged all
+the stability components to transform their relation from multiplicative to
+additive (eq. \@ref(eq:scom2)). We ensured that all the linear models composing
+the structural equation model presented low multicollinearity (Variance
+Inflation Factor < 3, Table S3), although interaction strength and species
+richness were highly correlated (Fig. S4). The structural equation model was
+evaluated using the R package `PiecewiseSEM` [@lefcheck_piecewisesem_2016]. We
+computed the sum of the direct and indirect effects using `semEff` R package
+[@murphy_semeff_2021]. In the main text, we reported standardised coefficients
+which were obtained by scaling the coefficients by the standard deviation of
+the response and predictor variable. Finally, we reported only the direct
+standardised coefficients with an absolute value equal or above $0.05$, because
+almost all effects were statistically significant given the high numbers of
+simulations. These direct standardised coefficients reflect partial correlation
+coefficients, while total standardised coefficients reflect correlation
+coefficients [@grace_structural_2006].
+
+In the second analysis, we used linear mixed effect models to test how food web
+structure, response diversity, and environmental stochasticity modulate
+stability-species richness relationships. We modelled temporal stability of
+community biomass according to food web structure: species richness, weighted
+average trophic level, connectance and average interaction strength, as well as
+environmental stochasticity and response diversity. We further included the
+two-way interactions between species richness and food web structure, between
+species richness and response diversity, between species richness and
+environmental stochasticity. Finally, we added the three-way interactions
+between species richness, food web structure and response diversity, between
+species richness, food web structure and environmental stochasticity. We
+included predator interference, predator-prey mass ratio as control variables
+and added the ID of the food web as a random intercept.
+
+We used this model to predict the shape of the relationship between community
+stability and species richness along a gradient of response diversity and of
+food web structure. To do so, we summed all the coefficients involving species
+richness in the model, i.e. the one, two, and three-way terms. The values of
+the other variables were set to the values indicated in Fig. \@ref(fig:pred). The
+coefficients of the models are displayed in Fig. S5. The VIFs were lower than
+3, indicating low multicollinearity (Table S4). We checked the distribution of
+the residuals (Fig. S6) using `DHARMa` R package. The model was implemented using
+the R package `glmmTMB` [@brooks_glmmtmb_2017].
 
 # Results
 
 ```{r}
 
 sem_cap <- paste0(
-  "Structural Equation Model linking food web structure and stressors to the
-  temporal stability of community biomass. a, Continuous blue arrows display
-  positive and dashed red arrows display negative standardised effects, the
-  arrow widths are proportional to the absolute values of the standardised
-  effects. Only the standardised coefficients whose absolute values are superior
-  to 0.05 are displayed. The full table of coefficients including control
-  variables is displayed in Table S5. b, Total effects of food web structure on
-  community stability, asynchrony, and population stability derived from the
-  structural equation model. N = ", nrow(tar_read(sim_fw)), " simulations.") %>%
+  "Structural Equation Model linking food web structure, environmental
+  stochasticity, and response diversity to the temporal stability of community
+  biomass. a, Continuous blue arrows display positive and dashed red arrows
+  display negative standardised effects, the arrow widths are proportional to
+  the absolute values of the standardised effects. Only the standardised
+  coefficients whose absolute values are greater to 0.05 are displayed. The
+  full table of coefficients including control variables is displayed in Table
+  S5. b, Total effects of food web structure on community stability,
+  asynchrony, and population stability derived from the structural equation
+  model. N = ", nrow(tar_read(sim_fw)), " simulations.") %>%
   str_replace_all("\\s+", " ")
 ```
 
@@ -682,8 +701,6 @@ tar_load(c(sem_doak_eff_tab, sem_simplified_eff_tab))
 tar_read(sem_fig_coeff)
 tar_read(sem_doak_rsquared_csc_rerun)
 ```
-
-
 
 ```{r}
 get_eff <- function(
@@ -735,18 +752,41 @@ tar_load(sim_fw_sem)
 ## The drivers of community stability
 
 Applying a structural equation model on the outcomes of food web simulations
-revealed that the temporal stability of community biomass is
-positively influenced by both population stability and asynchrony, and that
-population stability has twice the effect of asynchrony (resp. $r_\delta$=
+revealed that the temporal stability of community biomass is positively
+influenced by both population stability and asynchrony, and that population
+stability has nearly double the contribution of asynchrony (resp. $r_\delta$=
 `r rscp` and `r rsca`, $r_\delta$ is the standardised coefficient, Fig.
-\@ref(fig:sem)a). This result might be driven by the relative variance of
-environmental stochasticity and response diversity explored in our simulations,
-such as higher variance in environmental stochasticity relative to response
-diversity would result in higher variance in population stability than in
-asynchrony. However the standard deviation of environmental stochasticity was twice
-lower than response diversity (resp. `r round(sd(sim_fw_sem$env_stoch), 2)` vs
-`r round(sd(sim_fw_sem$resp_div),2)`). All the tested causal relationships are
-presented in Table S5.
+\@ref(fig:sem)a). This result might be driven
+by the relative variance of environmental stochasticity and response diversity
+explored in our simulations, since a higher variance in environmental
+stochasticity relative to response diversity would result in a higher effect
+size in population stability than in asynchrony because those coefficients were
+expressed relative to the standard deviation of the variables (i.e.
+standardised coefficients). However, the standard deviation of environmental
+stochasticity was two times lower than response diversity ( resp.
+`r round(sd(sim_fw_sem$env_stoch), 2)` vs
+`r round(sd(sim_fw_sem$resp_div), 2)`), so that the higher importance of
+population stability relative to asynchrony that we report cannot be explained
+by the explored parameter ranges in the study. All the tested causal
+relationships are presented in Table S5.
+
+We further found that asynchrony is driven more by portfolio effects than by
+compensatory dynamics (resp. $r_\delta$= `r ras` and `r rac`). In more details, response
+diversity has strong positive effects on asynchrony, mainly through portfolio
+effects ($r_\delta$= `r rsd`), at the expense of compensatory dynamics
+($r_\delta$= `r rcd`). All other studied properties were found to have much
+weaker effects on asynchrony. Food web structural properties – namely average
+trophic level, connectance and average interaction strength – have consistent
+negative effects on asynchrony,
+through both portfolio and compensatory effects (Fig. \@ref(fig:sem)a). Indeed, as average
+trophic level and connectance increase, compensatory effects are reduced (resp.
+$r_\delta$= `r rct` and `r rcc`, Fig. \@ref(fig:sem)a), while average
+interaction strength has a small
+negative effect on portfolio effects ($r_\delta$= `r rsi`). Species richness has a
+positive effect on both portfolio and compensatory effects (resp. r= 0.18 and
+0.14). Finally, as expected by the standardisation of asynchrony to total
+community variance (See Methods), environmental stochasticity has little effect
+on asynchrony.
 
 We further found that asynchrony is driven more by portfolio effects than by
 compensatory dynamics (resp. $r_\delta$= `r ras` and `r rac`). In more details, response
@@ -760,9 +800,10 @@ compensatory effects (Fig. \@ref(fig:sem)a). Indeed, as average trophic level an
 increase compensatory effects are reduced (resp. $r_\delta$= `r rct` and `r rcc`, Fig.
 \@ref(fig:sem)a), while average interaction strength has a small negative effect
 on portfolio effects ($r_\delta$= `r rsi`). Species richness has a positive
-effect on both portfolio and compensatory effects (resp. $r_\delta$= `r rsr` and
-`r rcr`). Finally, as expected, environmental stochasticity has little effect on
-asynchrony.
+effect on both portfolio and compensatory effects (resp. $r_\delta$= `r rsr`
+and `r rcr`). Finally, as expected by the standardisation of asynchrony to
+total community variance (See Methods), environmental stochasticity has little
+effect on asynchrony.
 
 Focusing on population stability, environmental stochasticity was found to have
 a strong negative effect on it ($r_\delta$= `r rpe`). All other studied properties were
@@ -798,8 +839,8 @@ rtact <- get_eff(y = "async", x = "ct_alive", effect_type = "total")
 ```
 
 Deriving total effects from the sum of direct and indirect effects in the
-structural equation model (See Method), we showed that both environmental
-stochasticity and species response diversity have by far the strongest total
+structural equation model (See Methods), we showed that both environmental
+stochasticity and species' response diversity have by far the strongest total
 effects on community stability (resp. $r_\delta$= `r rtsenv` and `r rtsdiv`,
 Fig. \@ref(fig:sem)b). Species richness and average trophic level have similar
 small but positive total effects on community stability ($r_\delta$= `r rtsr`),
@@ -854,17 +895,15 @@ knitr::include_graphics(here("report", "figures", "p_fig3.pdf"))
 
 We further assessed how environmental stochasticity and response diversity
 interacted with food web structural properties to determine the sign of the
-stability-richness relationship, using a linear model including main effects and
-all interactions among food web structural properties, response diversity and
-environmental stochasticity (see Methods). We found that there are strong
-interactions between response diversity and food web structure, which jointly
-determine the sign of the stability-richness relationship.
+stability-richness relationship. We found that there are strong interactions
+between response diversity and food web structure, which jointly determine the
+sign of the stability-richness relationship.
 
 In the absence of response diversity, we found only negative stability-richness
-relationships, regardless of the food web structure (Fig. \@ref(fig:pred)a).
-Response diversity enables the rise of positive stability-richness
-relationships, enhanced by average interaction strength and dampened by average
-trophic level and connectance. Higher interaction strength leads to positive
+relationships, regardless of the food web structure (Fig. \@ref(fig:pred)a). Response
+diversity enables the rise of positive stability-richness relationships,
+enhanced by average interaction strength and dampened by average trophic level
+and connectance. Higher interaction strength leads to positive
 stability-richness relationships for lower values of response diversity, and
 interaction strength enhances asynchrony-richness relationships (Fig. S7), so
 that the stronger positive stability-richness relationships are found at both
@@ -872,10 +911,14 @@ high interaction strength and high response diversity levels. In contrast,
 higher average trophic level and connectance both lead to negative
 stability-richness relationships, because they drive more negative population
 stability-richness relationships and weaker positive asynchrony-richness
-relationships (Fig. S7). Overall, our results highlight a strong contrast
-between the relatively small effects of food web structural properties on
-overall community stability (Fig. \@ref(fig:sem)b) but their strong effects on
-the slope of the stability-richness relationship (Fig. \@ref(fig:pred)a).
+relationships (Fig. S7).
+
+Overall, our results highlight a contrast between the relatively small effects
+of food web structural properties on overall community stability (Fig.
+\@ref(fig:sem)b) but their strong effects on the slope of the
+stability-richness relationship (Fig. \@ref(fig:pred)a). A contrast which is
+consistent when considering interactive effects among food web structure,
+response diversity and environmental stochasticity (Fig. S3).
 
 
 ```{r, eval = FALSE}
@@ -884,73 +927,69 @@ tar_read(p_int_fw_str)
 
 # Discussion
 
-With the projected changes in climate and land use, and the associated  changes
-in community composition (e.g. loss of diversity, change in structure,
-homogenisation), it is important to understand the mechanisms which allow
-ecological communities to remain stable despite perturbations. Recent research
-has focused on  the average stability of the populations composing the community
-and the asynchrony of the population fluctuations on the other hand [@thibaut_understanding_2013;
-@zhao_biodiversity_2022]. Much of this previous work has been done in
-simplified assemblages, such as single trophic level communities, and in this
-context here community stability has been shown to be driven by asynchrony in
-species fluctuations, rather than by population stability [@olivier_urbanization_2020].
-However, whether this holds for more complex trophically structured ecological
-communities, such as food webs, remains largely unknown. Here, we tackled this
-question using simulations of complex, stochastic food web dynamics via a
-bioenergetic model. This integration of complex food webs to the other factors
-driving stability is needed to contextualise and predict diversity - stability
-relationships amidst rapid global environmental change.
+With projected changes in climate and land use, and associated  loss of
+diversity, change in community structure, potential homogenisation, it is
+important to understand the mechanisms which allow ecological communities to
+remain stable despite perturbations. Recent research has focused on either the
+average stability of the populations composing the community or on the
+asynchrony of the population fluctuations [@thibaut_understanding_2013;
+@zhao_biodiversity_2022]. Moreover, the majority of
+this work has been done in simplified assemblages, such as single trophic level
+communities. In this focused and often simplified context community stability
+has been shown to be driven by asynchrony in species fluctuations, rather than
+by population stability [@olivier_urbanization_2020]. 
 
-Our model results show that, in complex food webs, community stability is more
-driven by population stability than by asynchrony, in contrast with what was
-observed in single trophic level communities. Our study further reveals that the
-main drivers of community stability are environmental stochasticity and response
-diversity, respectively acting on population stability and asynchrony.
-One trivial explanation for this pattern might be the ratio of variance from
-environmental stochasticity to response diversity explored in our simulations,
-as a higher variance in environmental stochasticity relative to response
-diversity would result in higher effect size in population stability than in
-asynchrony because those coefficients were expressed relative to the standard
-deviation of the variables (i.e. standardised coefficients). However the
-standard deviation of environmental stochasticity was 2x  lower than response
-diversity (resp. 0.17 vs 0.35), so  that the higher importance of population
-stability relative to asynchrony that we report cannot be explained by the
-explored parameter ranges in the study.
+However, whether this inference holds for more complex, trophically structured
+ecological communities such as food webs, remains largely unknown. Here, we
+tackled this question using simulations of complex, stochastic food web
+dynamics via a bioenergetic model. In doing so, we reveal not only the relative
+contribution to temporal stability of multiple processes spanning multiple
+ecological scales, but also predictions about the context dependency of
+diversity - stability relationships amidst rapid global environmental change.
 
-An additional key finding is that despite previous work in simple communities
-suggesting that food web structural properties drive stability, we found that
-these properties have much weaker effects in more complex food webs, a result
-consistent across a diversity of simulation methodologies (Fig. S2). However,
-structural properties are central to our understanding of stability-richness
-relationships. They were found to play an important role in the sign of the
-stability-richness relationship, which is strongly mediated by the interaction
-between food web structure and response diversity. These results highlight the
-dual importance of response diversity to improve our understanding of the
-stability of structured ecological communities in variable environments.  In the
-following sections, we deliver more nuanced insight into these conclusions.
+Our results show that, in complex food webs, community stability is more driven
+by population stability than by asynchrony, in contrast with what was observed
+in single trophic level communities. As we showed above, this was not due to
+the ratio of variance between environmental stochasticity and response
+diversity. Our study further reveals that the main drivers of community
+stability are environmental stochasticity and response diversity, respectively
+acting on population stability and asynchrony. Furthermore, despite previous
+work in simple communities suggesting that food web structural properties drive
+stability, we found that these properties have much weaker effects in more
+complex food webs, a result consistent across a diversity of methodological
+choices (Fig. S2).
 
+However, structural properties are central to our understanding of
+stability-richness relationships. They were found to play an important role in
+the sign of the stability-richness relationship, which is strongly mediated by
+the interaction between food web structure and response diversity. Our results
+highlight the dual importance of response diversity to improve our
+understanding of stability per se and of richness-stability relationships in
+structured ecological communities facing variable environments. In the
+following sections, we deliver more nuanced insights into these conclusions.
 
 ## Environmental Stochasticity and response diversity are the main drivers of community stability
 
 We found environmental stochasticity and response diversity to be the main
 overall drivers of community stability. While environmental stochasticity
-decreases population stability, response diversity generates asynchrony, thereby
-buffering environmental stochasticity. This result is in accordance with
-previous theoretical and empirical findings in competitive communities
+decreases population stability, response diversity generates asynchrony,
+thereby buffering environmental stochasticity. This result is in accordance
+with previous theoretical and empirical findings in competitive communities
 [@thibaut_diversity_2012; @thibaut_understanding_2013; @thebault_trophic_2005;
 @loreau_species_2008; @de_mazancourt_predicting_2013; @ives_stability_2000]. In
 turn, response diversity was found to operate on asynchrony. This is in
 agreement with empirical findings in competitive assemblages where response
 diversity was quantified with trait-based or non trait-based approaches
 [@thibaut_diversity_2012; @sasaki_species_2019; @zhao_biodiversity_2022].
-Specifically in our model, response diversity was driving portfolio effects
-through compensatory effects due to species' differential responses to
-environmental fluctuations (i.e.
-$CPE_{env}$, see methods eq. \@ref(eq:cpe)-\@ref(eq:scom3)), thereby modulating
-the statistical averaging of independent species fluctuations
-[@doak_statistical_1998]. This mechanism highlights how differences in species'
-environmental responses contribute to asynchrony, stabilizing communities by
-reducing the synchrony of population fluctuations.
+
+Specifically, in our model, response diversity was driving portfolio effects
+through compensatory effects due to species’ differential responses to
+environmental fluctuations (i.e. $CPE_{env}$, see methods eq.
+\@ref(eq:cpe)-\@ref(eq:scom3)), thereby modulating the statistical averaging of
+independent species fluctuations [@doak_statistical_1998]. This mechanism
+highlights how differences in species’ environmental responses contribute to
+asynchrony, stabilizing communities by reducing the synchrony of population
+fluctuations.
 
 A consequence of the large effect of response diversity is that asynchrony in
 species fluctuations is driven more by the statistical averaging of independent
@@ -964,40 +1003,42 @@ compensatory dynamics resulting from oscillations between predators and prey
 @mccann_diversitystability_2000]. However, pioneering theoretical studies have
 shown that environmental stochasticity can dampen prey switching
 [@vasseur_environmental_2007] and that trophic cascades between trophic levels
-in species rich food webs are weak compared to food chains and species poor food
-web modules [@fahimipour_compensation_2017]. So, the question of the importance
-of compensatory dynamics in complex food webs remains an open and interesting
-avenue for future research.
+in species rich food webs are weak compared to food chains and species poor
+food web modules [@fahimipour_compensation_2017]. So, the question of the
+importance of compensatory dynamics in complex food webs remains an open and
+interesting avenue for future research.
 
-In contrast to empirical evidence in competitive communities
-[@olivier_urbanization_2020], population stability (not asynchrony) was found to
-be the dominant driver of community stability in our food web simulations. These
-results are in agreement with previous findings in empirical food webs
-[@danet_species_2021] and food web models [@eschenbrenner_diversity_2023], which
-suggest fundamental differences between competitive communities and food webs in
-the relative contributions of population stability and asynchrony to community
-stability. Our findings suggest that the presence of trophic links contributes
-to synchronise the species of the community because we found that the food web
+Population stability (not asynchrony) was found to be the dominant driver of
+community stability in our food web simulations, through the large effect of
+environmental stochasticity. These results are in agreement with previous
+findings in empirical food webs [@danet_species_2021] and food web models
+[@eschenbrenner_diversity_2023], but contrast with empirical evidence in
+competitive communities [@olivier_urbanization_2020]. It suggests fundamental
+differences between competitive communities and food webs in the relative
+contributions of population stability and asynchrony to community stability.
+Our findings suggest that the presence of trophic links contributes to
+synchronise the species of the community because we found that the food web
 metrics studied – namely average trophic level, connectance, and average
 interaction strength – all decrease asynchrony. These results are in line with
 empirical evidence that predators can synchronise their prey
 [@raimondo_interspecific_2004; @korpimaki_predatorinduced_2005], and that
 species pairs involved in trophic interactions are more synchronous than those
-that are not [@danet_species_2021]. A complementary explanation for the
-relatively lower importance of asynchrony in food webs (compared to single
-trophic level communities) could be related to the biomass structure of food
-webs. food webs typically include a larger range of body masses than single
-trophic level assemblages [@brose_predator_2019]. Such highly uneven biomass
-distribution can translate in uneven species temporal variability, thereby
-creating uneven species contributions to asynchrony
-[@thibaut_understanding_2013] and limiting portfolio effects and compensatory
-dynamics in species-rich communities [@zhao_biodiversity_2022].
+that are not [@danet_species_2021]. 
+
+A complementary explanation for the relatively lower importance of asynchrony
+in food webs (compared to single trophic level communities) could be related to
+the biomass structure of food webs. Food webs typically include a larger range
+of body masses than single trophic level assemblages [@brose_predator_2019].
+Such highly uneven biomass distribution can translate in uneven species
+temporal variability, thereby creating uneven species contributions to
+asynchrony [@thibaut_understanding_2013] and limiting portfolio effects and
+compensatory dynamics in species-rich communities [@zhao_biodiversity_2022].
 
 Investigating in more detail the drivers of community stability, our results
-suggest that species richness and the network structural properties investigated
-only have a weak effect on overall community stability. We found that higher
-average trophic level leads to higher community stability by increasing average
-population stability, confirming previous theoretical
+suggest that species richness and the network structural properties
+investigated only have a weak effect on overall community stability.  We found
+that a higher average trophic level leads to higher community stability by
+increasing the average population stability, confirming previous theoretical
 [@shanafelt_stability_2018; @eschenbrenner_diversity_2023;
 @brose_allometric_2006] and empirical [@danet_species_2021] results. However,
 this effect disappeared when we simulated community dynamics with equal
@@ -1008,110 +1049,113 @@ trophic role directly. The overall effect of connectance on overall community
 stability was found to be quite low, in agreement with previous empirical and
 theoretical findings [@danet_species_2021; @eschenbrenner_diversity_2023].
 Similarly, we found very low effects of the average interaction strength on
-community stability, which is in apparent disagreement with the predominant role
-of interaction strength and connectance on stability [@may_will_1972]. We found
-that average interaction strength had a weak positive effect on population
-stability, in confirmation with previous theoretical findings aligning with our
-model assumption that there was no asymmetry of consumer preferences for their
-prey [@gellner_consistent_2016].
+community stability, which is in apparent disagreement with the predominant
+role of interaction strength and connectance on stability [@may_will_1972]. We
+found that average interaction strength had a weak positive effect on
+population stability, in confirmation with previous theoretical findings
+aligning with our model assumption that there was no asymmetry of consumer
+preferences for their prey [@gellner_consistent_2016].
 
 ## Stability-richness relationships depend on response diversity and food web structure
 
 Our results also allow us to revisit the old question of the relationship
 between the complexity of ecological communities and their stability
 [@may_will_1972; @angelis_stability_1975]. We found that response diversity
-enables the rise of positive stability-richness relationships, enhanced by
+enables the emergence of positive stability-richness relationships, enhanced by
 average interaction strength and dampened by average trophic level and
 connectance. In the absence of response diversity, only negative relationships
 between community stability and species richness are observed. This reinforces
-the idea that increases in species richness increase community stability only if
-the added species have different responses to environmental perturbations, i.e. if
-there is response diversity [@de_mazancourt_predicting_2013;
-@thebault_trophic_2005]. Indeed, a community with numerous species which respond
-differently to environmental change is more likely to buffer a wide array of
-perturbations [@yachi_biodiversity_1999; @ives_stability_2000]. Despite its
-relatively weaker effect on community stability (than response diversity and
-environmental stochasticity), food web structure interacts strongly with
-response diversity to determine the sign of stability-richness relationships.
-Surprisingly, we find that higher average interaction strength enhances positive
-stability-richness relationships by enhancing asynchrony-richness relationships.
-Conversely, higher average trophic level and higher connectance both led to
-negative stability-richness relationships by dampening asynchrony-richness
-relationships. It would appear that asynchrony becomes too weak to compensate
-for the simultaneous decrease in population stability induced by increasing
-species richness.
+the idea that increases in species richness enhance community stability only if
+the added species have different responses to environmental perturbations, i.e.
+if there is response diversity [@de_mazancourt_predicting_2013;
+@thebault_trophic_2005]. Indeed, a community with numerous species which
+respond differently to environmental change is more likely to buffer a wide
+array of perturbations [@yachi_biodiversity_1999; @ives_stability_2000].
+
+Despite its relatively weaker effect on community stability (than response
+diversity and environmental stochasticity), food web structure interacts
+strongly with response diversity to determine the sign of stability-richness
+relationships. Surprisingly, we find that higher average interaction strength
+enhances positive stability-richness relationships by enhancing
+asynchrony-richness relationships. Conversely, higher average trophic level and
+higher connectance both led to negative stability-richness relationships by
+dampening asynchrony-richness relationships. It would appear that asynchrony
+becomes too weak to compensate for the simultaneous decrease in population
+stability induced by increasing species richness. 
 
 These results should be understood as the predicted stability-richness
-relationships if food web structure is kept constant, i.e. if food web structure
-does not vary with species richness. However, connectance [@dunne_network_2006]
-and average trophic level weighted by biomass are documented to decrease with
-species richness [@danet_species_2021], because of energetic and topological
-constraints [@dunne_network_2006; @gravel_trophic_2011]. Our results add to this
-body of work by suggesting that ecological communities that do not decrease in
-connectance and average trophic level while increasing in species richness,
-should decrease in stability. Our results resonate with findings that some
-community structure can lead to negative stability-richness relationships, as
-previously reported in freshwater food webs [@danet_species_2021]. Response
-diversity might therefore be one of the mechanisms that explains why positive
-relationships between stability and species richness are so prevalent in
-empirical settings [@elmqvist_response_2003; @thibaut_understanding_2013], while
-food web theoretical models that do not often include environmental
-stochasticity and response diversity typically find negative
-complexity-stability relationships [@ives_stability_2007].
+relationships if food web structure is kept constant, i.e. if food web
+structure does not vary with species richness. However, connectance
+[@dunne_network_2006] and average trophic level weighted by biomass are
+documented to decrease with species richness [@danet_species_2021], because of
+energetic and topological constraints [@dunne_network_2006;
+@gravel_trophic_2011]. Our results add to this body of work by suggesting that
+communities increasing in species richness without concurrent decreases in
+connectance and average trophic level should experience reduced stability. Our
+results resonate with findings that some community structure can lead to
+negative stability-richness relationships, as previously reported in freshwater
+food webs [@danet_species_2021]. Response diversity might therefore be one of
+the mechanisms that explains why positive relationships between stability and
+species richness are so prevalent in empirical settings
+[@elmqvist_response_2003; @thibaut_understanding_2013], while food web
+theoretical models that do not often include environmental stochasticity and
+response diversity typically find negative complexity-stability relationships
+[@ives_stability_2007].
 
 ## Summary
 
 In conclusion, our study highlights the contrasting effects of response
 diversity and food web structure on the temporal stability of species rich
 communities: response diversity underpins community stability and strongly
-interacts with food web structure to define stability-richness relationships. In
-line with the insurance hypothesis [@yachi_biodiversity_1999;
-@loreau_biodiversity_2021], our results suggest that environmental stochasticity
-and response diversity are the main mechanisms driving community stability,
-while food web structural properties are only mediating them. This further
-aligns with the idea that, in species-rich communities, community structure
-might be secondary in understanding the generic effects of biodiversity on
-ecosystem functioning [@barbier_generic_2018; @ives_stability_2000]. Our results
-further add to mounting evidence that population stability is a stronger driver
-of community stability than asynchrony in food webs, in contrast with what was
-observed in competitive communities.
+interacts with food web structure to define stability-richness relationships.
+In line with the insurance hypothesis [@yachi_biodiversity_1999;
+@loreau_biodiversity_2021], our results suggest that environmental
+stochasticity and response diversity are the main mechanisms driving community
+stability, while food web structural properties are only mediating them. This
+further aligns with the idea that, in species-rich communities, community
+structure might be secondary for understanding the generic effects of
+biodiversity on ecosystem functioning [@barbier_generic_2018;
+@ives_stability_2000]. Our results further add to the mounting evidence that
+population stability is a stronger driver of community stability than
+asynchrony in food webs, in contrast with what was observed in competitive
+communities.
 
-The fact that environmental stochasticity was found to be the main driver of
-overall community stability raises concerns about the consequences of the
-current rise in the frequency and severity of environmental extreme events for
-ecological communities [@ghosh_temperature_2024; @lee_ipcc_2023]; indeed our
-results suggest that these changes are unlikely to be compensated by biotic
-mechanisms alone. Documenting how rapid biodiversity changes
-[@dornelas_assemblage_2014; @blowes_geography_2019] driven by human pressures
-[@danet_past_2024] – and in particular the reported homogenisation
-[@olden_homogocene_2018; @wang_biotic_2021] in community composition – affect
-response diversity will be key to accurately predict how it will affect, in
-turn, the stability of communities.
+The fact that environmental stochasticity acting with response diversity was
+found to be the main driver of overall community stability raises concerns
+about the consequences of the current rise in the frequency and severity of
+environmental extreme events for ecological communities
+[@ghosh_temperature_2024; @lee_ipcc_2023], which constitutes an increase in
+environmental stochasticity. Indeed, our results suggest that these changes are
+unlikely to be compensated by biotic mechanisms alone. Documenting how rapid
+biodiversity changes [@dornelas_assemblage_2014; @blowes_geography_2019] driven
+by human pressures [@danet_past_2024] – and in particular the reported
+homogenisation [@olden_homogocene_2018; @wang_biotic_2021] in community
+composition – affect response diversity will be key to accurately predict how
+it will affect, in turn, the stability of communities.
 
-Looking forward, we emphasise promising perspectives in further understanding
-the temporal stability of ecological communities. Our study brings evidence that
-asynchrony is predominantly driven by portfolio effects as previously reported
-in plant communities; However, we expect that some ecological contexts could
-result in the dominance of compensatory effects due to species interactions over
-portfolio effects. An example is the role of the structure of response
-diversity, since we here considered species responses correlation across whole
-food web communities. We expect that considering species differential responses
-to environmental stochasticity within functional groups
-[@elmqvist_response_2003], such as trophic levels, may give more importance to
-compensatory dynamics due to environmental fluctuations relative to the ones due
-to species interactions. The structure of response diversity in food webs has
-been overlooked so far, but this knowledge is expected to rise with the
-methodological progress in measuring response diversity [@ross_how_2023;
-@polazzo_measuring_2024]. Another context to explore is the effect of the
-distribution of interaction strength in food webs. Implementing asymmetric
-distributions of consumer preferences for their prey could also increase the
-importance of compensatory dynamics due to species interactions as strong
-asymmetry in interaction strength can enhance prey switching behaviour
-[@mccann_weak_1998; @mccann_diversitystability_2000].
+Looking forward, our study brings evidence that asynchrony is predominantly
+driven by portfolio effects as previously reported in plant communities.
+However, we expect that some ecological contexts could result in the dominance
+of compensatory effects over portfolio effects due to species interactions. An
+example is the role of the structure of response diversity, since we here
+considered species responses correlation across whole food web communities. We
+expect that considering species differential responses to environmental
+stochasticity within functional groups [@elmqvist_response_2003], such as trophic levels, may give
+more importance to compensatory dynamics due to environmental fluctuations
+relative to the ones due to species interactions. The structure of response
+diversity in food webs has been overlooked so far, but this knowledge is
+expected to rise with the methodological progress in measuring response
+diversity [@ross_how_2023;
+@polazzo_measuring_2024]. Another context to explore is the effect of the distribution
+of interaction strengths in food webs. Implementing asymmetric distributions of
+consumer preferences for their prey could also increase the importance of
+compensatory dynamics due to species interactions as strong asymmetry in
+interaction strength can enhance prey switching behaviour [@mccann_weak_1998;
+@mccann_diversitystability_2000].
 
 ## Data accessibility statement
 
 The code used to run the simulations, analyse them and to write the manuscript
-is archived anonymously on Zenodo: https://zenodo.org/records/14333268.
+is archived on Zenodo: https://zenodo.org/records/14333268.
 
 # References {-}
