@@ -10,7 +10,6 @@ output:
     spacing: double
     number_sections: false
   officedown::rdocx_document:
-bibliography: "bibliography.bib"
 link-citations: true
 toc: false
 linestretch: 2.0
@@ -40,6 +39,8 @@ knitr::opts_chunk$set(echo = FALSE,
                       dev = "png",
                       dev.args = list(png = list(type = "cairo-png")),
                       optipng = "-o1 -quiet")
+
+options(knitr.graphics.auto_pdf = FALSE, knitr.graphics.rel_path = FALSE)
 
 library(here)
 library(cowplot)
@@ -243,9 +244,3 @@ tar_read(tab_sem_doak_eff) %>%
 collapse_rows(columns = 1, latex_hline = "major", valign = "middle") %>%
 kable_styling(latex_options = c("striped", "hold_position"))
 ```
-
-
-
-
-
-
