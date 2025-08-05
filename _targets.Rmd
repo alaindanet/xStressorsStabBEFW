@@ -45,7 +45,11 @@ We first define some global options/functions common to all targets. The functio
 options(tidyverse.quiet = TRUE)
 tar_option_set(
   error = "null",
-  packages = c("tidyverse", "magrittr", "cowplot", "here", "arrow", "piecewiseSEM", "semEff", "easystats", "glmmTMB", "ggcorrplot", "kableExtra", "DHARMa")
+  packages = c(
+"tidyverse", "magrittr", "cowplot", "here", "arrow", "piecewiseSEM",
+"semEff", "easystats", "glmmTMB", "ggcorrplot", "kableExtra", "DHARMa", "janitor",
+"magick", "pdftools", "gridGraphics"
+)
 )
 # Load custom functions
 lapply(list.files(here::here("R"), full.names = TRUE), source)
@@ -57,8 +61,14 @@ map_tibble <- tibble::tibble(
 
 # Targets
 
-Our first target borrows the `airquality` dataset built into base R.
+Get total sims for some checking about producer communities:
 
+```{targets global-sim}
+list(
+  tar_target(sim_total_files, here::here("data", "sim"), format = "file"),
+  tar_target(sim, readRDS(sim_total_files))
+)
+```
 
 ## SEM
 
@@ -1291,7 +1301,7 @@ list(
       mutate(async_decomp = recode_factor(async_decomp, !!!var_replacement()))
     ),
   tar_target(resp_div_async_decomp_prod,
-    tar_read(sim) %>%
+    sim %>%
       filter(max_tlvl == 1) %>%
       mutate(
         resp_div = 1 - rho,
@@ -1346,40 +1356,6 @@ list(
   )
 )
 ```
-
-```{r, eval = FALSE}
-tar_read(sim) %>%
-      filter(max_tlvl == 1) %>%
-      mutate(
-        resp_div = 1 - rho,
-        sae_doak = cpe_env * sae_total
-        ) %>%
-      select(richness, resp_div, cpe, cpe_int, cpe_env, sae_doak) %>%
-      pivot_longer(cpe:sae_doak, names_to = "async_decomp", values_to = "values") %>%
-      mutate(async_decomp = recode_factor(async_decomp, !!!var_replacement()))
-tar_read(resp_div_async_decomp_prod) %>%
-      ggplot(aes(x = as.factor(resp_div), y = values)) +
-      geom_boxplot() +
-      geom_hline(yintercept = 1) +
-      ylim(c(min(resp_div_async_decomp_fw$values), max(resp_div_async_decomp_fw$values))) +
-      facet_wrap(~async_decomp) +
-      labs(
-        y = "Asynchrony partition",
-        x = var_replacement()["resp_div"]
-      )
-tar_read(p_resp_div_async_decomp)
-
-    ggsave_multiple(
-      paste0("p_resp_div_async_decomp_ok", c(".png", ".pdf")),
-      plot = tar_read(p_resp_div_async_decomp),
-      path = here::here("report", "figures"),
-      scale = 2.4,
-      dpi = 400,
-      width = 80,
-      height = 80 * .6,
-      units = "mm")
-```
-
 
 
 # Table
@@ -1537,7 +1513,7 @@ tar_load(sim_summary_stat)
 tar_load(sim_fw)
 ```
 
-```{targets render, eval = FALSE}
+```{targets render, eval = TRUE}
 # does not work properly, have to run it by hand
 list(
   tar_render(manuscript, here::here("paper","manuscript.Rmd")),
@@ -1552,6 +1528,7 @@ list(
 If you ran all the `{targets}` chunks in non-interactive mode, then your R scripts are set up to run the pipeline.
 
 ```{r tar-make}
+#tar_invalidate(p_sem)
 tar_make()
 ```
 
@@ -1577,6 +1554,15 @@ lapply(list.files(here::here("R"), full.names = TRUE), source)
 
 ```{r}
 tar_load(sim_fw_sem)
+```
+
+```{r, eval = FALSE}
+library(targets)
+tar_load_globals()
+error_tab <- tar_meta(fields = error, complete_only = TRUE)
+error_tab |>
+  filter(name == "resp_div_async_decomp")
+tar_load(resp_div_async_decomp_prod)
 ```
 
 ```{r}
