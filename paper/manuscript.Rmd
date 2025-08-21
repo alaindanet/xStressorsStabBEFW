@@ -968,7 +968,7 @@ diversity was quantified with trait-based or non trait-based approaches
 
 Specifically, in our model, response diversity was driving portfolio effects
 through compensatory effects due to species’ differential responses to
-environmental fluctuations (i.e. $CPE_{env}$, see methods eq.
+environmental fluctuations (i.e. $CPE_{env}$, see Methods eq.
 \@ref(eq:cpe)-\@ref(eq:scom3)), thereby modulating the statistical averaging of
 independent species fluctuations [@doak_statistical_1998]. This mechanism
 highlights how differences in species’ environmental responses contribute to

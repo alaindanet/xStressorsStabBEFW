@@ -1,6 +1,6 @@
 ---
 title: Response diversity is a major driver of temporal stability in complex food webs
-author: "Alain Danet (1), Sonia Kéfi (2,3), Thomas F. Johnson (1), Andrew P. Beckerman (1)"
+author: "Alain Danet (1,2), Sonia Kéfi (3,4), Thomas F. Johnson (1), Andrew P. Beckerman (1)"
 date: ""
 output:
   bookdown::pdf_document2:
@@ -13,9 +13,6 @@ output:
     base_format: "bookdown::word_document2"
 always_allow_html: true
 bibliography: references.bib
-link-citations: true
-csl: ecology-letters.csl
-#csl: ecology-letters.csl
 toc: false
 linestretch: 2.0
 header-includes:
@@ -59,11 +56,12 @@ sapply(list.files(here("R"), full.names = TRUE), source)
 \begin{singlespace}
 ```
 - 1 School of Biosciences, Ecology and Evolutionary Biology, University of Sheffield, Western Bank, Sheffield, S10 2TN, UK
-- 2 ISEM, CNRS, Univ. Montpellier, IRD, EPHE, Montpellier, France
-- 3 Santa Fe Institute, 1399 Hyde Park Road, Santa Fe, NM 87501, USA
+- 2 DECOD (Ecosystem Dynamics and Sustainability), INRAE, Institut Agro, IFREMER, Rennes, France
+- 3 ISEM, CNRS, Univ. Montpellier, IRD, EPHE, Montpellier, France
+- 4 Santa Fe Institute, 1399 Hyde Park Road, Santa Fe, NM 87501, USA
 
 - Email address:
-  - Alain Danet (corresponding author): a.h.danet@sheffield.ac.uk
+  - Alain Danet (corresponding author): alain.danet@inrae.fr
   - Sonia Kéfi: sonia.kefi@umontpellier.fr
   - Thomas F Johnson: t.f.johnson@sheffield.ac.uk
   - Andrew P Beckerman: a.beckerman@sheffield.ac.uk
@@ -75,21 +73,21 @@ sapply(list.files(here("R"), full.names = TRUE), source)
 
 - Type of article: Research
 
-- Number of words: Abstract: 170, Main text: 6712
+- Number of words: Abstract: 177, Main text: 6965
 
-- Number of references: 65, Number of figures: 2, Number of tables: 0
+- Number of references: 68, Number of figures: 2, Number of tables: 0
 
 - Corresponding author: Alain Danet, School of Biosciences, Ecology and
   Evolutionary Biology, University of Sheffield, Western Bank, Sheffield, S10
-  2TN, UK; e-mail address: a.h.danet@sheffield.ac.uk
+  2TN, UK; e-mail address: alain.danet@inrae.fr
 
 Statement of authorship: AD and APB designed the research, AD performed the
-research. AD wrote the first draft of the manuscript. All authors all authors
-contributed substantially to revisions.
+research. AD wrote the first draft of the manuscript. All authors contributed
+substantially to revisions.
 
 Data accessibility statement: The code used to run the simulations, analyse them
-and to write the manuscript is archived anonymously on Zenodo:
-https://zenodo.org/records/14333268.
+and to write the manuscript is archived on Zenodo:
+https://zenodo.org/records/16745483.
 
 # Acknowledgements
 
