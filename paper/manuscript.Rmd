@@ -1,11 +1,11 @@
 ---
 title: Response diversity is a major driver of temporal stability in complex food webs
-author: ""
+author: "Alain Danet (1,2), Sonia Kéfi (3,4), Thomas F. Johnson (1), Andrew P. Beckerman (1)"
 date: ""
 output:
   bookdown::pdf_document2:
     keep_tex: true
-    latex_engine: xelatex
+    latex_engine: pdflatex
     spacing: double
     number_sections: false
   officedown::rdocx_document:
@@ -53,6 +53,41 @@ background_grid() +
 theme(legend.position = "bottom")
 theme_set(mytheme)
 sapply(list.files(here("R"), full.names = TRUE), source)
+```
+
+```{=latex}
+\begin{singlespace}
+```
+- Institutional adress:
+  - 1 School of Biosciences, Ecology and Evolutionary Biology, University of Sheffield, Western Bank, Sheffield, S10 2TN, UK
+  - 2 DECOD (Ecosystem Dynamics and Sustainability), INRAE, Institut Agro, IFREMER, Rennes, France
+  - 3 ISEM, CNRS, Univ. Montpellier, IRD, EPHE, Montpellier, France
+  - 4 Santa Fe Institute, 1399 Hyde Park Road, Santa Fe, NM 87501, USA
+
+- Email address:
+  - Alain Danet (corresponding author): alain.danet@inrae.fr
+  - Sonia Kéfi: sonia.kefi@umontpellier.fr
+  - Thomas F Johnson: t.f.johnson@sheffield.ac.uk
+  - Andrew P Beckerman: a.beckerman@sheffield.ac.uk
+
+- Short running title: Response diversity drives food web stability
+
+- Keywords: food webs, temporal stability, theoretical modelling, response
+  diversity
+
+- Type of article: Research
+
+- Number of words: Abstract: 177, Main text: 6965
+
+- Number of references: 68, Number of figures: 2, Number of tables: 0
+
+- Corresponding author: Alain Danet, School of Biosciences, Ecology and
+  Evolutionary Biology, University of Sheffield, Western Bank, Sheffield, S10
+  2TN, UK; e-mail address: alain.danet@inrae.fr
+
+
+```{=latex}
+\end{singlespace}
 ```
 
 \pagebreak
@@ -1136,9 +1171,22 @@ their prey could also increase the importance of compensatory dynamics due to
 species interactions as strong asymmetry in interaction strength can enhance
 prey switching behaviour [@mccann_weak_1998; @mccann_diversitystability_2000].
 
-## Data accessibility statement
+# Acknowledgements
+
+We thank Owen Petchey, Tanya Strydom, and the anonymous reviewers for their
+constructive feedback on the study. AD, TFJ and APB have received support from
+the Natural Environment Research Council under grant agreement no. NE/T003502/1
+awarded to APB.
+
+# Data accessibility statement
 
 The code used to run the simulations, analyse them and to write the manuscript
-is archived on Zenodo: https://zenodo.org/records/14333268.
+is archived on Zenodo: https://zenodo.org/records/16745483.
+
+# Statement of authorship
+
+AD and APB designed the research, AD performed the research. AD wrote the first
+draft of the manuscript. All authors contributed substantially to revisions.
+
 
 # References {-}
